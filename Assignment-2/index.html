@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starfield Cockpit - Flight Deck</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@300;500;800&display=swap');
+
+        :root {
+            --hull-black: #050608;
+            --panel-grey: #12141a;
+            --screen-cyan: #06b6d4;
+            --screen-amber: #f59e0b;
+            --danger-red: #ef4444;
+            --utility-orange: rgba(249, 115, 22, 0.15);
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            color: #d1d5db;
+            font-family: 'JetBrains Mono', monospace;
+            perspective: 1200px;
+        }
+
+        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 0; }
+
+        /* --- THE COCKPIT ARCHITECTURE --- */
+        .cockpit-frame {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            pointer-events: none;
+            box-shadow: inset 0 0 300px rgba(0,0,0,0.9);
+        }
+
+        .canopy-window {
+            position: absolute;
+            inset: 0;
+            border: 60px solid var(--hull-black);
+            border-bottom: none;
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 85% 100%, 85% 15%, 15% 15%, 15% 100%, 0 100%);
+            background: rgba(10, 20, 30, 0.1);
+        }
+
+        .pillar {
+            position: absolute;
+            top: 0; height: 100%; width: 50px;
+            background: linear-gradient(to right, #050608, #1a1c24, #050608);
+            border: 1px solid #2d3748;
+            box-shadow: 0 0 50px #000;
+        }
+        .pillar-l { left: 15%; transform: skewX(12deg); }
+        .pillar-r { right: 15%; transform: skewX(-12deg); }
+
+        .ambient-light {
+            position: absolute;
+            top: -20px; width: 300px; height: 300px;
+            background: radial-gradient(circle, var(--utility-orange) 0%, transparent 70%);
+            z-index: 25;
+            filter: blur(20px);
+        }
+        .light-l { left: -50px; }
+        .light-r { right: -50px; }
+
+        /* --- FLIGHT YOKES --- */
+        .yoke-container {
+            position: absolute;
+            bottom: 120px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 10%;
+            z-index: 45;
+            pointer-events: none;
+        }
+
+        .yoke {
+            width: 120px;
+            height: 200px;
+            background: linear-gradient(to bottom, #111, #000);
+            border: 2px solid #222;
+            border-radius: 20px 20px 60px 60px;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+        }
+
+        .yoke::before {
+            content: '';
+            position: absolute;
+            top: 20px; left: 50%; transform: translateX(-50%);
+            width: 30px; height: 10px;
+            background: var(--danger-red);
+            border-radius: 5px;
+            box-shadow: 0 0 15px var(--danger-red);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* --- DASHBOARD --- */
+        .dashboard-wrapper {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 380px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .dashboard-console {
+            width: 90%;
+            height: 320px;
+            background: #08090d;
+            border: 4px solid #1e293b;
+            border-bottom: none;
+            border-radius: 40px 40px 0 0;
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1fr;
+            gap: 15px;
+            padding: 25px;
+            transform: rotateX(15deg);
+            transform-origin: bottom;
+            box-shadow: 0 -50px 150px rgba(0,0,0,1);
+            pointer-events: auto;
+        }
+
+        .panel {
+            background: #0a0b10;
+            border: 1px solid #2d3748;
+            border-radius: 10px;
+            padding: 15px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset 0 0 20px #000;
+        }
+
+        /* CRT Effect Overlay */
+        .panel::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 1px, transparent 1px, transparent 2px);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .data-display {
+            font-family: 'Orbitron', sans-serif;
+            background: #000;
+            border: 1px solid #1e293b;
+            padding: 10px;
+            border-radius: 5px;
+            color: var(--screen-cyan);
+            text-shadow: 0 0 8px var(--screen-cyan);
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: #111827;
+            height: 6px;
+            border-radius: 3px;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px; height: 32px;
+            background: #374151;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+        }
+
+        .btn-industrial {
+            background: #1f2937;
+            border: 1px solid #374151;
+            padding: 8px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-industrial:hover { background: #374151; color: white; }
+    </style>
+</head>
+<body class="bg-black select-none">
+
+    <canvas id="starfieldCanvas"></canvas>
+
+    <div class="ambient-light light-l"></div>
+    <div class="ambient-light light-r"></div>
+
+    <div class="cockpit-frame">
+        <div class="canopy-window"></div>
+        <div class="pillar pillar-l"></div>
+        <div class="pillar pillar-r"></div>
+    </div>
+
+    <div class="yoke-container">
+        <div class="yoke"></div>
+        <div class="yoke"></div>
+    </div>
+
+    <div class="dashboard-wrapper">
+        <footer class="dashboard-console">
+            <!-- Systems -->
+            <div class="panel">
+                <h4 class="text-[9px] font-black text-slate-500 uppercase mb-4">Core Systems</h4>
+                <div class="space-y-4">
+                    <div class="flex justify-between text-[10px]">
+                        <span>REACTOR</span>
+                        <span class="text-emerald-400">STABLE</span>
+                    </div>
+                    <div class="flex justify-between text-[10px]">
+                        <span>OXYGEN</span>
+                        <span class="text-blue-400">100%</span>
+                    </div>
+                    <div class="mt-auto pt-4 border-t border-slate-800">
+                        <div class="data-display text-[9px]">COORD: SECTOR 7G</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Primary Controls -->
+            <div class="panel px-8">
+                <h4 class="text-[9px] font-black text-slate-500 uppercase mb-4 text-center">Nav Terminal</h4>
+                <div class="flex flex-col h-full justify-around py-2">
+                    <div>
+                        <div class="flex justify-between text-[9px] mb-1">
+                            <label class="font-bold text-slate-500 uppercase">Velocity</label>
+                            <span id="speedValue" class="data-display py-1 px-4 min-w-[60px]">2.0</span>
+                        </div>
+                        <input type="range" id="speedInput" min="0.1" max="15" step="0.1" value="2">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[9px] mb-1">
+                            <label class="font-bold text-slate-500 uppercase">Warp Factor</label>
+                            <span id="fovValue" class="data-display py-1 px-4 min-w-[60px]">128</span>
+                        </div>
+                        <input type="range" id="fovInput" min="32" max="512" step="1" value="128">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aux Controls -->
+            <div class="panel">
+                <h4 class="text-[9px] font-black text-slate-500 uppercase mb-4 text-right">Nav Matrix</h4>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-[9px] font-bold text-slate-500">DENSITY</label>
+                            <span id="countValue" class="text-cyan-400 font-bold text-xs">800</span>
+                        </div>
+                        <input type="range" id="countInput" min="100" max="3000" step="100" value="800">
+                    </div>
+                    <button id="resetBtn" class="btn-industrial w-full mt-auto">System Reset</button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('starfieldCanvas');
+        const ctx = canvas.getContext('2d');
+        const config = { speed: 2, count: 800, trail: 0.15, fov: 128 };
+
+        const ui = {
+            speed: document.getElementById('speedInput'),
+            count: document.getElementById('countInput'),
+            fov: document.getElementById('fovInput'),
+            reset: document.getElementById('resetBtn'),
+            displays: {
+                speed: document.getElementById('speedValue'),
+                count: document.getElementById('countValue'),
+                fov: document.getElementById('fovValue')
+            }
+        };
+
+        let stars = [];
+        let width, height, centerX, centerY;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            centerX = width / 2;
+            centerY = height / 2 - 130;
+            initStars();
+        }
+
+        class Star {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = (Math.random() - 0.5) * 2000;
+                this.y = (Math.random() - 0.5) * 2000;
+                this.z = Math.random() * 2000;
+                this.pz = this.z;
+            }
+            update() {
+                this.pz = this.z;
+                this.z -= config.speed * 5;
+                if (this.z < 1) {
+                    this.z = 2000;
+                    this.pz = this.z;
+                    this.x = (Math.random() - 0.5) * 2000;
+                    this.y = (Math.random() - 0.5) * 2000;
+                }
+            }
+            draw() {
+                const f = config.fov / this.z;
+                const x = this.x * f + centerX;
+                const y = this.y * f + centerY;
+                const pf = config.fov / this.pz;
+                const px = this.x * pf + centerX;
+                const py = this.y * pf + centerY;
+
+                const depth = 1 - this.z / 2000;
+                const b = Math.pow(depth, 1.8) * 255;
+                ctx.beginPath();
+                ctx.strokeStyle = `rgba(${b + 60}, ${b + 120}, 255, ${Math.min(1, depth * 1.5)})`;
+                ctx.lineWidth = Math.max(0.5, depth * 4);
+                ctx.lineCap = 'round';
+                ctx.moveTo(px, py);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+        }
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < config.count; i++) stars.push(new Star());
+        }
+
+        function updateUI() {
+            config.speed = parseFloat(ui.speed.value);
+            config.count = parseInt(ui.count.value);
+            config.fov = parseInt(ui.fov.value);
+
+            ui.displays.speed.innerText = config.speed.toFixed(1);
+            ui.displays.count.innerText = config.count;
+            ui.displays.fov.innerText = config.fov;
+
+            if (stars.length !== config.count) initStars();
+        }
+
+        function animate() {
+            ctx.fillStyle = `rgba(0, 0, 8, 0.18)`;
+            ctx.fillRect(0, 0, width, height);
+            for (let s of stars) {
+                s.update();
+                s.draw();
+            }
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', resize);
+        [ui.speed, ui.count, ui.fov].forEach(el => el.oninput = updateUI);
+
+        ui.reset.onclick = () => {
+            ui.speed.value = 2; ui.count.value = 800; ui.fov.value = 128;
+            updateUI();
+        };
+
+        resize(); updateUI(); animate();
+    </script>
+</body>
+</html>

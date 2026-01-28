@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Web - Orbital Gravity Simulator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --accent-primary: #06b6d4;
+            --accent-secondary: #3b82f6;
+            --accent-glow: rgba(6, 182, 212, 0.4);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --glass-bg: rgba(15, 15, 25, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --sun-color: #fbbf24;
+            --sun-glow: rgba(251, 191, 36, 0.6);
+        }
+
+        :root.supernova {
+            --accent-primary: #f59e0b;
+            --accent-secondary: #ef4444;
+            --accent-glow: rgba(245, 158, 11, 0.4);
+            --sun-color: #ef4444;
+            --sun-glow: rgba(239, 68, 68, 0.6);
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 50%, #000000 100%);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        /* Collapsible Side Panel */
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            max-height: calc(100vh - 40px);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            z-index: 100;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+
+        .control-panel.collapsed {
+            transform: translateX(calc(100% + 20px));
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-primary);
+        }
+
+        .panel-content {
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .control-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-primary);
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-glow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        /* Toggle Button */
+        .toggle-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            cursor: pointer;
+            z-index: 101;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .toggle-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .toggle-btn svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--text-primary);
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .theme-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .theme-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .theme-btn.active {
+            background: var(--accent-primary);
+            color: #000;
+            border-color: var(--accent-primary);
+        }
+
+        /* Analytics HUD */
+        .analytics-hud {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            z-index: 100;
+        }
+
+        .hud-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-primary);
+            margin-bottom: 12px;
+        }
+
+        .hud-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px 24px;
+        }
+
+        .hud-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hud-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+
+        .hud-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* Close button in panel */
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .close-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--text-secondary);
+        }
+
+        /* Section divider */
+        .divider {
+            height: 1px;
+            background: var(--glass-border);
+            margin: 20px 0;
+        }
+
+        .section-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+
+        /* Checkbox toggle */
+        .toggle-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--accent-primary);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        /* Reset button */
+        .reset-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            color: #ef4444;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .reset-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <!-- Toggle Button (visible when panel is collapsed) -->
+    <button class="toggle-btn" id="toggleBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- Control Panel -->
+    <div class="control-panel" id="controlPanel">
+        <div class="panel-header">
+            <span class="panel-title">Gravity Simulator</span>
+            <button class="close-btn" id="closeBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="panel-content">
+            <!-- Orbital Parameters -->
+            <div class="section-title">Orbital Physics</div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Central Mass (G)</span>
+                    <span class="control-value" id="gravityValue">5000</span>
+                </div>
+                <input type="range" id="gravitySlider" min="1000" max="15000" value="5000">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Planet Count</span>
+                    <span class="control-value" id="countValue">60</span>
+                </div>
+                <input type="range" id="countSlider" min="10" max="150" value="60">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Time Scale</span>
+                    <span class="control-value" id="timeValue">1.0</span>
+                </div>
+                <input type="range" id="timeSlider" min="0.1" max="3" step="0.1" value="1">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Trail Length</span>
+                    <span class="control-value" id="trailValue">100</span>
+                </div>
+                <input type="range" id="trailSlider" min="10" max="300" value="100">
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Network Parameters -->
+            <div class="section-title">Network Web</div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Connectivity Radius</span>
+                    <span class="control-value" id="radiusValue">120</span>
+                </div>
+                <input type="range" id="radiusSlider" min="0" max="300" value="120">
+            </div>
+
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Edge Thickness</span>
+                    <span class="control-value" id="thicknessValue">1.0</span>
+                </div>
+                <input type="range" id="thicknessSlider" min="0.5" max="4" step="0.1" value="1">
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Toggles -->
+            <div class="section-title">Display Options</div>
+
+            <div class="toggle-control">
+                <span class="control-label" style="margin-bottom: 0;">Show Trails</span>
+                <div class="toggle-switch active" id="trailToggle"></div>
+            </div>
+
+            <div class="toggle-control">
+                <span class="control-label" style="margin-bottom: 0;">Show Web</span>
+                <div class="toggle-switch active" id="webToggle"></div>
+            </div>
+
+            <div class="toggle-control">
+                <span class="control-label" style="margin-bottom: 0;">Show Velocity</span>
+                <div class="toggle-switch" id="velocityToggle"></div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Theme Toggle -->
+            <div class="section-title">Visual Theme</div>
+            <div class="theme-toggle">
+                <button class="theme-btn active" id="deepSpaceBtn">Deep Space</button>
+                <button class="theme-btn" id="supernovaBtn">Supernova</button>
+            </div>
+
+            <button class="reset-btn" id="resetBtn">Reset Orbits</button>
+        </div>
+    </div>
+
+    <!-- Analytics HUD -->
+    <div class="analytics-hud">
+        <div class="hud-title">Orbital Analytics</div>
+        <div class="hud-grid">
+            <div class="hud-item">
+                <span class="hud-label">Total Energy</span>
+                <span class="hud-value" id="totalEnergy">0</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">Avg Velocity</span>
+                <span class="hud-value" id="avgVelocity">0</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">Connections</span>
+                <span class="hud-value" id="edgeCount">0</span>
+            </div>
+            <div class="hud-item">
+                <span class="hud-label">FPS</span>
+                <span class="hud-value" id="fpsCounter">60</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Configuration
+        const config = {
+            planetCount: 60,
+            gravity: 5000,
+            timeScale: 1.0,
+            trailLength: 100,
+            connectivityRadius: 120,
+            edgeThickness: 1.0,
+            showTrails: true,
+            showWeb: true,
+            showVelocity: false,
+            theme: 'deepSpace'
+        };
+
+        // Theme colors
+        const themes = {
+            deepSpace: {
+                planetColors: [
+                    [6, 182, 212],    // Cyan
+                    [59, 130, 246],   // Blue
+                    [139, 92, 246],   // Purple
+                    [34, 197, 94],    // Green
+                    [236, 72, 153]    // Pink
+                ],
+                edgeColor: [59, 130, 246],
+                sunColor: [251, 191, 36],
+                sunGlow: 'rgba(251, 191, 36, 0.3)'
+            },
+            supernova: {
+                planetColors: [
+                    [245, 158, 11],   // Amber
+                    [239, 68, 68],    // Red
+                    [249, 115, 22],   // Orange
+                    [234, 179, 8],    // Yellow
+                    [244, 63, 94]     // Rose
+                ],
+                edgeColor: [239, 68, 68],
+                sunColor: [239, 68, 68],
+                sunGlow: 'rgba(239, 68, 68, 0.3)'
+            }
+        };
+
+        // State
+        let planets = [];
+        let width, height, centerX, centerY;
+        let mouse = { x: null, y: null, active: false };
+        let frameCount = 0;
+        let lastTime = performance.now();
+        let fps = 60;
+
+        // Analytics
+        let analytics = {
+            totalEnergy: 0,
+            avgVelocity: 0,
+            edgeCount: 0
+        };
+
+        // Central mass (Sun/Black hole)
+        const sun = {
+            x: 0,
+            y: 0,
+            mass: 1000,
+            radius: 30
+        };
+
+        // Planet class with orbital mechanics
+        class Planet {
+            constructor(index) {
+                this.index = index;
+                this.trail = [];
+                this.colorIndex = index % 5;
+                this.reset();
+            }
+
+            reset() {
+                // Random orbital distance
+                const minDist = 80;
+                const maxDist = Math.min(width, height) * 0.4;
+                const orbitRadius = minDist + Math.random() * (maxDist - minDist);
+
+                // Random starting angle
+                const angle = Math.random() * Math.PI * 2;
+
+                // Position
+                this.x = Math.cos(angle) * orbitRadius;
+                this.y = Math.sin(angle) * orbitRadius;
+
+                // Calculate orbital velocity for circular orbit
+                // v = sqrt(GM/r) for circular orbit
+                const orbitalSpeed = Math.sqrt(config.gravity / orbitRadius);
+
+                // Add some eccentricity (random deviation from circular)
+                const eccentricity = 0.7 + Math.random() * 0.6; // 0.7 to 1.3
+
+                // Velocity perpendicular to radius (tangential)
+                this.vx = -Math.sin(angle) * orbitalSpeed * eccentricity;
+                this.vy = Math.cos(angle) * orbitalSpeed * eccentricity;
+
+                // Random mass affects size
+                this.mass = 1 + Math.random() * 3;
+                this.radius = 3 + this.mass * 1.5;
+
+                // Clear trail
+                this.trail = [];
+            }
+
+            update(dt) {
+                // Calculate distance to sun
+                const dx = sun.x - this.x;
+                const dy = sun.y - this.y;
+                const distSq = dx * dx + dy * dy;
+                const dist = Math.sqrt(distSq);
+
+                // Prevent collision with sun
+                if (dist < sun.radius + this.radius) {
+                    // Bounce off sun
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+                    const dotProduct = this.vx * nx + this.vy * ny;
+                    this.vx = this.vx - 2 * dotProduct * nx;
+                    this.vy = this.vy - 2 * dotProduct * ny;
+                    // Move outside sun
+                    this.x = sun.x - nx * (sun.radius + this.radius + 5);
+                    this.y = sun.y - ny * (sun.radius + this.radius + 5);
+                    return;
+                }
+
+                // Gravitational force: F = GMm/r^2
+                // Acceleration: a = GM/r^2
+                const accel = config.gravity / distSq;
+
+                // Direction toward sun (normalized)
+                const ax = (dx / dist) * accel;
+                const ay = (dy / dist) * accel;
+
+                // Update velocity (Verlet integration for stability)
+                this.vx += ax * dt;
+                this.vy += ay * dt;
+
+                // Update position
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+
+                // Store trail
+                if (config.showTrails) {
+                    this.trail.push({ x: this.x, y: this.y });
+                    if (this.trail.length > config.trailLength) {
+                        this.trail.shift();
+                    }
+                }
+
+                // Mouse interaction - additional gravity well
+                if (mouse.active && mouse.x !== null) {
+                    const mx = (mouse.x - centerX) - this.x;
+                    const my = (mouse.y - centerY) - this.y;
+                    const mDistSq = mx * mx + my * my;
+                    const mDist = Math.sqrt(mDistSq);
+
+                    if (mDist > 20 && mDist < 300) {
+                        const mAccel = 500 / mDistSq;
+                        this.vx += (mx / mDist) * mAccel * dt;
+                        this.vy += (my / mDist) * mAccel * dt;
+                    }
+                }
+            }
+
+            getScreenPos() {
+                return {
+                    x: this.x + centerX,
+                    y: this.y + centerY
+                };
+            }
+
+            getSpeed() {
+                return Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            }
+
+            getKineticEnergy() {
+                return 0.5 * this.mass * (this.vx * this.vx + this.vy * this.vy);
+            }
+
+            getPotentialEnergy() {
+                const dx = sun.x - this.x;
+                const dy = sun.y - this.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                return -config.gravity * this.mass / dist;
+            }
+        }
+
+        // UI Elements
+        const ui = {
+            gravitySlider: document.getElementById('gravitySlider'),
+            countSlider: document.getElementById('countSlider'),
+            timeSlider: document.getElementById('timeSlider'),
+            trailSlider: document.getElementById('trailSlider'),
+            radiusSlider: document.getElementById('radiusSlider'),
+            thicknessSlider: document.getElementById('thicknessSlider'),
+            gravityValue: document.getElementById('gravityValue'),
+            countValue: document.getElementById('countValue'),
+            timeValue: document.getElementById('timeValue'),
+            trailValue: document.getElementById('trailValue'),
+            radiusValue: document.getElementById('radiusValue'),
+            thicknessValue: document.getElementById('thicknessValue'),
+            totalEnergy: document.getElementById('totalEnergy'),
+            avgVelocity: document.getElementById('avgVelocity'),
+            edgeCount: document.getElementById('edgeCount'),
+            fpsCounter: document.getElementById('fpsCounter'),
+            controlPanel: document.getElementById('controlPanel'),
+            toggleBtn: document.getElementById('toggleBtn'),
+            closeBtn: document.getElementById('closeBtn'),
+            deepSpaceBtn: document.getElementById('deepSpaceBtn'),
+            supernovaBtn: document.getElementById('supernovaBtn'),
+            trailToggle: document.getElementById('trailToggle'),
+            webToggle: document.getElementById('webToggle'),
+            velocityToggle: document.getElementById('velocityToggle'),
+            resetBtn: document.getElementById('resetBtn')
+        };
+
+        // Initialize
+        function init() {
+            resize();
+            createPlanets();
+            window.addEventListener('resize', resize);
+            canvas.addEventListener('mousemove', onMouseMove);
+            canvas.addEventListener('mouseenter', () => mouse.active = true);
+            canvas.addEventListener('mouseleave', () => mouse.active = false);
+            setupUI();
+            animate();
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            centerX = width / 2;
+            centerY = height / 2;
+        }
+
+        function createPlanets() {
+            planets = [];
+            for (let i = 0; i < config.planetCount; i++) {
+                planets.push(new Planet(i));
+            }
+        }
+
+        function onMouseMove(e) {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        }
+
+        function setupUI() {
+            // Sliders
+            ui.gravitySlider.oninput = () => {
+                config.gravity = parseInt(ui.gravitySlider.value);
+                ui.gravityValue.textContent = config.gravity;
+            };
+
+            ui.countSlider.oninput = () => {
+                config.planetCount = parseInt(ui.countSlider.value);
+                ui.countValue.textContent = config.planetCount;
+                createPlanets();
+            };
+
+            ui.timeSlider.oninput = () => {
+                config.timeScale = parseFloat(ui.timeSlider.value);
+                ui.timeValue.textContent = config.timeScale.toFixed(1);
+            };
+
+            ui.trailSlider.oninput = () => {
+                config.trailLength = parseInt(ui.trailSlider.value);
+                ui.trailValue.textContent = config.trailLength;
+            };
+
+            ui.radiusSlider.oninput = () => {
+                config.connectivityRadius = parseInt(ui.radiusSlider.value);
+                ui.radiusValue.textContent = config.connectivityRadius;
+            };
+
+            ui.thicknessSlider.oninput = () => {
+                config.edgeThickness = parseFloat(ui.thicknessSlider.value);
+                ui.thicknessValue.textContent = config.edgeThickness.toFixed(1);
+            };
+
+            // Toggle switches
+            ui.trailToggle.onclick = () => {
+                config.showTrails = !config.showTrails;
+                ui.trailToggle.classList.toggle('active');
+                if (!config.showTrails) {
+                    planets.forEach(p => p.trail = []);
+                }
+            };
+
+            ui.webToggle.onclick = () => {
+                config.showWeb = !config.showWeb;
+                ui.webToggle.classList.toggle('active');
+            };
+
+            ui.velocityToggle.onclick = () => {
+                config.showVelocity = !config.showVelocity;
+                ui.velocityToggle.classList.toggle('active');
+            };
+
+            // Panel toggle
+            ui.closeBtn.onclick = () => {
+                ui.controlPanel.classList.add('collapsed');
+                ui.toggleBtn.classList.add('visible');
+            };
+
+            ui.toggleBtn.onclick = () => {
+                ui.controlPanel.classList.remove('collapsed');
+                ui.toggleBtn.classList.remove('visible');
+            };
+
+            // Theme buttons
+            ui.deepSpaceBtn.onclick = () => {
+                config.theme = 'deepSpace';
+                document.documentElement.classList.remove('supernova');
+                ui.deepSpaceBtn.classList.add('active');
+                ui.supernovaBtn.classList.remove('active');
+            };
+
+            ui.supernovaBtn.onclick = () => {
+                config.theme = 'supernova';
+                document.documentElement.classList.add('supernova');
+                ui.supernovaBtn.classList.add('active');
+                ui.deepSpaceBtn.classList.remove('active');
+            };
+
+            // Reset button
+            ui.resetBtn.onclick = () => {
+                createPlanets();
+            };
+        }
+
+        function drawSun() {
+            const theme = themes[config.theme];
+            const x = centerX + sun.x;
+            const y = centerY + sun.y;
+
+            // Outer glow
+            const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, sun.radius * 4);
+            glowGradient.addColorStop(0, `rgba(${theme.sunColor[0]}, ${theme.sunColor[1]}, ${theme.sunColor[2]}, 0.4)`);
+            glowGradient.addColorStop(0.5, `rgba(${theme.sunColor[0]}, ${theme.sunColor[1]}, ${theme.sunColor[2]}, 0.1)`);
+            glowGradient.addColorStop(1, 'transparent');
+
+            ctx.beginPath();
+            ctx.fillStyle = glowGradient;
+            ctx.arc(x, y, sun.radius * 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Core gradient
+            const coreGradient = ctx.createRadialGradient(x, y, 0, x, y, sun.radius);
+            coreGradient.addColorStop(0, '#fff');
+            coreGradient.addColorStop(0.3, `rgb(${theme.sunColor[0]}, ${theme.sunColor[1]}, ${theme.sunColor[2]})`);
+            coreGradient.addColorStop(1, `rgba(${theme.sunColor[0]}, ${theme.sunColor[1]}, ${theme.sunColor[2]}, 0.8)`);
+
+            ctx.beginPath();
+            ctx.fillStyle = coreGradient;
+            ctx.arc(x, y, sun.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawTrails() {
+            const theme = themes[config.theme];
+
+            for (const planet of planets) {
+                if (planet.trail.length < 2) continue;
+
+                const color = theme.planetColors[planet.colorIndex];
+
+                ctx.beginPath();
+                ctx.moveTo(planet.trail[0].x + centerX, planet.trail[0].y + centerY);
+
+                for (let i = 1; i < planet.trail.length; i++) {
+                    const point = planet.trail[i];
+                    ctx.lineTo(point.x + centerX, point.y + centerY);
+                }
+
+                const opacity = 0.4;
+                ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${opacity})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+
+        function drawEdges() {
+            if (!config.showWeb || config.connectivityRadius === 0) {
+                analytics.edgeCount = 0;
+                return;
+            }
+
+            const theme = themes[config.theme];
+            let edgeCount = 0;
+
+            for (let i = 0; i < planets.length; i++) {
+                const pA = planets[i];
+                const posA = pA.getScreenPos();
+
+                for (let j = i + 1; j < planets.length; j++) {
+                    const pB = planets[j];
+                    const posB = pB.getScreenPos();
+
+                    const dx = pA.x - pB.x;
+                    const dy = pA.y - pB.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < config.connectivityRadius) {
+                        edgeCount++;
+                        const opacity = Math.pow(1 - (dist / config.connectivityRadius), 1.5) * 0.5;
+
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(${theme.edgeColor[0]}, ${theme.edgeColor[1]}, ${theme.edgeColor[2]}, ${opacity})`;
+                        ctx.lineWidth = config.edgeThickness;
+                        ctx.moveTo(posA.x, posA.y);
+                        ctx.lineTo(posB.x, posB.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            analytics.edgeCount = edgeCount;
+        }
+
+        function drawPlanets() {
+            const theme = themes[config.theme];
+
+            for (const planet of planets) {
+                const pos = planet.getScreenPos();
+                const color = theme.planetColors[planet.colorIndex];
+
+                // Glow
+                const glowGradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, planet.radius * 3);
+                glowGradient.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.8)`);
+                glowGradient.addColorStop(0.5, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.2)`);
+                glowGradient.addColorStop(1, 'transparent');
+
+                ctx.beginPath();
+                ctx.fillStyle = glowGradient;
+                ctx.arc(pos.x, pos.y, planet.radius * 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Core
+                ctx.beginPath();
+                ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+                ctx.arc(pos.x, pos.y, planet.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Highlight
+                ctx.beginPath();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.arc(pos.x - planet.radius * 0.3, pos.y - planet.radius * 0.3, planet.radius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Velocity vector
+                if (config.showVelocity) {
+                    const velScale = 10;
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.8)`;
+                    ctx.lineWidth = 2;
+                    ctx.moveTo(pos.x, pos.y);
+                    ctx.lineTo(pos.x + planet.vx * velScale, pos.y + planet.vy * velScale);
+                    ctx.stroke();
+
+                    // Arrow head
+                    const angle = Math.atan2(planet.vy, planet.vx);
+                    const arrowSize = 6;
+                    ctx.beginPath();
+                    ctx.moveTo(pos.x + planet.vx * velScale, pos.y + planet.vy * velScale);
+                    ctx.lineTo(
+                        pos.x + planet.vx * velScale - arrowSize * Math.cos(angle - 0.5),
+                        pos.y + planet.vy * velScale - arrowSize * Math.sin(angle - 0.5)
+                    );
+                    ctx.lineTo(
+                        pos.x + planet.vx * velScale - arrowSize * Math.cos(angle + 0.5),
+                        pos.y + planet.vy * velScale - arrowSize * Math.sin(angle + 0.5)
+                    );
+                    ctx.closePath();
+                    ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.8)`;
+                    ctx.fill();
+                }
+            }
+        }
+
+        function updateAnalytics() {
+            let totalKE = 0;
+            let totalPE = 0;
+            let totalSpeed = 0;
+
+            for (const planet of planets) {
+                totalKE += planet.getKineticEnergy();
+                totalPE += planet.getPotentialEnergy();
+                totalSpeed += planet.getSpeed();
+            }
+
+            analytics.totalEnergy = totalKE + totalPE;
+            analytics.avgVelocity = planets.length > 0 ? totalSpeed / planets.length : 0;
+
+            ui.totalEnergy.textContent = (analytics.totalEnergy / 1000).toFixed(1) + 'k';
+            ui.avgVelocity.textContent = analytics.avgVelocity.toFixed(1);
+            ui.edgeCount.textContent = analytics.edgeCount;
+            ui.fpsCounter.textContent = fps;
+        }
+
+        function animate() {
+            // FPS calculation
+            frameCount++;
+            const now = performance.now();
+            if (now - lastTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastTime = now;
+            }
+
+            // Clear with fade for trail effect
+            ctx.fillStyle = 'rgba(10, 10, 15, 0.15)';
+            ctx.fillRect(0, 0, width, height);
+
+            // Time step
+            const dt = config.timeScale * 0.16;
+
+            // Update planets
+            for (const planet of planets) {
+                planet.update(dt);
+            }
+
+            // Draw
+            if (config.showTrails) drawTrails();
+            drawEdges();
+            drawSun();
+            drawPlanets();
+            updateAnalytics();
+
+            requestAnimationFrame(animate);
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
