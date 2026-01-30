@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>omyclaude - Kingdom Home</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            padding: 20px;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        .subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+            margin-bottom: 2rem;
+        }
+        .greeting {
+            font-size: 1.5rem;
+            margin-bottom: 3rem;
+            color: #e94560;
+        }
+        .projects {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            max-width: 800px;
+        }
+        .project-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px 30px;
+            text-decoration: none;
+            color: #fff;
+            transition: transform 0.3s, background 0.3s;
+            min-width: 200px;
+            text-align: center;
+        }
+        .project-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .project-card h3 {
+            margin-bottom: 8px;
+        }
+        .project-card p {
+            font-size: 0.9rem;
+            color: #a0a0a0;
+        }
+        footer {
+            margin-top: 3rem;
+            color: #606060;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>omyclaude</h1>
+    <p class="subtitle">Kingdom of AIML-1870-2026</p>
+    <p class="greeting">Hello, World!</p>
+
+    <div class="projects">
+        <a href="../Starfield/" class="project-card">
+            <h3>Starfield</h3>
+            <p>Cockpit Flight Deck</p>
+        </a>
+        <a href="../Stellar-Web/" class="project-card">
+            <h3>Stellar-Web</h3>
+            <p>Orbital Gravity Simulator</p>
+        </a>
+        <a href="../Snake-Quest/" class="project-card">
+            <h3>Snake-Quest</h3>
+            <p>The Living Circuit</p>
+        </a>
+    </div>
+
+    <footer>AIML 1870 - 2026</footer>
+</body>
+</html>

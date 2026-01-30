@@ -4,7 +4,7 @@ A portfolio landing page for AIML 1870, serving as a hub for all assignment proj
 
 ## Live Demo
 
-**[View Live Demo](https://aiml-1870-2026.github.io/omyclaude/)**
+**[View Live Demo](https://aiml-1870-2026.github.io/omyclaude/Hello-World/)**
 
 ## Features
 

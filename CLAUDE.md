@@ -16,6 +16,7 @@ Structure:
 - CLAUDE.md = Lives at the root, governs everything
 
 Current Projects:
+- Hello-World/ - Kingdom Home Landing Page
 - Starfield/ - Cockpit Flight Deck
 - Stellar-Web/ - Orbital Gravity Simulator
 - Snake-Quest/ - The Living Circuit
