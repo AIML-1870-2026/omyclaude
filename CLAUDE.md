@@ -25,6 +25,7 @@ Display all live GitHub Pages URLs for each assignment:
 - **Kingdom Home**: https://aiml-1870-2026.github.io/omyclaude/
 - **Assignment-2 (Starfield Cockpit)**: https://aiml-1870-2026.github.io/omyclaude/Assignment-2/
 - **Stellar-Web (Orbital Gravity Simulator)**: https://aiml-1870-2026.github.io/omyclaude/Stellar-Web/
+- **Snake-Quest (The Living Circuit)**: https://aiml-1870-2026.github.io/omyclaude/Snake-Quest/
 
 ## Structure
 ```
@@ -34,7 +35,11 @@ omyclaude/
 │   ├── index.html
 │   ├── spec.md
 │   └── README.md
-└── Stellar-Web/       # Orbital Gravity Simulator
+├── Stellar-Web/       # Orbital Gravity Simulator
+│   ├── index.html
+│   ├── spec.md
+│   └── README.md
+└── Snake-Quest/       # The Living Circuit (Snake Game)
     ├── index.html
     ├── spec.md
     └── README.md

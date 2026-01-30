@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Snake Quest: The Living Circuit</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0a0e14;
+            --bg-surface: #0d1117;
+            --grid-line: #1a2030;
+            --grid-glow: rgba(0, 255, 200, 0.03);
+            --snake-head: #00ffc8;
+            --snake-body: #00d4a8;
+            --snake-starving: #ff6b6b;
+            --snake-satiated: #4ade80;
+            --food-core: #fbbf24;
+            --food-glow: #f59e0b;
+            --toxic-waste: #a855f7;
+            --inert-waste: #6b7280;
+            --frenzy-pulse: #ef4444;
+            --text-primary: #e2e8f0;
+            --text-dim: #64748b;
+            --ui-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-deep);
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-primary);
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Petri Dish Frame */
+        #petri-dish {
+            position: relative;
+            border-radius: 50%;
+            box-shadow:
+                inset 0 0 60px rgba(0, 255, 200, 0.05),
+                inset 0 0 120px rgba(0, 0, 0, 0.8),
+                0 0 40px rgba(0, 255, 200, 0.1),
+                0 4px 30px rgba(0, 0, 0, 0.5);
+            background: radial-gradient(circle at 30% 30%,
+                rgba(255, 255, 255, 0.02) 0%,
+                transparent 50%),
+                var(--bg-surface);
+            overflow: hidden;
+        }
+
+        #petri-dish::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            pointer-events: none;
+        }
+
+        #petri-dish.frenzy {
+            animation: frenzyPulse 0.3s ease-in-out infinite;
+            box-shadow:
+                inset 0 0 60px rgba(239, 68, 68, 0.15),
+                inset 0 0 120px rgba(0, 0, 0, 0.8),
+                0 0 60px rgba(239, 68, 68, 0.3),
+                0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes frenzyPulse {
+            0%, 100% { border-color: rgba(239, 68, 68, 0.3); }
+            50% { border-color: rgba(239, 68, 68, 0.6); }
+        }
+
+        #game-canvas {
+            display: block;
+            border-radius: 50%;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-panel {
+            background: rgba(13, 17, 23, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--ui-border);
+            border-radius: 12px;
+            padding: 12px 16px;
+            min-width: 120px;
+        }
+
+        .hud-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+
+        .hud-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--snake-head);
+        }
+
+        /* Hunger Bar */
+        #hunger-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            z-index: 10;
+        }
+
+        #hunger-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        #hunger-bar-bg {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid var(--ui-border);
+        }
+
+        #hunger-bar {
+            height: 100%;
+            width: 50%;
+            background: linear-gradient(90deg, var(--snake-satiated), var(--food-core), var(--snake-starving));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        #hunger-status {
+            font-size: 0.7rem;
+            text-align: center;
+            margin-top: 4px;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        /* Start/Game Over Screens */
+        .overlay-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(10, 14, 20, 0.95);
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
+
+        .overlay-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .game-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.5rem, 5vw, 2.5rem);
+            font-weight: 700;
+            color: var(--snake-head);
+            text-shadow: 0 0 30px rgba(0, 255, 200, 0.5);
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .game-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .instructions {
+            max-width: 300px;
+            text-align: center;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+
+        .instructions strong {
+            color: var(--food-core);
+        }
+
+        .mechanic-list {
+            text-align: left;
+            margin: 20px 0;
+            padding: 0 20px;
+        }
+
+        .mechanic-item {
+            margin: 10px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .mechanic-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .mechanic-icon.hunger { background: linear-gradient(135deg, var(--snake-satiated), var(--snake-starving)); }
+        .mechanic-icon.shed { background: linear-gradient(135deg, var(--toxic-waste), var(--inert-waste)); }
+        .mechanic-icon.prey { background: var(--food-core); }
+
+        .start-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            padding: 16px 48px;
+            background: linear-gradient(135deg, var(--snake-head), var(--snake-body));
+            border: none;
+            border-radius: 30px;
+            color: var(--bg-deep);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 255, 200, 0.3);
+            pointer-events: auto;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 30px rgba(0, 255, 200, 0.5);
+        }
+
+        .final-score {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--food-core);
+            margin: 20px 0;
+        }
+
+        .high-score {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 30px;
+        }
+
+        .high-score span {
+            color: var(--snake-head);
+        }
+
+        /* Mobile Controls Hint */
+        .controls-hint {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            #hud {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+            }
+
+            .hud-panel {
+                padding: 8px 12px;
+                min-width: 80px;
+            }
+
+            .hud-value {
+                font-size: 1.1rem;
+            }
+
+            #hunger-container {
+                width: 160px;
+                bottom: 15px;
+            }
+
+            .instructions {
+                font-size: 0.75rem;
+                padding: 0 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="petri-dish">
+            <canvas id="game-canvas"></canvas>
+        </div>
+
+        <div id="hud">
+            <div class="hud-panel">
+                <div class="hud-label">Score</div>
+                <div class="hud-value" id="score-display">0</div>
+            </div>
+            <div class="hud-panel">
+                <div class="hud-label">Length</div>
+                <div class="hud-value" id="length-display">3</div>
+            </div>
+        </div>
+
+        <div id="hunger-container">
+            <div id="hunger-label">Metabolism</div>
+            <div id="hunger-bar-bg">
+                <div id="hunger-bar"></div>
+            </div>
+            <div id="hunger-status">Balanced</div>
+        </div>
+
+        <!-- Start Screen -->
+        <div class="overlay-screen" id="start-screen">
+            <div class="game-title">Snake Quest</div>
+            <div class="game-subtitle">The Living Circuit</div>
+
+            <div class="instructions">
+                <div class="mechanic-list">
+                    <div class="mechanic-item">
+                        <div class="mechanic-icon hunger"></div>
+                        <div><strong>Metabolism:</strong> Hunger affects speed. Starving = fast but frantic. Satiated = slow but stable.</div>
+                    </div>
+                    <div class="mechanic-item">
+                        <div class="mechanic-icon shed"></div>
+                        <div><strong>Shedding:</strong> Every 10 length, shed waste. Toxic (purple) if hungry, Inert (gray) if fed.</div>
+                    </div>
+                    <div class="mechanic-item">
+                        <div class="mechanic-icon prey"></div>
+                        <div><strong>Reactive Prey:</strong> Food cells flee when you get close!</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="start-btn" id="start-btn">BEGIN HUNT</button>
+            <div class="controls-hint">Arrow Keys / WASD / Swipe</div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div class="overlay-screen hidden" id="gameover-screen">
+            <div class="game-title">Experiment Complete</div>
+            <div class="game-subtitle">The circuit has ended</div>
+            <div class="final-score" id="final-score">0</div>
+            <div class="high-score">High Score: <span id="high-score">0</span></div>
+            <button class="start-btn" id="restart-btn">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // SNAKE QUEST: THE LIVING CIRCUIT
+        // An Emergent Ecosystem Snake Game
+        // ============================================
+
+        (function() {
+            'use strict';
+
+            // -----------------------------------------
+            // CONFIGURATION
+            // -----------------------------------------
+            const CONFIG = {
+                // Grid settings
+                TILE_SIZE: 20,
+                GRID_PADDING: 2,
+
+                // Snake settings
+                INITIAL_LENGTH: 3,
+                BASE_SPEED: 120,           // ms per move (satiated)
+                STARVING_SPEED: 60,        // ms per move (starving)
+                FRENZY_SPEED: 40,          // ms per move (frenzy)
+
+                // Metabolism
+                HUNGER_DECAY: 0.5,         // hunger increase per frame
+                HUNGER_RESTORE: 30,        // hunger decrease on eating
+                FRENZY_THRESHOLD: 90,      // hunger level for frenzy mode
+                MAX_HUNGER: 100,
+
+                // Shedding
+                SHED_INTERVAL: 10,         // length multiple for shedding
+                WASTE_DECAY_TIME: 30000,   // 30 seconds to minimum size
+                WASTE_MIN_SIZE: 0.3,       // minimum scale of decayed waste
+
+                // Reactive prey
+                PREY_ESCAPE_RADIUS: 3,     // tiles
+                PREY_ESCAPE_CHANCE: 0.7,   // 70% chance to escape
+
+                // Particles
+                MAX_PARTICLES: 100,
+                PARTICLE_LIFETIME: 1000,
+
+                // Nutrient aura
+                NUTRIENT_RADIUS: 4,        // tiles
+                FOOD_ATTRACT_CHANCE: 0.4,  // chance food spawns near waste
+            };
+
+            // -----------------------------------------
+            // GAME STATE
+            // -----------------------------------------
+            let canvas, ctx;
+            let gameWidth, gameHeight;
+            let gridWidth, gridHeight;
+            let gameLoop = null;
+            let lastMoveTime = 0;
+            let isPlaying = false;
+
+            // Snake state
+            let snake = [];
+            let direction = { x: 1, y: 0 };
+            let nextDirection = { x: 1, y: 0 };
+            let hunger = 50;
+            let lastShedLength = 0;
+            let digestionQueue = [];  // {segment, progress}
+
+            // Food state
+            let food = null;
+            let foodEscapeCooldown = 0;
+
+            // Waste obstacles
+            let wasteObstacles = [];  // {x, y, toxic, createdAt, scale}
+
+            // Particles
+            let particles = [];
+
+            // Score
+            let score = 0;
+            let highScore = parseInt(localStorage.getItem('snakeQuestHighScore')) || 0;
+
+            // Input
+            let touchStartX = 0;
+            let touchStartY = 0;
+
+            // -----------------------------------------
+            // INITIALIZATION
+            // -----------------------------------------
+            function init() {
+                canvas = document.getElementById('game-canvas');
+                ctx = canvas.getContext('2d');
+
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+
+                // Input handlers
+                document.addEventListener('keydown', handleKeyDown);
+                canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+                canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+                // UI handlers
+                document.getElementById('start-btn').addEventListener('click', startGame);
+                document.getElementById('restart-btn').addEventListener('click', startGame);
+
+                // Update high score display
+                document.getElementById('high-score').textContent = highScore;
+
+                // Start render loop (for background animation)
+                requestAnimationFrame(renderLoop);
+            }
+
+            function resizeCanvas() {
+                const container = document.getElementById('game-container');
+                const petriDish = document.getElementById('petri-dish');
+
+                // Calculate size based on viewport
+                const maxSize = Math.min(
+                    container.clientWidth - 40,
+                    container.clientHeight - 160,
+                    600
+                );
+
+                // Make it a circle
+                const size = Math.floor(maxSize / CONFIG.TILE_SIZE) * CONFIG.TILE_SIZE;
+
+                canvas.width = size;
+                canvas.height = size;
+                gameWidth = size;
+                gameHeight = size;
+
+                gridWidth = Math.floor(size / CONFIG.TILE_SIZE);
+                gridHeight = Math.floor(size / CONFIG.TILE_SIZE);
+
+                petriDish.style.width = size + 'px';
+                petriDish.style.height = size + 'px';
+            }
+
+            // -----------------------------------------
+            // GAME CONTROL
+            // -----------------------------------------
+            function startGame() {
+                // Reset state
+                snake = [];
+                wasteObstacles = [];
+                particles = [];
+                digestionQueue = [];
+                score = 0;
+                hunger = 50;
+                lastShedLength = 0;
+                direction = { x: 1, y: 0 };
+                nextDirection = { x: 1, y: 0 };
+
+                // Initialize snake in center
+                const centerX = Math.floor(gridWidth / 2);
+                const centerY = Math.floor(gridHeight / 2);
+                for (let i = 0; i < CONFIG.INITIAL_LENGTH; i++) {
+                    snake.push({ x: centerX - i, y: centerY });
+                }
+
+                // Spawn first food
+                spawnFood();
+
+                // Update UI
+                updateHUD();
+                document.getElementById('start-screen').classList.add('hidden');
+                document.getElementById('gameover-screen').classList.add('hidden');
+                document.getElementById('petri-dish').classList.remove('frenzy');
+
+                isPlaying = true;
+                lastMoveTime = performance.now();
+            }
+
+            function gameOver() {
+                isPlaying = false;
+                document.getElementById('petri-dish').classList.remove('frenzy');
+
+                // Update high score
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('snakeQuestHighScore', highScore);
+                }
+
+                // Show game over screen
+                document.getElementById('final-score').textContent = score;
+                document.getElementById('high-score').textContent = highScore;
+                document.getElementById('gameover-screen').classList.remove('hidden');
+            }
+
+            // -----------------------------------------
+            // INPUT HANDLING
+            // -----------------------------------------
+            function handleKeyDown(e) {
+                if (!isPlaying) return;
+
+                const key = e.key.toLowerCase();
+                let newDir = null;
+
+                if ((key === 'arrowup' || key === 'w') && direction.y !== 1) {
+                    newDir = { x: 0, y: -1 };
+                } else if ((key === 'arrowdown' || key === 's') && direction.y !== -1) {
+                    newDir = { x: 0, y: 1 };
+                } else if ((key === 'arrowleft' || key === 'a') && direction.x !== 1) {
+                    newDir = { x: -1, y: 0 };
+                } else if ((key === 'arrowright' || key === 'd') && direction.x !== -1) {
+                    newDir = { x: 1, y: 0 };
+                }
+
+                if (newDir) {
+                    nextDirection = newDir;
+                    e.preventDefault();
+                }
+            }
+
+            function handleTouchStart(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+            }
+
+            function handleTouchEnd(e) {
+                e.preventDefault();
+                if (!isPlaying) return;
+
+                const touch = e.changedTouches[0];
+                const dx = touch.clientX - touchStartX;
+                const dy = touch.clientY - touchStartY;
+                const minSwipe = 30;
+
+                if (Math.abs(dx) < minSwipe && Math.abs(dy) < minSwipe) return;
+
+                let newDir = null;
+
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    // Horizontal swipe
+                    if (dx > 0 && direction.x !== -1) {
+                        newDir = { x: 1, y: 0 };
+                    } else if (dx < 0 && direction.x !== 1) {
+                        newDir = { x: -1, y: 0 };
+                    }
+                } else {
+                    // Vertical swipe
+                    if (dy > 0 && direction.y !== -1) {
+                        newDir = { x: 0, y: 1 };
+                    } else if (dy < 0 && direction.y !== 1) {
+                        newDir = { x: 0, y: -1 };
+                    }
+                }
+
+                if (newDir) {
+                    nextDirection = newDir;
+                }
+            }
+
+            // -----------------------------------------
+            // GAME LOGIC
+            // -----------------------------------------
+            function getCurrentSpeed() {
+                if (hunger >= CONFIG.FRENZY_THRESHOLD) {
+                    return CONFIG.FRENZY_SPEED;
+                }
+                // Interpolate between satiated and starving speed
+                const t = hunger / 100;
+                return CONFIG.BASE_SPEED - (CONFIG.BASE_SPEED - CONFIG.STARVING_SPEED) * t;
+            }
+
+            function update(deltaTime) {
+                if (!isPlaying) return;
+
+                // Update hunger
+                hunger = Math.min(CONFIG.MAX_HUNGER, hunger + CONFIG.HUNGER_DECAY * deltaTime / 1000);
+
+                // Frenzy mode visual
+                const petriDish = document.getElementById('petri-dish');
+                if (hunger >= CONFIG.FRENZY_THRESHOLD) {
+                    petriDish.classList.add('frenzy');
+                } else {
+                    petriDish.classList.remove('frenzy');
+                }
+
+                // Update food escape cooldown
+                if (foodEscapeCooldown > 0) {
+                    foodEscapeCooldown -= deltaTime;
+                }
+
+                // Update digestion
+                digestionQueue.forEach(d => {
+                    d.progress += deltaTime / 500; // 500ms to travel through
+                });
+                digestionQueue = digestionQueue.filter(d => d.progress < snake.length);
+
+                // Update waste decay
+                const now = performance.now();
+                wasteObstacles.forEach(w => {
+                    const age = now - w.createdAt;
+                    w.scale = Math.max(
+                        CONFIG.WASTE_MIN_SIZE,
+                        1 - (age / CONFIG.WASTE_DECAY_TIME) * (1 - CONFIG.WASTE_MIN_SIZE)
+                    );
+                });
+
+                // Update particles
+                particles = particles.filter(p => {
+                    p.life -= deltaTime;
+                    p.x += p.vx * deltaTime / 16;
+                    p.y += p.vy * deltaTime / 16;
+                    p.vx *= 0.98;
+                    p.vy *= 0.98;
+                    return p.life > 0;
+                });
+
+                // Check if it's time to move
+                const speed = getCurrentSpeed();
+                if (now - lastMoveTime >= speed) {
+                    moveSnake();
+                    lastMoveTime = now;
+                }
+
+                // React prey behavior
+                if (food && foodEscapeCooldown <= 0) {
+                    const head = snake[0];
+                    const dist = Math.abs(head.x - food.x) + Math.abs(head.y - food.y);
+                    if (dist <= CONFIG.PREY_ESCAPE_RADIUS && Math.random() < CONFIG.PREY_ESCAPE_CHANCE) {
+                        escapePrey();
+                    }
+                }
+
+                updateHUD();
+            }
+
+            function moveSnake() {
+                direction = nextDirection;
+
+                const head = snake[0];
+                const newHead = {
+                    x: head.x + direction.x,
+                    y: head.y + direction.y
+                };
+
+                // Check circular boundary (petri dish)
+                const centerX = gridWidth / 2;
+                const centerY = gridHeight / 2;
+                const radius = Math.min(gridWidth, gridHeight) / 2 - CONFIG.GRID_PADDING;
+                const distFromCenter = Math.sqrt(
+                    Math.pow(newHead.x - centerX + 0.5, 2) +
+                    Math.pow(newHead.y - centerY + 0.5, 2)
+                );
+
+                if (distFromCenter >= radius) {
+                    gameOver();
+                    return;
+                }
+
+                // Check self collision
+                for (let i = 1; i < snake.length; i++) {
+                    if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
+                        gameOver();
+                        return;
+                    }
+                }
+
+                // Check waste collision
+                for (const waste of wasteObstacles) {
+                    if (waste.x === newHead.x && waste.y === newHead.y) {
+                        // In frenzy mode, can phase through one waste (consume it)
+                        if (hunger >= CONFIG.FRENZY_THRESHOLD && !waste.consumed) {
+                            waste.consumed = true;
+                            spawnParticles(waste.x, waste.y, waste.toxic ? '#a855f7' : '#6b7280', 10);
+                            continue;
+                        }
+                        gameOver();
+                        return;
+                    }
+                }
+                // Remove consumed waste
+                wasteObstacles = wasteObstacles.filter(w => !w.consumed);
+
+                // Add new head
+                snake.unshift(newHead);
+
+                // Check food collision
+                if (food && newHead.x === food.x && newHead.y === food.y) {
+                    eatFood();
+                } else {
+                    snake.pop();
+                }
+
+                // Check for shedding
+                const currentLength = snake.length;
+                const shouldShed = Math.floor(currentLength / CONFIG.SHED_INTERVAL) >
+                                   Math.floor(lastShedLength / CONFIG.SHED_INTERVAL);
+
+                if (shouldShed && currentLength >= CONFIG.SHED_INTERVAL) {
+                    shedWaste();
+                }
+                lastShedLength = currentLength;
+            }
+
+            function eatFood() {
+                score += 10;
+
+                // Restore hunger
+                hunger = Math.max(0, hunger - CONFIG.HUNGER_RESTORE);
+
+                // Add digestion bulge
+                digestionQueue.push({ segment: 0, progress: 0 });
+
+                // Spawn particles
+                spawnParticles(food.x, food.y, '#fbbf24', 15);
+
+                // Spawn new food
+                spawnFood();
+            }
+
+            function shedWaste() {
+                if (snake.length < 2) return;
+
+                const tail = snake.pop();
+                const isToxic = hunger > 50; // Toxic if hungry
+
+                wasteObstacles.push({
+                    x: tail.x,
+                    y: tail.y,
+                    toxic: isToxic,
+                    createdAt: performance.now(),
+                    scale: 1
+                });
+
+                // Spawn shed particles
+                spawnParticles(tail.x, tail.y, isToxic ? '#a855f7' : '#6b7280', 12);
+            }
+
+            function escapePrey() {
+                if (!food) return;
+
+                const head = snake[0];
+                const dx = food.x - head.x;
+                const dy = food.y - head.y;
+
+                // Move in opposite direction from snake
+                let escapeDir = { x: 0, y: 0 };
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    escapeDir.x = dx > 0 ? 1 : -1;
+                } else {
+                    escapeDir.y = dy > 0 ? 1 : -1;
+                }
+
+                const newX = food.x + escapeDir.x;
+                const newY = food.y + escapeDir.y;
+
+                // Check if escape position is valid
+                if (isValidFoodPosition(newX, newY)) {
+                    food.x = newX;
+                    food.y = newY;
+                    foodEscapeCooldown = 200; // Cooldown before next escape
+                }
+            }
+
+            function spawnFood() {
+                // Chance to spawn near waste (nutrient aura)
+                if (wasteObstacles.length > 0 && Math.random() < CONFIG.FOOD_ATTRACT_CHANCE) {
+                    const waste = wasteObstacles[Math.floor(Math.random() * wasteObstacles.length)];
+                    for (let attempt = 0; attempt < 10; attempt++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const dist = 1 + Math.floor(Math.random() * CONFIG.NUTRIENT_RADIUS);
+                        const x = waste.x + Math.round(Math.cos(angle) * dist);
+                        const y = waste.y + Math.round(Math.sin(angle) * dist);
+                        if (isValidFoodPosition(x, y)) {
+                            food = { x, y };
+                            return;
+                        }
+                    }
+                }
+
+                // Random position
+                for (let attempt = 0; attempt < 100; attempt++) {
+                    const x = Math.floor(Math.random() * gridWidth);
+                    const y = Math.floor(Math.random() * gridHeight);
+                    if (isValidFoodPosition(x, y)) {
+                        food = { x, y };
+                        return;
+                    }
+                }
+            }
+
+            function isValidFoodPosition(x, y) {
+                // Check circular boundary
+                const centerX = gridWidth / 2;
+                const centerY = gridHeight / 2;
+                const radius = Math.min(gridWidth, gridHeight) / 2 - CONFIG.GRID_PADDING - 1;
+                const dist = Math.sqrt(Math.pow(x - centerX + 0.5, 2) + Math.pow(y - centerY + 0.5, 2));
+                if (dist >= radius) return false;
+
+                // Check snake collision
+                for (const seg of snake) {
+                    if (seg.x === x && seg.y === y) return false;
+                }
+
+                // Check waste collision
+                for (const waste of wasteObstacles) {
+                    if (waste.x === x && waste.y === y) return false;
+                }
+
+                return true;
+            }
+
+            function spawnParticles(gridX, gridY, color, count) {
+                const px = (gridX + 0.5) * CONFIG.TILE_SIZE;
+                const py = (gridY + 0.5) * CONFIG.TILE_SIZE;
+
+                for (let i = 0; i < count && particles.length < CONFIG.MAX_PARTICLES; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 1 + Math.random() * 3;
+                    particles.push({
+                        x: px,
+                        y: py,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        color: color,
+                        size: 2 + Math.random() * 4,
+                        life: CONFIG.PARTICLE_LIFETIME
+                    });
+                }
+            }
+
+            // -----------------------------------------
+            // RENDERING
+            // -----------------------------------------
+            function renderLoop(timestamp) {
+                const deltaTime = timestamp - (renderLoop.lastTime || timestamp);
+                renderLoop.lastTime = timestamp;
+
+                if (isPlaying) {
+                    update(deltaTime);
+                }
+
+                render();
+                requestAnimationFrame(renderLoop);
+            }
+
+            function render() {
+                // Clear canvas
+                ctx.fillStyle = '#0d1117';
+                ctx.fillRect(0, 0, gameWidth, gameHeight);
+
+                // Draw grid
+                drawGrid();
+
+                // Draw waste obstacles
+                drawWaste();
+
+                // Draw food
+                drawFood();
+
+                // Draw snake
+                drawSnake();
+
+                // Draw particles
+                drawParticles();
+
+                // Draw circular mask (petri dish edge)
+                drawPetriMask();
+            }
+
+            function drawGrid() {
+                ctx.strokeStyle = 'rgba(26, 32, 48, 0.5)';
+                ctx.lineWidth = 1;
+
+                for (let x = 0; x <= gridWidth; x++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x * CONFIG.TILE_SIZE, 0);
+                    ctx.lineTo(x * CONFIG.TILE_SIZE, gameHeight);
+                    ctx.stroke();
+                }
+
+                for (let y = 0; y <= gridHeight; y++) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y * CONFIG.TILE_SIZE);
+                    ctx.lineTo(gameWidth, y * CONFIG.TILE_SIZE);
+                    ctx.stroke();
+                }
+            }
+
+            function drawPetriMask() {
+                // Create circular clip outside the dish
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-in';
+                ctx.beginPath();
+                ctx.arc(gameWidth / 2, gameHeight / 2, gameWidth / 2 - 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            function drawSnake() {
+                const now = performance.now();
+                const isFrenzy = hunger >= CONFIG.FRENZY_THRESHOLD;
+                const isStarving = hunger > 60;
+                const isSatiated = hunger < 30;
+
+                // Calculate thickness based on hunger
+                const baseThickness = CONFIG.TILE_SIZE * 0.8;
+                let thickness = baseThickness;
+                if (isStarving) {
+                    thickness = baseThickness * (0.6 + Math.sin(now / 50) * 0.1); // Flickery
+                } else if (isSatiated) {
+                    thickness = baseThickness * (1.1 + Math.sin(now / 200) * 0.05); // Pulsing
+                }
+
+                // Draw body segments (back to front)
+                for (let i = snake.length - 1; i >= 0; i--) {
+                    const seg = snake[i];
+                    const px = (seg.x + 0.5) * CONFIG.TILE_SIZE;
+                    const py = (seg.y + 0.5) * CONFIG.TILE_SIZE;
+
+                    // Check for digestion bulge
+                    let bulge = 1;
+                    for (const d of digestionQueue) {
+                        if (Math.floor(d.progress) === i) {
+                            bulge = 1.3 - Math.abs(d.progress - Math.floor(d.progress) - 0.5) * 0.6;
+                        }
+                    }
+
+                    const segThickness = thickness * bulge * (1 - i / snake.length * 0.3);
+
+                    // Segment color
+                    let color;
+                    if (i === 0) {
+                        color = isFrenzy ? '#ff6b6b' : '#00ffc8';
+                    } else {
+                        const t = i / snake.length;
+                        if (isFrenzy) {
+                            color = `rgb(${255 - t * 50}, ${107 - t * 50}, ${107 - t * 50})`;
+                        } else if (isStarving) {
+                            color = `rgb(${0 + t * 100}, ${212 - t * 80}, ${168 - t * 80})`;
+                        } else {
+                            color = `rgb(${0 + t * 50}, ${212 - t * 40}, ${168 - t * 40})`;
+                        }
+                    }
+
+                    // Draw segment with glow
+                    ctx.beginPath();
+                    ctx.arc(px, py, segThickness / 2, 0, Math.PI * 2);
+
+                    // Glow
+                    const gradient = ctx.createRadialGradient(px, py, 0, px, py, segThickness);
+                    gradient.addColorStop(0, color);
+                    gradient.addColorStop(0.7, color);
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.fill();
+
+                    // Core
+                    ctx.beginPath();
+                    ctx.arc(px, py, segThickness / 2 * 0.8, 0, Math.PI * 2);
+                    ctx.fillStyle = color;
+                    ctx.fill();
+
+                    // Specular highlight (head only)
+                    if (i === 0) {
+                        ctx.beginPath();
+                        ctx.arc(px - segThickness * 0.15, py - segThickness * 0.15, segThickness * 0.15, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                        ctx.fill();
+
+                        // Eyes
+                        const eyeOffset = segThickness * 0.2;
+                        const eyeSize = segThickness * 0.12;
+                        ctx.fillStyle = '#0a0e14';
+                        ctx.beginPath();
+                        ctx.arc(px + direction.x * eyeOffset + direction.y * eyeOffset * 0.5,
+                                py + direction.y * eyeOffset - direction.x * eyeOffset * 0.5,
+                                eyeSize, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.arc(px + direction.x * eyeOffset - direction.y * eyeOffset * 0.5,
+                                py + direction.y * eyeOffset + direction.x * eyeOffset * 0.5,
+                                eyeSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            function drawFood() {
+                if (!food) return;
+
+                const px = (food.x + 0.5) * CONFIG.TILE_SIZE;
+                const py = (food.y + 0.5) * CONFIG.TILE_SIZE;
+                const size = CONFIG.TILE_SIZE * 0.4;
+                const now = performance.now();
+
+                // Pulsing glow
+                const pulse = 1 + Math.sin(now / 150) * 0.2;
+
+                // Outer glow
+                const glowGradient = ctx.createRadialGradient(px, py, 0, px, py, size * 2.5 * pulse);
+                glowGradient.addColorStop(0, 'rgba(251, 191, 36, 0.4)');
+                glowGradient.addColorStop(0.5, 'rgba(245, 158, 11, 0.2)');
+                glowGradient.addColorStop(1, 'transparent');
+                ctx.beginPath();
+                ctx.arc(px, py, size * 2.5 * pulse, 0, Math.PI * 2);
+                ctx.fillStyle = glowGradient;
+                ctx.fill();
+
+                // Cell body
+                ctx.beginPath();
+                ctx.arc(px, py, size * pulse, 0, Math.PI * 2);
+                const bodyGradient = ctx.createRadialGradient(px - size * 0.3, py - size * 0.3, 0, px, py, size);
+                bodyGradient.addColorStop(0, '#fde68a');
+                bodyGradient.addColorStop(0.5, '#fbbf24');
+                bodyGradient.addColorStop(1, '#f59e0b');
+                ctx.fillStyle = bodyGradient;
+                ctx.fill();
+
+                // Nucleus
+                ctx.beginPath();
+                ctx.arc(px + size * 0.1, py + size * 0.1, size * 0.35, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(180, 83, 9, 0.6)';
+                ctx.fill();
+
+                // Specular
+                ctx.beginPath();
+                ctx.arc(px - size * 0.3, py - size * 0.3, size * 0.2, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.fill();
+            }
+
+            function drawWaste() {
+                for (const waste of wasteObstacles) {
+                    const px = (waste.x + 0.5) * CONFIG.TILE_SIZE;
+                    const py = (waste.y + 0.5) * CONFIG.TILE_SIZE;
+                    const size = CONFIG.TILE_SIZE * 0.45 * waste.scale;
+
+                    const color = waste.toxic ? '#a855f7' : '#6b7280';
+                    const glowColor = waste.toxic ? 'rgba(168, 85, 247, 0.3)' : 'rgba(107, 114, 128, 0.2)';
+
+                    // Nutrient aura (subtle glow around waste)
+                    if (waste.scale > 0.5) {
+                        const auraGradient = ctx.createRadialGradient(px, py, size, px, py, CONFIG.NUTRIENT_RADIUS * CONFIG.TILE_SIZE);
+                        auraGradient.addColorStop(0, glowColor);
+                        auraGradient.addColorStop(1, 'transparent');
+                        ctx.beginPath();
+                        ctx.arc(px, py, CONFIG.NUTRIENT_RADIUS * CONFIG.TILE_SIZE, 0, Math.PI * 2);
+                        ctx.fillStyle = auraGradient;
+                        ctx.fill();
+                    }
+
+                    // Waste body
+                    ctx.beginPath();
+                    ctx.arc(px, py, size, 0, Math.PI * 2);
+                    const bodyGradient = ctx.createRadialGradient(px, py, 0, px, py, size);
+                    bodyGradient.addColorStop(0, color);
+                    bodyGradient.addColorStop(1, waste.toxic ? '#7c3aed' : '#4b5563');
+                    ctx.fillStyle = bodyGradient;
+                    ctx.fill();
+
+                    // Rough texture
+                    ctx.globalAlpha = 0.3;
+                    for (let i = 0; i < 3; i++) {
+                        const angle = (i / 3) * Math.PI * 2;
+                        const bx = px + Math.cos(angle) * size * 0.5;
+                        const by = py + Math.sin(angle) * size * 0.5;
+                        ctx.beginPath();
+                        ctx.arc(bx, by, size * 0.25, 0, Math.PI * 2);
+                        ctx.fillStyle = waste.toxic ? '#581c87' : '#374151';
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1;
+                }
+            }
+
+            function drawParticles() {
+                for (const p of particles) {
+                    const alpha = p.life / CONFIG.PARTICLE_LIFETIME;
+                    ctx.globalAlpha = alpha;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            // -----------------------------------------
+            // HUD
+            // -----------------------------------------
+            function updateHUD() {
+                document.getElementById('score-display').textContent = score;
+                document.getElementById('length-display').textContent = snake.length;
+
+                // Hunger bar
+                const hungerBar = document.getElementById('hunger-bar');
+                hungerBar.style.width = hunger + '%';
+
+                // Hunger status
+                const statusEl = document.getElementById('hunger-status');
+                if (hunger >= CONFIG.FRENZY_THRESHOLD) {
+                    statusEl.textContent = 'FRENZY!';
+                    statusEl.style.color = '#ef4444';
+                } else if (hunger > 60) {
+                    statusEl.textContent = 'Starving';
+                    statusEl.style.color = '#f59e0b';
+                } else if (hunger < 30) {
+                    statusEl.textContent = 'Satiated';
+                    statusEl.style.color = '#4ade80';
+                } else {
+                    statusEl.textContent = 'Balanced';
+                    statusEl.style.color = '#64748b';
+                }
+            }
+
+            // -----------------------------------------
+            // START
+            // -----------------------------------------
+            document.addEventListener('DOMContentLoaded', init);
+        })();
+    </script>
+</body>
+</html>
