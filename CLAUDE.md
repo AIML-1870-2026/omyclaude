@@ -1,49 +1,64 @@
-# Royal Decree - Kingdom of omyclaude
+Create a CLAUDE.md file in this folder with the following content:
 
-## Identity
-- **Gamertag**: omyclaude
-- **Kingdom**: AIML-1870-2026/omyclaude
-- **Author**: Abdul Hameed Rahmanzai
+# AIML 1870 - The Royal Decree
+
+## Configuration
+UserGamertag: "omyclaude"
+Organization: "AIML-1870-2026"
+
+## Project Structure
+This folder is your entire AIML 1870 portfolio. It is a single git repository
+containing all your assignments as subfolders.
+
+Structure:
+- Root folder = Your Gamertag (this IS the git repo)
+- Each assignment = A subfolder (NOT a separate repo)
+- CLAUDE.md = Lives at the root, governs everything
+
+Current Projects:
+- Starfield/ - Cockpit Flight Deck
+- Stellar-Web/ - Orbital Gravity Simulator
+- Snake-Quest/ - The Living Circuit
 
 ## Commands
 
 ### Deploy
-Push all changes to GitHub and ensure GitHub Pages is enabled:
-```bash
-git add -A && git commit -m "Deploy kingdom" && git push origin main
-```
+When I say "Deploy":
+
+1. **Verify Location**
+   - Confirm we're inside the Gamertag folder (or a subfolder of it)
+   - Check that .git exists at the root level
+
+2. **Stage and Commit**
+   - `git add .`
+   - `git commit -m "Update: [describe what changed]"`
+
+3. **Push**
+   - `git push origin main`
+
+4. **Report Success**
+   - Confirm the push succeeded
+   - Remind me of my live URL: https://aiml-1870-2026.github.io/[Gamertag]/
 
 ### New Assignment
-Create a new assignment folder in the kingdom:
-```bash
-mkdir -p <assignment-name>
-```
-Each assignment is a subfolder containing its own `index.html`, `spec.md`, and `README.md`.
+When I say "Start [AssignmentName]":
 
-### Show URLs
-Display all live GitHub Pages URLs for each assignment:
-- **Kingdom Home**: https://aiml-1870-2026.github.io/omyclaude/
-- **Assignment-2 (Starfield Cockpit)**: https://aiml-1870-2026.github.io/omyclaude/Assignment-2/
-- **Stellar-Web (Orbital Gravity Simulator)**: https://aiml-1870-2026.github.io/omyclaude/Stellar-Web/
-- **Snake-Quest (The Living Circuit)**: https://aiml-1870-2026.github.io/omyclaude/Snake-Quest/
+1. Create a folder called `[AssignmentName]` in the root
+2. Create a starter `index.html` inside it
+3. Tell me the folder is ready
 
-## Structure
-```
-omyclaude/
-├── CLAUDE.md          # Royal Decree (this file)
-├── Assignment-2/      # Starfield Cockpit Flight Deck
-│   ├── index.html
-│   ├── spec.md
-│   └── README.md
-├── Stellar-Web/       # Orbital Gravity Simulator
-│   ├── index.html
-│   ├── spec.md
-│   └── README.md
-└── Snake-Quest/       # The Living Circuit (Snake Game)
-    ├── index.html
-    ├── spec.md
-    └── README.md
-```
+### Show My URLs
+When I say "Show my URLs" or "Where's my stuff?":
 
-## Inheritance
-This CLAUDE.md applies to all subdirectories. Each assignment inherits these deployment and structure rules.
+1. List all subfolders that contain an index.html
+2. For each, show the live URL pattern
+
+## Coding Standards
+- Single HTML file projects preferred (unless specified otherwise)
+- No personally identifiable information in code or comments
+- Use descriptive folder names (e.g., "Julia-Set-Explorer" not "assignment3")
+
+## File Naming
+- Main file: `index.html`
+- Assets: lowercase, hyphens (e.g., `particle-system.js`)
+- Assignment folders: Descriptive names or `Assignment-XX`
