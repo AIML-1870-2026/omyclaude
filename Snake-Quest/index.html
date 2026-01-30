@@ -4,25 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Snake Quest: The Living Circuit</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-deep: #0a0e14;
-            --bg-surface: #0d1117;
-            --grid-line: #1a2030;
-            --grid-glow: rgba(0, 255, 200, 0.03);
-            --snake-head: #00ffc8;
-            --snake-body: #00d4a8;
-            --snake-starving: #ff6b6b;
-            --snake-satiated: #4ade80;
-            --food-core: #fbbf24;
-            --food-glow: #f59e0b;
-            --toxic-waste: #a855f7;
-            --inert-waste: #6b7280;
-            --frenzy-pulse: #ef4444;
-            --text-primary: #e2e8f0;
-            --text-dim: #64748b;
-            --ui-border: rgba(255, 255, 255, 0.1);
+            --bg-deep: #050810;
+            --bg-surface: #0a0f18;
+            --grid-line: #0f1520;
+            --snake-head: #00ffaa;
+            --snake-body: #00cc88;
+            --snake-glow: rgba(0, 255, 170, 0.6);
+            --snake-starving: #ff5555;
+            --snake-satiated: #55ff88;
+            --food-core: #ffcc00;
+            --food-glow: rgba(255, 200, 0, 0.8);
+            --toxic-waste: #cc44ff;
+            --inert-waste: #445566;
+            --frenzy-pulse: #ff3333;
+            --text-primary: #e8f0ff;
+            --text-dim: #556688;
+            --text-glow: rgba(0, 255, 170, 0.4);
+            --ui-border: rgba(0, 255, 170, 0.15);
+            --ui-bg: rgba(5, 8, 16, 0.85);
         }
 
         * {
@@ -44,6 +46,22 @@
             user-select: none;
         }
 
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 80%, rgba(0, 100, 150, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(100, 0, 150, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(0, 50, 100, 0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
         #game-container {
             width: 100%;
             height: 100%;
@@ -52,48 +70,76 @@
             align-items: center;
             justify-content: center;
             position: relative;
+            z-index: 1;
         }
 
-        /* Petri Dish Frame */
+        /* Petri Dish Frame - Enhanced */
         #petri-dish {
             position: relative;
             border-radius: 50%;
             box-shadow:
-                inset 0 0 60px rgba(0, 255, 200, 0.05),
-                inset 0 0 120px rgba(0, 0, 0, 0.8),
-                0 0 40px rgba(0, 255, 200, 0.1),
-                0 4px 30px rgba(0, 0, 0, 0.5);
-            background: radial-gradient(circle at 30% 30%,
-                rgba(255, 255, 255, 0.02) 0%,
-                transparent 50%),
+                inset 0 0 80px rgba(0, 255, 170, 0.03),
+                inset 0 0 150px rgba(0, 0, 0, 0.9),
+                0 0 60px rgba(0, 255, 170, 0.08),
+                0 0 120px rgba(0, 100, 150, 0.1),
+                0 8px 40px rgba(0, 0, 0, 0.6);
+            background:
+                radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.015) 0%, transparent 40%),
+                radial-gradient(circle at 75% 75%, rgba(0, 0, 0, 0.3) 0%, transparent 40%),
                 var(--bg-surface);
             overflow: hidden;
+            transition: box-shadow 0.3s ease;
         }
 
         #petri-dish::before {
             content: '';
             position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
             border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.08);
+            border: 3px solid rgba(0, 255, 170, 0.1);
             pointer-events: none;
+            transition: border-color 0.3s ease;
+        }
+
+        #petri-dish::after {
+            content: '';
+            position: absolute;
+            top: 5%;
+            left: 10%;
+            width: 30%;
+            height: 15%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 100%);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: rotate(-20deg);
         }
 
         #petri-dish.frenzy {
-            animation: frenzyPulse 0.3s ease-in-out infinite;
+            animation: frenzyPulse 0.2s ease-in-out infinite;
             box-shadow:
-                inset 0 0 60px rgba(239, 68, 68, 0.15),
-                inset 0 0 120px rgba(0, 0, 0, 0.8),
-                0 0 60px rgba(239, 68, 68, 0.3),
-                0 4px 30px rgba(0, 0, 0, 0.5);
+                inset 0 0 80px rgba(255, 50, 50, 0.15),
+                inset 0 0 150px rgba(0, 0, 0, 0.9),
+                0 0 80px rgba(255, 50, 50, 0.25),
+                0 0 150px rgba(255, 0, 0, 0.15),
+                0 8px 40px rgba(0, 0, 0, 0.6);
+        }
+
+        #petri-dish.frenzy::before {
+            border-color: rgba(255, 50, 50, 0.4);
+            animation: frenzyBorder 0.2s ease-in-out infinite;
         }
 
         @keyframes frenzyPulse {
-            0%, 100% { border-color: rgba(239, 68, 68, 0.3); }
-            50% { border-color: rgba(239, 68, 68, 0.6); }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.005); }
+        }
+
+        @keyframes frenzyBorder {
+            0%, 100% { border-color: rgba(255, 50, 50, 0.3); }
+            50% { border-color: rgba(255, 50, 50, 0.6); }
         }
 
         #game-canvas {
@@ -101,12 +147,12 @@
             border-radius: 50%;
         }
 
-        /* HUD */
+        /* HUD - Enhanced */
         #hud {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
+            top: 15px;
+            left: 15px;
+            right: 15px;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
@@ -115,74 +161,89 @@
         }
 
         .hud-panel {
-            background: rgba(13, 17, 23, 0.9);
-            backdrop-filter: blur(10px);
+            background: var(--ui-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             border: 1px solid var(--ui-border);
-            border-radius: 12px;
-            padding: 12px 16px;
-            min-width: 120px;
+            border-radius: 16px;
+            padding: 14px 20px;
+            min-width: 110px;
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
 
         .hud-label {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.15em;
             color: var(--text-dim);
-            margin-bottom: 4px;
+            margin-bottom: 6px;
         }
 
         .hud-value {
             font-family: 'Orbitron', sans-serif;
-            font-size: 1.4rem;
-            font-weight: 700;
+            font-size: 1.6rem;
+            font-weight: 900;
             color: var(--snake-head);
+            text-shadow: 0 0 20px var(--text-glow);
         }
 
-        /* Hunger Bar */
+        /* Hunger Bar - Enhanced */
         #hunger-container {
             position: absolute;
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            width: 200px;
+            width: 220px;
             z-index: 10;
         }
 
         #hunger-label {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.15em;
             color: var(--text-dim);
             text-align: center;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         #hunger-bar-bg {
             width: 100%;
-            height: 8px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 4px;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 5px;
             overflow: hidden;
             border: 1px solid var(--ui-border);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
         }
 
         #hunger-bar {
             height: 100%;
             width: 50%;
-            background: linear-gradient(90deg, var(--snake-satiated), var(--food-core), var(--snake-starving));
-            border-radius: 4px;
-            transition: width 0.3s ease;
+            background: linear-gradient(90deg,
+                #22ff88 0%,
+                #88ff44 25%,
+                #ffcc00 50%,
+                #ff8800 75%,
+                #ff4444 100%);
+            border-radius: 5px;
+            transition: width 0.2s ease;
+            box-shadow: 0 0 10px rgba(255, 200, 0, 0.3);
         }
 
         #hunger-status {
+            font-family: 'Orbitron', sans-serif;
             font-size: 0.7rem;
+            font-weight: 700;
             text-align: center;
-            margin-top: 4px;
+            margin-top: 6px;
             color: var(--text-dim);
-            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
-        /* Start/Game Over Screens */
+        /* Overlay Screens - Enhanced */
         .overlay-screen {
             position: absolute;
             top: 0;
@@ -193,7 +254,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(10, 14, 20, 0.95);
+            background: radial-gradient(ellipse at center, rgba(5, 8, 16, 0.95) 0%, rgba(0, 0, 0, 0.98) 100%);
             z-index: 100;
             opacity: 1;
             transition: opacity 0.5s ease;
@@ -206,105 +267,155 @@
 
         .game-title {
             font-family: 'Orbitron', sans-serif;
-            font-size: clamp(1.5rem, 5vw, 2.5rem);
-            font-weight: 700;
+            font-size: clamp(1.8rem, 6vw, 3rem);
+            font-weight: 900;
             color: var(--snake-head);
-            text-shadow: 0 0 30px rgba(0, 255, 200, 0.5);
+            text-shadow:
+                0 0 30px var(--snake-glow),
+                0 0 60px rgba(0, 255, 170, 0.3);
             margin-bottom: 8px;
             text-align: center;
+            letter-spacing: 0.05em;
         }
 
         .game-subtitle {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--text-dim);
-            margin-bottom: 40px;
+            margin-bottom: 50px;
             text-align: center;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
         }
 
         .instructions {
-            max-width: 300px;
+            max-width: 340px;
             text-align: center;
-            margin-bottom: 30px;
-            line-height: 1.6;
+            margin-bottom: 40px;
+            line-height: 1.7;
             color: var(--text-dim);
-            font-size: 0.85rem;
-        }
-
-        .instructions strong {
-            color: var(--food-core);
+            font-size: 0.8rem;
         }
 
         .mechanic-list {
             text-align: left;
             margin: 20px 0;
-            padding: 0 20px;
+            padding: 0 15px;
         }
 
         .mechanic-item {
-            margin: 10px 0;
+            margin: 14px 0;
             display: flex;
             align-items: flex-start;
-            gap: 10px;
+            gap: 12px;
         }
 
         .mechanic-icon {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             flex-shrink: 0;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
         }
 
-        .mechanic-icon.hunger { background: linear-gradient(135deg, var(--snake-satiated), var(--snake-starving)); }
-        .mechanic-icon.shed { background: linear-gradient(135deg, var(--toxic-waste), var(--inert-waste)); }
-        .mechanic-icon.prey { background: var(--food-core); }
+        .mechanic-icon.hunger {
+            background: linear-gradient(135deg, #22ff88, #ff4444);
+        }
+        .mechanic-icon.shed {
+            background: linear-gradient(135deg, var(--toxic-waste), var(--inert-waste));
+        }
+        .mechanic-icon.prey {
+            background: radial-gradient(circle at 30% 30%, #ffee88, var(--food-core));
+            animation: preyPulse 1s ease-in-out infinite;
+        }
+        .mechanic-icon.endless {
+            background: linear-gradient(135deg, #4488ff, #8844ff);
+        }
+
+        @keyframes preyPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .mechanic-item strong {
+            color: var(--food-core);
+        }
 
         .start-btn {
             font-family: 'Orbitron', sans-serif;
-            font-size: 1rem;
+            font-size: 1.1rem;
             font-weight: 700;
-            padding: 16px 48px;
+            padding: 18px 55px;
             background: linear-gradient(135deg, var(--snake-head), var(--snake-body));
             border: none;
-            border-radius: 30px;
+            border-radius: 35px;
             color: var(--bg-deep);
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0, 255, 200, 0.3);
+            box-shadow:
+                0 4px 25px rgba(0, 255, 170, 0.4),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2);
             pointer-events: auto;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
         }
 
         .start-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 6px 30px rgba(0, 255, 200, 0.5);
+            transform: scale(1.08) translateY(-2px);
+            box-shadow:
+                0 8px 40px rgba(0, 255, 170, 0.5),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .start-btn:active {
+            transform: scale(1.02);
         }
 
         .final-score {
             font-family: 'Orbitron', sans-serif;
-            font-size: 3rem;
-            font-weight: 700;
+            font-size: 4rem;
+            font-weight: 900;
             color: var(--food-core);
-            margin: 20px 0;
+            margin: 25px 0;
+            text-shadow: 0 0 40px var(--food-glow);
         }
 
         .high-score {
             font-size: 0.9rem;
             color: var(--text-dim);
-            margin-bottom: 30px;
+            margin-bottom: 35px;
         }
 
         .high-score span {
             color: var(--snake-head);
+            font-weight: 700;
         }
 
-        /* Mobile Controls Hint */
         .controls-hint {
             position: absolute;
-            bottom: 60px;
+            bottom: 50px;
             left: 50%;
             transform: translateX(-50%);
             font-size: 0.7rem;
             color: var(--text-dim);
             text-align: center;
+            letter-spacing: 0.1em;
+        }
+
+        /* Mode badge */
+        .mode-badge {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(100, 50, 255, 0.2);
+            border: 1px solid rgba(100, 50, 255, 0.4);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            color: #aa88ff;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            font-weight: 700;
         }
 
         /* Responsive */
@@ -316,22 +427,27 @@
             }
 
             .hud-panel {
-                padding: 8px 12px;
-                min-width: 80px;
+                padding: 10px 14px;
+                min-width: 75px;
+                border-radius: 12px;
             }
 
             .hud-value {
-                font-size: 1.1rem;
+                font-size: 1.2rem;
             }
 
             #hunger-container {
-                width: 160px;
-                bottom: 15px;
+                width: 170px;
+                bottom: 12px;
             }
 
             .instructions {
-                font-size: 0.75rem;
-                padding: 0 20px;
+                font-size: 0.7rem;
+                padding: 0 15px;
+            }
+
+            .mechanic-item {
+                font-size: 0.7rem;
             }
         }
     </style>
@@ -341,6 +457,8 @@
         <div id="petri-dish">
             <canvas id="game-canvas"></canvas>
         </div>
+
+        <div class="mode-badge">Endless Mode</div>
 
         <div id="hud">
             <div class="hud-panel">
@@ -369,38 +487,42 @@
             <div class="instructions">
                 <div class="mechanic-list">
                     <div class="mechanic-item">
-                        <div class="mechanic-icon hunger"></div>
-                        <div><strong>Metabolism:</strong> Hunger affects speed. Starving = fast but frantic. Satiated = slow but stable.</div>
+                        <div class="mechanic-icon endless"></div>
+                        <div><strong>Endless Mode:</strong> No walls! Wrap around the edges. Only die from collisions.</div>
                     </div>
                     <div class="mechanic-item">
-                        <div class="mechanic-icon shed"></div>
-                        <div><strong>Shedding:</strong> Every 10 length, shed waste. Toxic (purple) if hungry, Inert (gray) if fed.</div>
+                        <div class="mechanic-icon hunger"></div>
+                        <div><strong>Metabolism:</strong> Hunger affects speed. Starving = fast. Satiated = slow.</div>
                     </div>
                     <div class="mechanic-item">
                         <div class="mechanic-icon prey"></div>
-                        <div><strong>Reactive Prey:</strong> Food cells flee when you get close!</div>
+                        <div><strong>Panicked Prey:</strong> Food cells are terrified and flee aggressively!</div>
+                    </div>
+                    <div class="mechanic-item">
+                        <div class="mechanic-icon shed"></div>
+                        <div><strong>Shedding:</strong> Every 10 length, shed toxic or inert waste.</div>
                     </div>
                 </div>
             </div>
 
-            <button class="start-btn" id="start-btn">BEGIN HUNT</button>
+            <button class="start-btn" id="start-btn">Begin Hunt</button>
             <div class="controls-hint">Arrow Keys / WASD / Swipe</div>
         </div>
 
         <!-- Game Over Screen -->
         <div class="overlay-screen hidden" id="gameover-screen">
-            <div class="game-title">Experiment Complete</div>
-            <div class="game-subtitle">The circuit has ended</div>
+            <div class="game-title">Circuit Broken</div>
+            <div class="game-subtitle">The organism has perished</div>
             <div class="final-score" id="final-score">0</div>
-            <div class="high-score">High Score: <span id="high-score">0</span></div>
-            <button class="start-btn" id="restart-btn">TRY AGAIN</button>
+            <div class="high-score">Best Run: <span id="high-score">0</span></div>
+            <button class="start-btn" id="restart-btn">Hunt Again</button>
         </div>
     </div>
 
     <script>
         // ============================================
         // SNAKE QUEST: THE LIVING CIRCUIT
-        // An Emergent Ecosystem Snake Game
+        // Endless Mode - Enhanced Aesthetics
         // ============================================
 
         (function() {
@@ -410,38 +532,48 @@
             // CONFIGURATION
             // -----------------------------------------
             const CONFIG = {
-                // Grid settings
-                TILE_SIZE: 20,
-                GRID_PADDING: 2,
+                // Grid
+                TILE_SIZE: 18,
+                GRID_PADDING: 1,
 
-                // Snake settings
+                // Snake
                 INITIAL_LENGTH: 3,
-                BASE_SPEED: 120,           // ms per move (satiated)
-                STARVING_SPEED: 60,        // ms per move (starving)
-                FRENZY_SPEED: 40,          // ms per move (frenzy)
+                BASE_SPEED: 110,
+                STARVING_SPEED: 55,
+                FRENZY_SPEED: 35,
 
                 // Metabolism
-                HUNGER_DECAY: 0.5,         // hunger increase per frame
-                HUNGER_RESTORE: 30,        // hunger decrease on eating
-                FRENZY_THRESHOLD: 90,      // hunger level for frenzy mode
+                HUNGER_DECAY: 0.4,
+                HUNGER_RESTORE: 35,
+                FRENZY_THRESHOLD: 90,
                 MAX_HUNGER: 100,
 
                 // Shedding
-                SHED_INTERVAL: 10,         // length multiple for shedding
-                WASTE_DECAY_TIME: 30000,   // 30 seconds to minimum size
-                WASTE_MIN_SIZE: 0.3,       // minimum scale of decayed waste
+                SHED_INTERVAL: 10,
+                WASTE_DECAY_TIME: 25000,
+                WASTE_MIN_SIZE: 0.25,
 
-                // Reactive prey
-                PREY_ESCAPE_RADIUS: 3,     // tiles
-                PREY_ESCAPE_CHANCE: 0.7,   // 70% chance to escape
+                // AGGRESSIVE Reactive prey
+                PREY_ESCAPE_RADIUS: 6,      // Increased from 3
+                PREY_ESCAPE_CHANCE: 0.95,   // Increased from 0.7
+                PREY_PANIC_RADIUS: 3,       // Extra panic zone
+                PREY_MULTI_JUMP_CHANCE: 0.4, // Chance to jump 2 tiles
+                PREY_COOLDOWN: 60,          // Reduced from 200ms
 
                 // Particles
-                MAX_PARTICLES: 100,
-                PARTICLE_LIFETIME: 1000,
+                MAX_PARTICLES: 150,
+                PARTICLE_LIFETIME: 1200,
+
+                // Ambient particles
+                AMBIENT_PARTICLES: 40,
 
                 // Nutrient aura
-                NUTRIENT_RADIUS: 4,        // tiles
-                FOOD_ATTRACT_CHANCE: 0.4,  // chance food spawns near waste
+                NUTRIENT_RADIUS: 4,
+                FOOD_ATTRACT_CHANCE: 0.35,
+
+                // Visual
+                TRAIL_LENGTH: 8,
+                GLOW_INTENSITY: 1.2,
             };
 
             // -----------------------------------------
@@ -450,27 +582,30 @@
             let canvas, ctx;
             let gameWidth, gameHeight;
             let gridWidth, gridHeight;
-            let gameLoop = null;
+            let centerX, centerY, dishRadius;
             let lastMoveTime = 0;
             let isPlaying = false;
 
-            // Snake state
+            // Snake
             let snake = [];
+            let snakeTrail = [];
             let direction = { x: 1, y: 0 };
             let nextDirection = { x: 1, y: 0 };
             let hunger = 50;
             let lastShedLength = 0;
-            let digestionQueue = [];  // {segment, progress}
+            let digestionQueue = [];
 
-            // Food state
+            // Food
             let food = null;
             let foodEscapeCooldown = 0;
+            let foodPanic = 0;  // Panic intensity
 
-            // Waste obstacles
-            let wasteObstacles = [];  // {x, y, toxic, createdAt, scale}
+            // Waste
+            let wasteObstacles = [];
 
             // Particles
             let particles = [];
+            let ambientParticles = [];
 
             // Score
             let score = 0;
@@ -479,6 +614,9 @@
             // Input
             let touchStartX = 0;
             let touchStartY = 0;
+
+            // Screen shake
+            let screenShake = 0;
 
             // -----------------------------------------
             // INITIALIZATION
@@ -490,19 +628,16 @@
                 resizeCanvas();
                 window.addEventListener('resize', resizeCanvas);
 
-                // Input handlers
                 document.addEventListener('keydown', handleKeyDown);
                 canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
                 canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 
-                // UI handlers
                 document.getElementById('start-btn').addEventListener('click', startGame);
                 document.getElementById('restart-btn').addEventListener('click', startGame);
 
-                // Update high score display
                 document.getElementById('high-score').textContent = highScore;
 
-                // Start render loop (for background animation)
+                initAmbientParticles();
                 requestAnimationFrame(renderLoop);
             }
 
@@ -510,14 +645,12 @@
                 const container = document.getElementById('game-container');
                 const petriDish = document.getElementById('petri-dish');
 
-                // Calculate size based on viewport
                 const maxSize = Math.min(
                     container.clientWidth - 40,
-                    container.clientHeight - 160,
-                    600
+                    container.clientHeight - 180,
+                    620
                 );
 
-                // Make it a circle
                 const size = Math.floor(maxSize / CONFIG.TILE_SIZE) * CONFIG.TILE_SIZE;
 
                 canvas.width = size;
@@ -528,16 +661,43 @@
                 gridWidth = Math.floor(size / CONFIG.TILE_SIZE);
                 gridHeight = Math.floor(size / CONFIG.TILE_SIZE);
 
+                centerX = gridWidth / 2;
+                centerY = gridHeight / 2;
+                dishRadius = Math.min(gridWidth, gridHeight) / 2 - CONFIG.GRID_PADDING;
+
                 petriDish.style.width = size + 'px';
                 petriDish.style.height = size + 'px';
+
+                initAmbientParticles();
+            }
+
+            function initAmbientParticles() {
+                ambientParticles = [];
+                for (let i = 0; i < CONFIG.AMBIENT_PARTICLES; i++) {
+                    ambientParticles.push(createAmbientParticle());
+                }
+            }
+
+            function createAmbientParticle() {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * dishRadius * CONFIG.TILE_SIZE * 0.9;
+                return {
+                    x: gameWidth / 2 + Math.cos(angle) * dist,
+                    y: gameHeight / 2 + Math.sin(angle) * dist,
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: (Math.random() - 0.5) * 0.3,
+                    size: 1 + Math.random() * 2,
+                    alpha: 0.1 + Math.random() * 0.3,
+                    pulse: Math.random() * Math.PI * 2
+                };
             }
 
             // -----------------------------------------
             // GAME CONTROL
             // -----------------------------------------
             function startGame() {
-                // Reset state
                 snake = [];
+                snakeTrail = [];
                 wasteObstacles = [];
                 particles = [];
                 digestionQueue = [];
@@ -546,19 +706,18 @@
                 lastShedLength = 0;
                 direction = { x: 1, y: 0 };
                 nextDirection = { x: 1, y: 0 };
+                screenShake = 0;
+                foodPanic = 0;
 
-                // Initialize snake in center
-                const centerX = Math.floor(gridWidth / 2);
-                const centerY = Math.floor(gridHeight / 2);
+                const cx = Math.floor(gridWidth / 2);
+                const cy = Math.floor(gridHeight / 2);
                 for (let i = 0; i < CONFIG.INITIAL_LENGTH; i++) {
-                    snake.push({ x: centerX - i, y: centerY });
+                    snake.push({ x: cx - i, y: cy });
                 }
 
-                // Spawn first food
                 spawnFood();
-
-                // Update UI
                 updateHUD();
+
                 document.getElementById('start-screen').classList.add('hidden');
                 document.getElementById('gameover-screen').classList.add('hidden');
                 document.getElementById('petri-dish').classList.remove('frenzy');
@@ -570,21 +729,23 @@
             function gameOver() {
                 isPlaying = false;
                 document.getElementById('petri-dish').classList.remove('frenzy');
+                screenShake = 15;
 
-                // Update high score
                 if (score > highScore) {
                     highScore = score;
                     localStorage.setItem('snakeQuestHighScore', highScore);
                 }
 
-                // Show game over screen
                 document.getElementById('final-score').textContent = score;
                 document.getElementById('high-score').textContent = highScore;
-                document.getElementById('gameover-screen').classList.remove('hidden');
+
+                setTimeout(() => {
+                    document.getElementById('gameover-screen').classList.remove('hidden');
+                }, 500);
             }
 
             // -----------------------------------------
-            // INPUT HANDLING
+            // INPUT
             // -----------------------------------------
             function handleKeyDown(e) {
                 if (!isPlaying) return;
@@ -610,53 +771,36 @@
 
             function handleTouchStart(e) {
                 e.preventDefault();
-                const touch = e.touches[0];
-                touchStartX = touch.clientX;
-                touchStartY = touch.clientY;
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
             }
 
             function handleTouchEnd(e) {
                 e.preventDefault();
                 if (!isPlaying) return;
 
-                const touch = e.changedTouches[0];
-                const dx = touch.clientX - touchStartX;
-                const dy = touch.clientY - touchStartY;
-                const minSwipe = 30;
+                const dx = e.changedTouches[0].clientX - touchStartX;
+                const dy = e.changedTouches[0].clientY - touchStartY;
 
-                if (Math.abs(dx) < minSwipe && Math.abs(dy) < minSwipe) return;
+                if (Math.abs(dx) < 30 && Math.abs(dy) < 30) return;
 
                 let newDir = null;
-
                 if (Math.abs(dx) > Math.abs(dy)) {
-                    // Horizontal swipe
-                    if (dx > 0 && direction.x !== -1) {
-                        newDir = { x: 1, y: 0 };
-                    } else if (dx < 0 && direction.x !== 1) {
-                        newDir = { x: -1, y: 0 };
-                    }
+                    if (dx > 0 && direction.x !== -1) newDir = { x: 1, y: 0 };
+                    else if (dx < 0 && direction.x !== 1) newDir = { x: -1, y: 0 };
                 } else {
-                    // Vertical swipe
-                    if (dy > 0 && direction.y !== -1) {
-                        newDir = { x: 0, y: 1 };
-                    } else if (dy < 0 && direction.y !== 1) {
-                        newDir = { x: 0, y: -1 };
-                    }
+                    if (dy > 0 && direction.y !== -1) newDir = { x: 0, y: 1 };
+                    else if (dy < 0 && direction.y !== 1) newDir = { x: 0, y: -1 };
                 }
 
-                if (newDir) {
-                    nextDirection = newDir;
-                }
+                if (newDir) nextDirection = newDir;
             }
 
             // -----------------------------------------
             // GAME LOGIC
             // -----------------------------------------
             function getCurrentSpeed() {
-                if (hunger >= CONFIG.FRENZY_THRESHOLD) {
-                    return CONFIG.FRENZY_SPEED;
-                }
-                // Interpolate between satiated and starving speed
+                if (hunger >= CONFIG.FRENZY_THRESHOLD) return CONFIG.FRENZY_SPEED;
                 const t = hunger / 100;
                 return CONFIG.BASE_SPEED - (CONFIG.BASE_SPEED - CONFIG.STARVING_SPEED) * t;
             }
@@ -664,10 +808,10 @@
             function update(deltaTime) {
                 if (!isPlaying) return;
 
-                // Update hunger
+                // Hunger
                 hunger = Math.min(CONFIG.MAX_HUNGER, hunger + CONFIG.HUNGER_DECAY * deltaTime / 1000);
 
-                // Frenzy mode visual
+                // Frenzy visual
                 const petriDish = document.getElementById('petri-dish');
                 if (hunger >= CONFIG.FRENZY_THRESHOLD) {
                     petriDish.classList.add('frenzy');
@@ -675,50 +819,55 @@
                     petriDish.classList.remove('frenzy');
                 }
 
-                // Update food escape cooldown
-                if (foodEscapeCooldown > 0) {
-                    foodEscapeCooldown -= deltaTime;
-                }
+                // Food escape cooldown
+                if (foodEscapeCooldown > 0) foodEscapeCooldown -= deltaTime;
 
-                // Update digestion
-                digestionQueue.forEach(d => {
-                    d.progress += deltaTime / 500; // 500ms to travel through
-                });
+                // Food panic decay
+                if (foodPanic > 0) foodPanic -= deltaTime / 500;
+
+                // Digestion
+                digestionQueue.forEach(d => d.progress += deltaTime / 400);
                 digestionQueue = digestionQueue.filter(d => d.progress < snake.length);
 
-                // Update waste decay
+                // Waste decay
                 const now = performance.now();
                 wasteObstacles.forEach(w => {
                     const age = now - w.createdAt;
-                    w.scale = Math.max(
-                        CONFIG.WASTE_MIN_SIZE,
-                        1 - (age / CONFIG.WASTE_DECAY_TIME) * (1 - CONFIG.WASTE_MIN_SIZE)
-                    );
+                    w.scale = Math.max(CONFIG.WASTE_MIN_SIZE, 1 - (age / CONFIG.WASTE_DECAY_TIME) * (1 - CONFIG.WASTE_MIN_SIZE));
                 });
 
-                // Update particles
+                // Particles
                 particles = particles.filter(p => {
                     p.life -= deltaTime;
                     p.x += p.vx * deltaTime / 16;
                     p.y += p.vy * deltaTime / 16;
-                    p.vx *= 0.98;
-                    p.vy *= 0.98;
+                    p.vx *= 0.97;
+                    p.vy *= 0.97;
                     return p.life > 0;
                 });
 
-                // Check if it's time to move
+                // Screen shake decay
+                if (screenShake > 0) screenShake *= 0.9;
+
+                // Move snake
                 const speed = getCurrentSpeed();
                 if (now - lastMoveTime >= speed) {
                     moveSnake();
                     lastMoveTime = now;
                 }
 
-                // React prey behavior
+                // AGGRESSIVE prey escape
                 if (food && foodEscapeCooldown <= 0) {
                     const head = snake[0];
                     const dist = Math.abs(head.x - food.x) + Math.abs(head.y - food.y);
-                    if (dist <= CONFIG.PREY_ESCAPE_RADIUS && Math.random() < CONFIG.PREY_ESCAPE_CHANCE) {
-                        escapePrey();
+
+                    if (dist <= CONFIG.PREY_PANIC_RADIUS) {
+                        // Panic mode - always escape, possibly multiple times
+                        foodPanic = 1;
+                        escapePrey(true);
+                        if (Math.random() < 0.5) escapePrey(true);
+                    } else if (dist <= CONFIG.PREY_ESCAPE_RADIUS && Math.random() < CONFIG.PREY_ESCAPE_CHANCE) {
+                        escapePrey(false);
                     }
                 }
 
@@ -729,26 +878,25 @@
                 direction = nextDirection;
 
                 const head = snake[0];
-                const newHead = {
+                let newHead = {
                     x: head.x + direction.x,
                     y: head.y + direction.y
                 };
 
-                // Check circular boundary (petri dish)
-                const centerX = gridWidth / 2;
-                const centerY = gridHeight / 2;
-                const radius = Math.min(gridWidth, gridHeight) / 2 - CONFIG.GRID_PADDING;
+                // ENDLESS: Wrap around edges
                 const distFromCenter = Math.sqrt(
                     Math.pow(newHead.x - centerX + 0.5, 2) +
                     Math.pow(newHead.y - centerY + 0.5, 2)
                 );
 
-                if (distFromCenter >= radius) {
-                    gameOver();
-                    return;
+                if (distFromCenter >= dishRadius) {
+                    // Wrap to opposite side
+                    const angle = Math.atan2(newHead.y - centerY, newHead.x - centerX);
+                    newHead.x = Math.floor(centerX - Math.cos(angle) * (dishRadius - 2));
+                    newHead.y = Math.floor(centerY - Math.sin(angle) * (dishRadius - 2));
                 }
 
-                // Check self collision
+                // Self collision
                 for (let i = 1; i < snake.length; i++) {
                     if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
                         gameOver();
@@ -756,56 +904,50 @@
                     }
                 }
 
-                // Check waste collision
+                // Waste collision
                 for (const waste of wasteObstacles) {
                     if (waste.x === newHead.x && waste.y === newHead.y) {
-                        // In frenzy mode, can phase through one waste (consume it)
                         if (hunger >= CONFIG.FRENZY_THRESHOLD && !waste.consumed) {
                             waste.consumed = true;
-                            spawnParticles(waste.x, waste.y, waste.toxic ? '#a855f7' : '#6b7280', 10);
+                            spawnParticles(waste.x, waste.y, waste.toxic ? '#cc44ff' : '#556677', 12);
+                            screenShake = 5;
                             continue;
                         }
                         gameOver();
                         return;
                     }
                 }
-                // Remove consumed waste
                 wasteObstacles = wasteObstacles.filter(w => !w.consumed);
 
-                // Add new head
+                // Add trail
+                snakeTrail.unshift({ x: head.x, y: head.y, age: 0 });
+                if (snakeTrail.length > CONFIG.TRAIL_LENGTH) snakeTrail.pop();
+                snakeTrail.forEach(t => t.age++);
+
+                // Add head
                 snake.unshift(newHead);
 
-                // Check food collision
+                // Food collision
                 if (food && newHead.x === food.x && newHead.y === food.y) {
                     eatFood();
                 } else {
                     snake.pop();
                 }
 
-                // Check for shedding
+                // Shedding
                 const currentLength = snake.length;
-                const shouldShed = Math.floor(currentLength / CONFIG.SHED_INTERVAL) >
-                                   Math.floor(lastShedLength / CONFIG.SHED_INTERVAL);
-
-                if (shouldShed && currentLength >= CONFIG.SHED_INTERVAL) {
-                    shedWaste();
+                if (Math.floor(currentLength / CONFIG.SHED_INTERVAL) > Math.floor(lastShedLength / CONFIG.SHED_INTERVAL)) {
+                    if (currentLength >= CONFIG.SHED_INTERVAL) shedWaste();
                 }
                 lastShedLength = currentLength;
             }
 
             function eatFood() {
                 score += 10;
-
-                // Restore hunger
                 hunger = Math.max(0, hunger - CONFIG.HUNGER_RESTORE);
-
-                // Add digestion bulge
                 digestionQueue.push({ segment: 0, progress: 0 });
-
-                // Spawn particles
-                spawnParticles(food.x, food.y, '#fbbf24', 15);
-
-                // Spawn new food
+                spawnParticles(food.x, food.y, '#ffcc00', 20);
+                screenShake = 8;
                 spawnFood();
             }
 
@@ -813,7 +955,7 @@
                 if (snake.length < 2) return;
 
                 const tail = snake.pop();
-                const isToxic = hunger > 50; // Toxic if hungry
+                const isToxic = hunger > 50;
 
                 wasteObstacles.push({
                     x: tail.x,
@@ -823,81 +965,112 @@
                     scale: 1
                 });
 
-                // Spawn shed particles
-                spawnParticles(tail.x, tail.y, isToxic ? '#a855f7' : '#6b7280', 12);
+                spawnParticles(tail.x, tail.y, isToxic ? '#cc44ff' : '#556677', 15);
             }
 
-            function escapePrey() {
+            function escapePrey(panic) {
                 if (!food) return;
 
                 const head = snake[0];
-                const dx = food.x - head.x;
-                const dy = food.y - head.y;
+                let dx = food.x - head.x;
+                let dy = food.y - head.y;
 
-                // Move in opposite direction from snake
-                let escapeDir = { x: 0, y: 0 };
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    escapeDir.x = dx > 0 ? 1 : -1;
+                // Determine escape direction
+                let escapeX = 0, escapeY = 0;
+
+                if (panic) {
+                    // Panic: move diagonally away + randomness
+                    escapeX = dx > 0 ? 1 : -1;
+                    escapeY = dy > 0 ? 1 : -1;
+                    if (Math.random() < 0.3) escapeX = (Math.random() < 0.5 ? 1 : -1);
+                    if (Math.random() < 0.3) escapeY = (Math.random() < 0.5 ? 1 : -1);
                 } else {
-                    escapeDir.y = dy > 0 ? 1 : -1;
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        escapeX = dx > 0 ? 1 : -1;
+                    } else {
+                        escapeY = dy > 0 ? 1 : -1;
+                    }
                 }
 
-                const newX = food.x + escapeDir.x;
-                const newY = food.y + escapeDir.y;
+                // Multi-tile jump
+                let jumpDist = 1;
+                if (panic || Math.random() < CONFIG.PREY_MULTI_JUMP_CHANCE) {
+                    jumpDist = 2;
+                }
 
-                // Check if escape position is valid
+                let newX = food.x + escapeX * jumpDist;
+                let newY = food.y + escapeY * jumpDist;
+
+                // Try the jump position
                 if (isValidFoodPosition(newX, newY)) {
                     food.x = newX;
                     food.y = newY;
-                    foodEscapeCooldown = 200; // Cooldown before next escape
+                    foodEscapeCooldown = CONFIG.PREY_COOLDOWN;
+                    spawnParticles(food.x, food.y, 'rgba(255, 200, 0, 0.5)', 3);
+                } else {
+                    // Try single tile
+                    newX = food.x + escapeX;
+                    newY = food.y + escapeY;
+                    if (isValidFoodPosition(newX, newY)) {
+                        food.x = newX;
+                        food.y = newY;
+                        foodEscapeCooldown = CONFIG.PREY_COOLDOWN;
+                    } else {
+                        // Try perpendicular
+                        const perpX = escapeY !== 0 ? (Math.random() < 0.5 ? 1 : -1) : 0;
+                        const perpY = escapeX !== 0 ? (Math.random() < 0.5 ? 1 : -1) : 0;
+                        newX = food.x + perpX;
+                        newY = food.y + perpY;
+                        if (isValidFoodPosition(newX, newY)) {
+                            food.x = newX;
+                            food.y = newY;
+                            foodEscapeCooldown = CONFIG.PREY_COOLDOWN;
+                        }
+                    }
                 }
             }
 
             function spawnFood() {
-                // Chance to spawn near waste (nutrient aura)
+                // Try near waste first
                 if (wasteObstacles.length > 0 && Math.random() < CONFIG.FOOD_ATTRACT_CHANCE) {
                     const waste = wasteObstacles[Math.floor(Math.random() * wasteObstacles.length)];
-                    for (let attempt = 0; attempt < 10; attempt++) {
+                    for (let i = 0; i < 15; i++) {
                         const angle = Math.random() * Math.PI * 2;
-                        const dist = 1 + Math.floor(Math.random() * CONFIG.NUTRIENT_RADIUS);
+                        const dist = 2 + Math.floor(Math.random() * CONFIG.NUTRIENT_RADIUS);
                         const x = waste.x + Math.round(Math.cos(angle) * dist);
                         const y = waste.y + Math.round(Math.sin(angle) * dist);
                         if (isValidFoodPosition(x, y)) {
                             food = { x, y };
+                            foodPanic = 0;
                             return;
                         }
                     }
                 }
 
                 // Random position
-                for (let attempt = 0; attempt < 100; attempt++) {
-                    const x = Math.floor(Math.random() * gridWidth);
-                    const y = Math.floor(Math.random() * gridHeight);
+                for (let i = 0; i < 100; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const dist = Math.random() * (dishRadius - 3);
+                    const x = Math.floor(centerX + Math.cos(angle) * dist);
+                    const y = Math.floor(centerY + Math.sin(angle) * dist);
                     if (isValidFoodPosition(x, y)) {
                         food = { x, y };
+                        foodPanic = 0;
                         return;
                     }
                 }
             }
 
             function isValidFoodPosition(x, y) {
-                // Check circular boundary
-                const centerX = gridWidth / 2;
-                const centerY = gridHeight / 2;
-                const radius = Math.min(gridWidth, gridHeight) / 2 - CONFIG.GRID_PADDING - 1;
                 const dist = Math.sqrt(Math.pow(x - centerX + 0.5, 2) + Math.pow(y - centerY + 0.5, 2));
-                if (dist >= radius) return false;
+                if (dist >= dishRadius - 1) return false;
 
-                // Check snake collision
                 for (const seg of snake) {
                     if (seg.x === x && seg.y === y) return false;
                 }
-
-                // Check waste collision
                 for (const waste of wasteObstacles) {
                     if (waste.x === x && waste.y === y) return false;
                 }
-
                 return true;
             }
 
@@ -907,14 +1080,14 @@
 
                 for (let i = 0; i < count && particles.length < CONFIG.MAX_PARTICLES; i++) {
                     const angle = Math.random() * Math.PI * 2;
-                    const speed = 1 + Math.random() * 3;
+                    const speed = 1.5 + Math.random() * 4;
                     particles.push({
                         x: px,
                         y: py,
                         vx: Math.cos(angle) * speed,
                         vy: Math.sin(angle) * speed,
                         color: color,
-                        size: 2 + Math.random() * 4,
+                        size: 2 + Math.random() * 5,
                         life: CONFIG.PARTICLE_LIFETIME
                     });
                 }
@@ -927,40 +1100,76 @@
                 const deltaTime = timestamp - (renderLoop.lastTime || timestamp);
                 renderLoop.lastTime = timestamp;
 
-                if (isPlaying) {
-                    update(deltaTime);
-                }
+                if (isPlaying) update(deltaTime);
+
+                // Update ambient particles
+                updateAmbientParticles(deltaTime);
 
                 render();
                 requestAnimationFrame(renderLoop);
             }
 
+            function updateAmbientParticles(dt) {
+                const cx = gameWidth / 2;
+                const cy = gameHeight / 2;
+                const maxDist = dishRadius * CONFIG.TILE_SIZE * 0.95;
+
+                ambientParticles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.pulse += dt / 1000;
+
+                    // Keep in bounds
+                    const dist = Math.sqrt(Math.pow(p.x - cx, 2) + Math.pow(p.y - cy, 2));
+                    if (dist > maxDist) {
+                        const angle = Math.atan2(p.y - cy, p.x - cx);
+                        p.x = cx + Math.cos(angle) * maxDist * 0.9;
+                        p.y = cy + Math.sin(angle) * maxDist * 0.9;
+                        p.vx = -p.vx;
+                        p.vy = -p.vy;
+                    }
+                });
+            }
+
             function render() {
-                // Clear canvas
-                ctx.fillStyle = '#0d1117';
+                // Apply screen shake
+                ctx.save();
+                if (screenShake > 0.5) {
+                    ctx.translate(
+                        (Math.random() - 0.5) * screenShake,
+                        (Math.random() - 0.5) * screenShake
+                    );
+                }
+
+                // Clear
+                ctx.fillStyle = '#0a0f18';
                 ctx.fillRect(0, 0, gameWidth, gameHeight);
 
-                // Draw grid
+                // Ambient glow
+                const ambientGlow = ctx.createRadialGradient(
+                    gameWidth / 2, gameHeight / 2, 0,
+                    gameWidth / 2, gameHeight / 2, gameWidth / 2
+                );
+                ambientGlow.addColorStop(0, 'rgba(0, 50, 80, 0.1)');
+                ambientGlow.addColorStop(0.5, 'rgba(0, 30, 50, 0.05)');
+                ambientGlow.addColorStop(1, 'transparent');
+                ctx.fillStyle = ambientGlow;
+                ctx.fillRect(0, 0, gameWidth, gameHeight);
+
                 drawGrid();
-
-                // Draw waste obstacles
+                drawAmbientParticles();
                 drawWaste();
-
-                // Draw food
+                drawSnakeTrail();
                 drawFood();
-
-                // Draw snake
                 drawSnake();
-
-                // Draw particles
                 drawParticles();
-
-                // Draw circular mask (petri dish edge)
                 drawPetriMask();
+
+                ctx.restore();
             }
 
             function drawGrid() {
-                ctx.strokeStyle = 'rgba(26, 32, 48, 0.5)';
+                ctx.strokeStyle = 'rgba(20, 30, 50, 0.4)';
                 ctx.lineWidth = 1;
 
                 for (let x = 0; x <= gridWidth; x++) {
@@ -969,7 +1178,6 @@
                     ctx.lineTo(x * CONFIG.TILE_SIZE, gameHeight);
                     ctx.stroke();
                 }
-
                 for (let y = 0; y <= gridHeight; y++) {
                     ctx.beginPath();
                     ctx.moveTo(0, y * CONFIG.TILE_SIZE);
@@ -978,8 +1186,19 @@
                 }
             }
 
+            function drawAmbientParticles() {
+                ambientParticles.forEach(p => {
+                    const pulseAlpha = p.alpha * (0.7 + Math.sin(p.pulse * 2) * 0.3);
+                    ctx.globalAlpha = pulseAlpha;
+                    ctx.fillStyle = '#4488aa';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+            }
+
             function drawPetriMask() {
-                // Create circular clip outside the dish
                 ctx.save();
                 ctx.globalCompositeOperation = 'destination-in';
                 ctx.beginPath();
@@ -988,90 +1207,120 @@
                 ctx.restore();
             }
 
+            function drawSnakeTrail() {
+                snakeTrail.forEach((t, i) => {
+                    const px = (t.x + 0.5) * CONFIG.TILE_SIZE;
+                    const py = (t.y + 0.5) * CONFIG.TILE_SIZE;
+                    const alpha = 0.15 * (1 - i / CONFIG.TRAIL_LENGTH);
+                    const size = CONFIG.TILE_SIZE * 0.3 * (1 - i / CONFIG.TRAIL_LENGTH);
+
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = '#00ffaa';
+                    ctx.beginPath();
+                    ctx.arc(px, py, size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+            }
+
             function drawSnake() {
                 const now = performance.now();
                 const isFrenzy = hunger >= CONFIG.FRENZY_THRESHOLD;
                 const isStarving = hunger > 60;
                 const isSatiated = hunger < 30;
 
-                // Calculate thickness based on hunger
-                const baseThickness = CONFIG.TILE_SIZE * 0.8;
+                const baseThickness = CONFIG.TILE_SIZE * 0.75;
                 let thickness = baseThickness;
                 if (isStarving) {
-                    thickness = baseThickness * (0.6 + Math.sin(now / 50) * 0.1); // Flickery
+                    thickness = baseThickness * (0.55 + Math.sin(now / 40) * 0.1);
                 } else if (isSatiated) {
-                    thickness = baseThickness * (1.1 + Math.sin(now / 200) * 0.05); // Pulsing
+                    thickness = baseThickness * (1.15 + Math.sin(now / 180) * 0.08);
                 }
 
-                // Draw body segments (back to front)
+                // Draw from tail to head
                 for (let i = snake.length - 1; i >= 0; i--) {
                     const seg = snake[i];
                     const px = (seg.x + 0.5) * CONFIG.TILE_SIZE;
                     const py = (seg.y + 0.5) * CONFIG.TILE_SIZE;
 
-                    // Check for digestion bulge
                     let bulge = 1;
                     for (const d of digestionQueue) {
                         if (Math.floor(d.progress) === i) {
-                            bulge = 1.3 - Math.abs(d.progress - Math.floor(d.progress) - 0.5) * 0.6;
+                            bulge = 1.4 - Math.abs(d.progress - Math.floor(d.progress) - 0.5) * 0.8;
                         }
                     }
 
-                    const segThickness = thickness * bulge * (1 - i / snake.length * 0.3);
+                    const taper = 1 - (i / snake.length) * 0.4;
+                    const segThickness = thickness * bulge * taper;
 
-                    // Segment color
-                    let color;
-                    if (i === 0) {
-                        color = isFrenzy ? '#ff6b6b' : '#00ffc8';
+                    // Color
+                    let hue, sat, light;
+                    if (isFrenzy) {
+                        hue = 0;
+                        sat = 80 - (i / snake.length) * 20;
+                        light = 60 - (i / snake.length) * 15;
+                    } else if (isStarving) {
+                        hue = 140 + (i / snake.length) * 20;
+                        sat = 70 - (i / snake.length) * 20;
+                        light = 55 - (i / snake.length) * 15;
                     } else {
-                        const t = i / snake.length;
-                        if (isFrenzy) {
-                            color = `rgb(${255 - t * 50}, ${107 - t * 50}, ${107 - t * 50})`;
-                        } else if (isStarving) {
-                            color = `rgb(${0 + t * 100}, ${212 - t * 80}, ${168 - t * 80})`;
-                        } else {
-                            color = `rgb(${0 + t * 50}, ${212 - t * 40}, ${168 - t * 40})`;
-                        }
+                        hue = 155;
+                        sat = 100 - (i / snake.length) * 30;
+                        light = 55 - (i / snake.length) * 15;
                     }
-
-                    // Draw segment with glow
-                    ctx.beginPath();
-                    ctx.arc(px, py, segThickness / 2, 0, Math.PI * 2);
+                    const color = `hsl(${hue}, ${sat}%, ${light}%)`;
 
                     // Glow
-                    const gradient = ctx.createRadialGradient(px, py, 0, px, py, segThickness);
-                    gradient.addColorStop(0, color);
-                    gradient.addColorStop(0.7, color);
-                    gradient.addColorStop(1, 'transparent');
-                    ctx.fillStyle = gradient;
+                    const glowGrad = ctx.createRadialGradient(px, py, 0, px, py, segThickness * 1.5);
+                    glowGrad.addColorStop(0, color);
+                    glowGrad.addColorStop(0.5, color);
+                    glowGrad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = glowGrad;
+                    ctx.beginPath();
+                    ctx.arc(px, py, segThickness * 1.5, 0, Math.PI * 2);
                     ctx.fill();
 
                     // Core
-                    ctx.beginPath();
-                    ctx.arc(px, py, segThickness / 2 * 0.8, 0, Math.PI * 2);
                     ctx.fillStyle = color;
+                    ctx.beginPath();
+                    ctx.arc(px, py, segThickness / 2, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Specular highlight (head only)
+                    // Head details
                     if (i === 0) {
+                        // Inner highlight
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
                         ctx.beginPath();
-                        ctx.arc(px - segThickness * 0.15, py - segThickness * 0.15, segThickness * 0.15, 0, Math.PI * 2);
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                        ctx.arc(px - segThickness * 0.15, py - segThickness * 0.15, segThickness * 0.18, 0, Math.PI * 2);
                         ctx.fill();
 
                         // Eyes
-                        const eyeOffset = segThickness * 0.2;
-                        const eyeSize = segThickness * 0.12;
-                        ctx.fillStyle = '#0a0e14';
+                        const eyeOffset = segThickness * 0.22;
+                        const eyeSize = segThickness * 0.14;
+                        ctx.fillStyle = '#000';
                         ctx.beginPath();
-                        ctx.arc(px + direction.x * eyeOffset + direction.y * eyeOffset * 0.5,
-                                py + direction.y * eyeOffset - direction.x * eyeOffset * 0.5,
-                                eyeSize, 0, Math.PI * 2);
+                        ctx.arc(
+                            px + direction.x * eyeOffset + direction.y * eyeOffset * 0.6,
+                            py + direction.y * eyeOffset - direction.x * eyeOffset * 0.6,
+                            eyeSize, 0, Math.PI * 2
+                        );
                         ctx.fill();
                         ctx.beginPath();
-                        ctx.arc(px + direction.x * eyeOffset - direction.y * eyeOffset * 0.5,
-                                py + direction.y * eyeOffset + direction.x * eyeOffset * 0.5,
-                                eyeSize, 0, Math.PI * 2);
+                        ctx.arc(
+                            px + direction.x * eyeOffset - direction.y * eyeOffset * 0.6,
+                            py + direction.y * eyeOffset + direction.x * eyeOffset * 0.6,
+                            eyeSize, 0, Math.PI * 2
+                        );
+                        ctx.fill();
+
+                        // Eye shine
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                        ctx.beginPath();
+                        ctx.arc(
+                            px + direction.x * eyeOffset + direction.y * eyeOffset * 0.6 - eyeSize * 0.3,
+                            py + direction.y * eyeOffset - direction.x * eyeOffset * 0.6 - eyeSize * 0.3,
+                            eyeSize * 0.35, 0, Math.PI * 2
+                        );
                         ctx.fill();
                     }
                 }
@@ -1082,98 +1331,124 @@
 
                 const px = (food.x + 0.5) * CONFIG.TILE_SIZE;
                 const py = (food.y + 0.5) * CONFIG.TILE_SIZE;
-                const size = CONFIG.TILE_SIZE * 0.4;
                 const now = performance.now();
 
-                // Pulsing glow
-                const pulse = 1 + Math.sin(now / 150) * 0.2;
+                const basePulse = 1 + Math.sin(now / 120) * 0.15;
+                const panicPulse = foodPanic > 0 ? (1 + Math.sin(now / 30) * 0.2 * foodPanic) : 1;
+                const pulse = basePulse * panicPulse;
+
+                const baseSize = CONFIG.TILE_SIZE * 0.4;
+                const size = baseSize * pulse;
+
+                // Panic shake
+                let offsetX = 0, offsetY = 0;
+                if (foodPanic > 0) {
+                    offsetX = (Math.random() - 0.5) * 4 * foodPanic;
+                    offsetY = (Math.random() - 0.5) * 4 * foodPanic;
+                }
+
+                const fx = px + offsetX;
+                const fy = py + offsetY;
 
                 // Outer glow
-                const glowGradient = ctx.createRadialGradient(px, py, 0, px, py, size * 2.5 * pulse);
-                glowGradient.addColorStop(0, 'rgba(251, 191, 36, 0.4)');
-                glowGradient.addColorStop(0.5, 'rgba(245, 158, 11, 0.2)');
-                glowGradient.addColorStop(1, 'transparent');
+                const glowGrad = ctx.createRadialGradient(fx, fy, 0, fx, fy, size * 3);
+                glowGrad.addColorStop(0, 'rgba(255, 200, 0, 0.5)');
+                glowGrad.addColorStop(0.3, 'rgba(255, 150, 0, 0.25)');
+                glowGrad.addColorStop(1, 'transparent');
+                ctx.fillStyle = glowGrad;
                 ctx.beginPath();
-                ctx.arc(px, py, size * 2.5 * pulse, 0, Math.PI * 2);
-                ctx.fillStyle = glowGradient;
+                ctx.arc(fx, fy, size * 3, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Cell body
+                // Cell membrane
+                const bodyGrad = ctx.createRadialGradient(fx - size * 0.25, fy - size * 0.25, 0, fx, fy, size);
+                bodyGrad.addColorStop(0, '#ffee99');
+                bodyGrad.addColorStop(0.4, '#ffcc00');
+                bodyGrad.addColorStop(1, '#ee9900');
+                ctx.fillStyle = bodyGrad;
                 ctx.beginPath();
-                ctx.arc(px, py, size * pulse, 0, Math.PI * 2);
-                const bodyGradient = ctx.createRadialGradient(px - size * 0.3, py - size * 0.3, 0, px, py, size);
-                bodyGradient.addColorStop(0, '#fde68a');
-                bodyGradient.addColorStop(0.5, '#fbbf24');
-                bodyGradient.addColorStop(1, '#f59e0b');
-                ctx.fillStyle = bodyGradient;
+                ctx.arc(fx, fy, size, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Nucleus
+                ctx.fillStyle = 'rgba(200, 100, 0, 0.6)';
                 ctx.beginPath();
-                ctx.arc(px + size * 0.1, py + size * 0.1, size * 0.35, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(180, 83, 9, 0.6)';
+                ctx.arc(fx + size * 0.1, fy + size * 0.1, size * 0.4, 0, Math.PI * 2);
                 ctx.fill();
 
                 // Specular
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
                 ctx.beginPath();
-                ctx.arc(px - size * 0.3, py - size * 0.3, size * 0.2, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.arc(fx - size * 0.3, fy - size * 0.3, size * 0.25, 0, Math.PI * 2);
                 ctx.fill();
+
+                // Panic indicator
+                if (foodPanic > 0.3) {
+                    ctx.strokeStyle = `rgba(255, 100, 100, ${foodPanic * 0.5})`;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([4, 4]);
+                    ctx.beginPath();
+                    ctx.arc(fx, fy, size * 1.8, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
             }
 
             function drawWaste() {
-                for (const waste of wasteObstacles) {
+                const now = performance.now();
+
+                wasteObstacles.forEach(waste => {
                     const px = (waste.x + 0.5) * CONFIG.TILE_SIZE;
                     const py = (waste.y + 0.5) * CONFIG.TILE_SIZE;
-                    const size = CONFIG.TILE_SIZE * 0.45 * waste.scale;
+                    const size = CONFIG.TILE_SIZE * 0.42 * waste.scale;
 
-                    const color = waste.toxic ? '#a855f7' : '#6b7280';
-                    const glowColor = waste.toxic ? 'rgba(168, 85, 247, 0.3)' : 'rgba(107, 114, 128, 0.2)';
+                    const baseColor = waste.toxic ? '#cc44ff' : '#445566';
+                    const glowColor = waste.toxic ? 'rgba(200, 100, 255, 0.3)' : 'rgba(70, 90, 110, 0.2)';
 
-                    // Nutrient aura (subtle glow around waste)
+                    // Nutrient aura
                     if (waste.scale > 0.5) {
-                        const auraGradient = ctx.createRadialGradient(px, py, size, px, py, CONFIG.NUTRIENT_RADIUS * CONFIG.TILE_SIZE);
-                        auraGradient.addColorStop(0, glowColor);
-                        auraGradient.addColorStop(1, 'transparent');
+                        const auraGrad = ctx.createRadialGradient(px, py, size, px, py, CONFIG.NUTRIENT_RADIUS * CONFIG.TILE_SIZE);
+                        auraGrad.addColorStop(0, glowColor);
+                        auraGrad.addColorStop(1, 'transparent');
+                        ctx.fillStyle = auraGrad;
                         ctx.beginPath();
                         ctx.arc(px, py, CONFIG.NUTRIENT_RADIUS * CONFIG.TILE_SIZE, 0, Math.PI * 2);
-                        ctx.fillStyle = auraGradient;
                         ctx.fill();
                     }
 
-                    // Waste body
+                    // Body
+                    const bodyGrad = ctx.createRadialGradient(px, py, 0, px, py, size);
+                    bodyGrad.addColorStop(0, baseColor);
+                    bodyGrad.addColorStop(1, waste.toxic ? '#8822cc' : '#334455');
+                    ctx.fillStyle = bodyGrad;
                     ctx.beginPath();
                     ctx.arc(px, py, size, 0, Math.PI * 2);
-                    const bodyGradient = ctx.createRadialGradient(px, py, 0, px, py, size);
-                    bodyGradient.addColorStop(0, color);
-                    bodyGradient.addColorStop(1, waste.toxic ? '#7c3aed' : '#4b5563');
-                    ctx.fillStyle = bodyGradient;
                     ctx.fill();
 
-                    // Rough texture
-                    ctx.globalAlpha = 0.3;
-                    for (let i = 0; i < 3; i++) {
-                        const angle = (i / 3) * Math.PI * 2;
+                    // Texture blobs
+                    ctx.globalAlpha = 0.4;
+                    for (let i = 0; i < 4; i++) {
+                        const angle = (i / 4) * Math.PI * 2 + now / 5000;
                         const bx = px + Math.cos(angle) * size * 0.5;
                         const by = py + Math.sin(angle) * size * 0.5;
+                        ctx.fillStyle = waste.toxic ? '#6611aa' : '#223344';
                         ctx.beginPath();
-                        ctx.arc(bx, by, size * 0.25, 0, Math.PI * 2);
-                        ctx.fillStyle = waste.toxic ? '#581c87' : '#374151';
+                        ctx.arc(bx, by, size * 0.22, 0, Math.PI * 2);
                         ctx.fill();
                     }
                     ctx.globalAlpha = 1;
-                }
+                });
             }
 
             function drawParticles() {
-                for (const p of particles) {
+                particles.forEach(p => {
                     const alpha = p.life / CONFIG.PARTICLE_LIFETIME;
                     ctx.globalAlpha = alpha;
+                    ctx.fillStyle = p.color;
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
-                    ctx.fillStyle = p.color;
                     ctx.fill();
-                }
+                });
                 ctx.globalAlpha = 1;
             }
 
@@ -1184,24 +1459,26 @@
                 document.getElementById('score-display').textContent = score;
                 document.getElementById('length-display').textContent = snake.length;
 
-                // Hunger bar
                 const hungerBar = document.getElementById('hunger-bar');
                 hungerBar.style.width = hunger + '%';
 
-                // Hunger status
                 const statusEl = document.getElementById('hunger-status');
                 if (hunger >= CONFIG.FRENZY_THRESHOLD) {
-                    statusEl.textContent = 'FRENZY!';
-                    statusEl.style.color = '#ef4444';
+                    statusEl.textContent = 'FRENZY';
+                    statusEl.style.color = '#ff4444';
+                    statusEl.style.textShadow = '0 0 10px rgba(255, 68, 68, 0.8)';
                 } else if (hunger > 60) {
                     statusEl.textContent = 'Starving';
-                    statusEl.style.color = '#f59e0b';
+                    statusEl.style.color = '#ff8844';
+                    statusEl.style.textShadow = 'none';
                 } else if (hunger < 30) {
                     statusEl.textContent = 'Satiated';
-                    statusEl.style.color = '#4ade80';
+                    statusEl.style.color = '#44ff88';
+                    statusEl.style.textShadow = 'none';
                 } else {
                     statusEl.textContent = 'Balanced';
-                    statusEl.style.color = '#64748b';
+                    statusEl.style.color = '#556688';
+                    statusEl.style.textShadow = 'none';
                 }
             }
 
