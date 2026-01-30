@@ -416,6 +416,62 @@
             text-transform: uppercase;
             letter-spacing: 0.15em;
             font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .mode-badge.ai-active {
+            background: rgba(255, 180, 0, 0.25);
+            border-color: rgba(255, 180, 0, 0.6);
+            color: #ffcc00;
+            box-shadow: 0 0 20px rgba(255, 180, 0, 0.3);
+            animation: aiPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes aiPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 180, 0, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(255, 180, 0, 0.5); }
+        }
+
+        /* AI Toggle Button */
+        #ai-toggle {
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 10px 24px;
+            background: rgba(100, 50, 255, 0.15);
+            border: 2px solid rgba(100, 50, 255, 0.4);
+            border-radius: 25px;
+            color: #aa88ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        #ai-toggle:hover {
+            background: rgba(100, 50, 255, 0.25);
+            border-color: rgba(100, 50, 255, 0.6);
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 0 20px rgba(100, 50, 255, 0.3);
+        }
+
+        #ai-toggle.active {
+            background: rgba(255, 180, 0, 0.2);
+            border-color: rgba(255, 180, 0, 0.6);
+            color: #ffcc00;
+            box-shadow: 0 0 25px rgba(255, 180, 0, 0.4);
+        }
+
+        #ai-toggle.active:hover {
+            background: rgba(255, 180, 0, 0.3);
+            box-shadow: 0 0 35px rgba(255, 180, 0, 0.5);
         }
 
         /* Responsive */
@@ -478,6 +534,8 @@
             </div>
             <div id="hunger-status">Balanced</div>
         </div>
+
+        <button id="ai-toggle">AI: OFF</button>
 
         <!-- Start Screen -->
         <div class="overlay-screen" id="start-screen">
@@ -618,6 +676,9 @@
             // Screen shake
             let screenShake = 0;
 
+            // AI Mode
+            let aiEnabled = false;
+
             // -----------------------------------------
             // INITIALIZATION
             // -----------------------------------------
@@ -634,6 +695,7 @@
 
                 document.getElementById('start-btn').addEventListener('click', startGame);
                 document.getElementById('restart-btn').addEventListener('click', startGame);
+                document.getElementById('ai-toggle').addEventListener('click', toggleAI);
 
                 document.getElementById('high-score').textContent = highScore;
 
@@ -745,6 +807,259 @@
             }
 
             // -----------------------------------------
+            // AI SYSTEM
+            // -----------------------------------------
+            function toggleAI() {
+                aiEnabled = !aiEnabled;
+                const btn = document.getElementById('ai-toggle');
+                const badge = document.querySelector('.mode-badge');
+
+                if (aiEnabled) {
+                    btn.textContent = 'AI: ON';
+                    btn.classList.add('active');
+                    badge.textContent = 'AI HUNTER';
+                    badge.classList.add('ai-active');
+                } else {
+                    btn.textContent = 'AI: OFF';
+                    btn.classList.remove('active');
+                    badge.textContent = 'Endless Mode';
+                    badge.classList.remove('ai-active');
+                }
+            }
+
+            function getAIMove() {
+                if (!food || snake.length === 0) return null;
+
+                const head = snake[0];
+                const directions = [
+                    { x: 0, y: -1 },  // up
+                    { x: 0, y: 1 },   // down
+                    { x: -1, y: 0 },  // left
+                    { x: 1, y: 0 }    // right
+                ];
+
+                // Don't reverse direction
+                const validDirs = directions.filter(d =>
+                    !(d.x === -direction.x && d.y === -direction.y)
+                );
+
+                // Try BFS to find path to food
+                const path = findPathToFood(head, food);
+                if (path && path.length > 0) {
+                    const nextPos = path[0];
+                    const moveDir = { x: nextPos.x - head.x, y: nextPos.y - head.y };
+
+                    // Handle wrap-around directions
+                    if (Math.abs(moveDir.x) > 1) moveDir.x = moveDir.x > 0 ? -1 : 1;
+                    if (Math.abs(moveDir.y) > 1) moveDir.y = moveDir.y > 0 ? -1 : 1;
+
+                    // Check if move is valid (not reversing)
+                    if (!(moveDir.x === -direction.x && moveDir.y === -direction.y)) {
+                        if (isSafeMove(head, moveDir)) {
+                            return moveDir;
+                        }
+                    }
+                }
+
+                // Fallback: find safest direction
+                let bestDir = null;
+                let bestScore = -Infinity;
+
+                for (const dir of validDirs) {
+                    if (isSafeMove(head, dir)) {
+                        const score = evaluateMove(head, dir);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestDir = dir;
+                        }
+                    }
+                }
+
+                // Last resort: any safe direction
+                if (!bestDir) {
+                    for (const dir of validDirs) {
+                        if (isSafeMove(head, dir)) {
+                            return dir;
+                        }
+                    }
+                }
+
+                return bestDir;
+            }
+
+            function findPathToFood(start, target) {
+                const queue = [{ x: start.x, y: start.y, path: [] }];
+                const visited = new Set();
+                visited.add(`${start.x},${start.y}`);
+
+                const directions = [
+                    { x: 0, y: -1 },
+                    { x: 0, y: 1 },
+                    { x: -1, y: 0 },
+                    { x: 1, y: 0 }
+                ];
+
+                let iterations = 0;
+                const maxIterations = 500;
+
+                while (queue.length > 0 && iterations < maxIterations) {
+                    iterations++;
+                    const current = queue.shift();
+
+                    if (current.x === target.x && current.y === target.y) {
+                        return current.path;
+                    }
+
+                    for (const dir of directions) {
+                        let newX = current.x + dir.x;
+                        let newY = current.y + dir.y;
+
+                        // Handle wrap-around
+                        const distFromCenter = Math.sqrt(
+                            Math.pow(newX - centerX + 0.5, 2) +
+                            Math.pow(newY - centerY + 0.5, 2)
+                        );
+
+                        if (distFromCenter >= dishRadius) {
+                            const angle = Math.atan2(newY - centerY, newX - centerX);
+                            newX = Math.floor(centerX - Math.cos(angle) * (dishRadius - 2));
+                            newY = Math.floor(centerY - Math.sin(angle) * (dishRadius - 2));
+                        }
+
+                        const key = `${newX},${newY}`;
+                        if (visited.has(key)) continue;
+
+                        if (!isPositionSafe(newX, newY, current.path.length)) continue;
+
+                        visited.add(key);
+                        queue.push({
+                            x: newX,
+                            y: newY,
+                            path: [...current.path, { x: newX, y: newY }]
+                        });
+                    }
+                }
+
+                return null;
+            }
+
+            function isPositionSafe(x, y, stepsAhead = 0) {
+                // Check bounds (circular dish)
+                const dist = Math.sqrt(Math.pow(x - centerX + 0.5, 2) + Math.pow(y - centerY + 0.5, 2));
+                if (dist >= dishRadius) return false;
+
+                // Check snake body (accounting for movement)
+                for (let i = 0; i < snake.length - stepsAhead; i++) {
+                    if (snake[i].x === x && snake[i].y === y) return false;
+                }
+
+                // Check waste
+                for (const waste of wasteObstacles) {
+                    if (waste.x === x && waste.y === y) {
+                        // Can pass through in frenzy
+                        if (hunger >= CONFIG.FRENZY_THRESHOLD) continue;
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            function isSafeMove(head, dir) {
+                let newX = head.x + dir.x;
+                let newY = head.y + dir.y;
+
+                // Handle wrap-around
+                const distFromCenter = Math.sqrt(
+                    Math.pow(newX - centerX + 0.5, 2) +
+                    Math.pow(newY - centerY + 0.5, 2)
+                );
+
+                if (distFromCenter >= dishRadius) {
+                    const angle = Math.atan2(newY - centerY, newX - centerX);
+                    newX = Math.floor(centerX - Math.cos(angle) * (dishRadius - 2));
+                    newY = Math.floor(centerY - Math.sin(angle) * (dishRadius - 2));
+                }
+
+                return isPositionSafe(newX, newY, 0);
+            }
+
+            function evaluateMove(head, dir) {
+                let newX = head.x + dir.x;
+                let newY = head.y + dir.y;
+
+                // Handle wrap-around
+                const distFromCenter = Math.sqrt(
+                    Math.pow(newX - centerX + 0.5, 2) +
+                    Math.pow(newY - centerY + 0.5, 2)
+                );
+
+                if (distFromCenter >= dishRadius) {
+                    const angle = Math.atan2(newY - centerY, newX - centerX);
+                    newX = Math.floor(centerX - Math.cos(angle) * (dishRadius - 2));
+                    newY = Math.floor(centerY - Math.sin(angle) * (dishRadius - 2));
+                }
+
+                let score = 0;
+
+                // Distance to food (closer is better)
+                if (food) {
+                    const distToFood = Math.abs(newX - food.x) + Math.abs(newY - food.y);
+                    score -= distToFood * 10;
+                }
+
+                // Count available spaces from new position (more is better)
+                const availableSpaces = countAvailableSpaces(newX, newY);
+                score += availableSpaces * 5;
+
+                // Prefer staying near center (safer)
+                const distToCenter = Math.sqrt(Math.pow(newX - centerX, 2) + Math.pow(newY - centerY, 2));
+                score -= distToCenter * 0.5;
+
+                // Avoid getting too close to own tail
+                const tail = snake[snake.length - 1];
+                const distToTail = Math.abs(newX - tail.x) + Math.abs(newY - tail.y);
+                if (distToTail < 2) score -= 20;
+
+                return score;
+            }
+
+            function countAvailableSpaces(startX, startY) {
+                const visited = new Set();
+                const queue = [{ x: startX, y: startY }];
+                visited.add(`${startX},${startY}`);
+
+                const directions = [
+                    { x: 0, y: -1 },
+                    { x: 0, y: 1 },
+                    { x: -1, y: 0 },
+                    { x: 1, y: 0 }
+                ];
+
+                let count = 0;
+                const maxCheck = 50;
+
+                while (queue.length > 0 && count < maxCheck) {
+                    const current = queue.shift();
+                    count++;
+
+                    for (const dir of directions) {
+                        const newX = current.x + dir.x;
+                        const newY = current.y + dir.y;
+                        const key = `${newX},${newY}`;
+
+                        if (visited.has(key)) continue;
+                        if (!isPositionSafe(newX, newY, 0)) continue;
+
+                        visited.add(key);
+                        queue.push({ x: newX, y: newY });
+                    }
+                }
+
+                return count;
+            }
+
+            // -----------------------------------------
             // INPUT
             // -----------------------------------------
             function handleKeyDown(e) {
@@ -848,6 +1163,14 @@
 
                 // Screen shake decay
                 if (screenShake > 0) screenShake *= 0.9;
+
+                // AI Control
+                if (aiEnabled) {
+                    const aiMove = getAIMove();
+                    if (aiMove) {
+                        nextDirection = aiMove;
+                    }
+                }
 
                 // Move snake
                 const speed = getCurrentSpeed();
