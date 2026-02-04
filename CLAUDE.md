@@ -20,6 +20,7 @@ Current Projects:
 - Starfield/ - Cockpit Flight Deck
 - Stellar-Web/ - Orbital Gravity Simulator
 - Snake-Quest/ - The Living Circuit
+- Physarum-Engine/ - Slime Mold Transport Network
 
 ## Commands
 

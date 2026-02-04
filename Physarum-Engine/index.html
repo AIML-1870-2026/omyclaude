@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physarum Transport Engine</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Canvas Area -->
+        <div class="canvas-wrapper">
+            <canvas id="simulation-canvas"></canvas>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <h1>Physarum</h1>
+                <p class="subtitle">Transport Network Simulation</p>
+            </div>
+
+            <!-- Stats Display -->
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-label">FPS</div>
+                    <div class="stat-value" id="fps-value">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Agents</div>
+                    <div class="stat-value" id="current-agents">50k</div>
+                </div>
+            </div>
+
+            <!-- Agent Controls -->
+            <div class="section-title">Agents</div>
+
+            <div class="control-group">
+                <label>
+                    <span>Agent Count</span>
+                    <span class="value" id="agent-count-value">50k</span>
+                </label>
+                <input type="range" id="agent-count"
+                       min="1000" max="100000" value="50000" step="1000">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>Move Speed</span>
+                    <span class="value" id="move-speed-value">1.5</span>
+                </label>
+                <input type="range" id="move-speed"
+                       min="0.5" max="5" value="1.5" step="0.1">
+            </div>
+
+            <!-- Sensor Controls -->
+            <div class="section-title">Sensors</div>
+
+            <div class="control-group">
+                <label>
+                    <span>Sensor Angle</span>
+                    <span class="value" id="sensor-angle-value">45°</span>
+                </label>
+                <input type="range" id="sensor-angle"
+                       min="10" max="90" value="45" step="1">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>Sensor Distance</span>
+                    <span class="value" id="sensor-distance-value">20px</span>
+                </label>
+                <input type="range" id="sensor-distance"
+                       min="5" max="50" value="20" step="1">
+            </div>
+
+            <!-- Trail Controls -->
+            <div class="section-title">Trail Map</div>
+
+            <div class="control-group">
+                <label>
+                    <span>Decay Rate</span>
+                    <span class="value" id="decay-rate-value">0.020</span>
+                </label>
+                <input type="range" id="decay-rate"
+                       min="0.001" max="0.1" value="0.02" step="0.001">
+            </div>
+
+            <div class="control-group">
+                <label>
+                    <span>Deposit Amount</span>
+                    <span class="value" id="deposit-amount-value">5</span>
+                </label>
+                <input type="range" id="deposit-amount"
+                       min="1" max="20" value="5" step="1">
+            </div>
+
+            <!-- Buttons -->
+            <div class="button-group">
+                <button id="pause-btn">Pause</button>
+                <button id="reset-btn">Reset</button>
+            </div>
+
+            <!-- Info -->
+            <div class="info">
+                <strong>Click on canvas</strong> to clear a region<br>
+                and observe dynamic rerouting
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts (order matters) -->
+    <script src="config.js"></script>
+    <script src="simulation.js"></script>
+    <script src="engine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
