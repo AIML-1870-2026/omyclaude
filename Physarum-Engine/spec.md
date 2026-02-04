@@ -56,6 +56,36 @@ The map is a 2D Float32Array.
 - UI event bindings for real-time parameter adjustment
 - FPS counter and stats display
 
+### Module 5: maze.js (Procedural Maze Generator)
+- Iterative recursive backtracking algorithm (stack-based)
+- Perfect maze generation (no loops, fully connected)
+- Upscaling to high-resolution binary collision mask
+- Configurable wall thickness and grid complexity
+- Dynamic regeneration with random seeds
+
+## Maze Integration
+
+### Algorithm: Recursive Backtracking
+1. Initialize grid with all walls active
+2. Pick random start cell, push to stack
+3. While stack not empty:
+   - Get current cell
+   - Find unvisited neighbors
+   - If neighbors exist: choose random, remove wall, push to stack
+   - Else: pop from stack (backtrack)
+
+### Collision Mask
+- The simulation runs at high resolution (800x800 px)
+- Maze logic runs on low resolution (e.g., 40x40 cells)
+- `getMask(width, height)` creates binary Uint8Array
+- Walls = 0 (blocked), Paths = 1 (open)
+- Wall thickness prevents tunneling (default: 8px)
+
+### Wall Collision Handling
+- Agents sense walls as repulsive (pheromone = 0)
+- Blocked movement causes bounce with random turn
+- Agents cannot deposit pheromones on walls
+
 ## Technical Specifications
 
 ### Technologies
@@ -86,6 +116,8 @@ The map is a 2D Float32Array.
 | Move Speed | 0.5-5 | 1.5 |
 | Decay Rate | 0.001-0.1 | 0.02 |
 | Deposit Amount | 1-20 | 5 |
+| Maze Complexity | 10x10-80x80 | 40x40 |
+| Wall Thickness | 2-20px | 8px |
 
 ## Emergent Phenomena
 
@@ -96,7 +128,8 @@ If implemented correctly, the simulation exhibits:
 
 ## Deliverables
 
-1. Modular JavaScript files (config.js, engine.js, simulation.js, app.js)
+1. Modular JavaScript files (config.js, maze.js, engine.js, simulation.js, app.js)
 2. Separate styles.css for all styling
 3. index.html with UI controls
-4. Deployed to GitHub Pages
+4. Procedural maze generation with collision detection
+5. Deployed to GitHub Pages

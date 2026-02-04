@@ -19,6 +19,11 @@ class PhysarumApp {
         this.trailMap = new TrailMap(this.width, this.height);
         this.engine = new PhysarumEngine(this.width, this.height, CONFIG.agents.count);
 
+        // Initialize maze (default: 40x40 cells, 8px wall thickness)
+        this.mazeMap = new MazeMap(40, 40, 8);
+        this.mazeMap.generate();
+        this.mazeMap.getMask(this.width, this.height);
+
         // Spawn agents in center circle for interesting initial pattern
         this.engine.initializeCircular(this.width / 2, this.height / 2, this.width / 4);
 
@@ -126,6 +131,72 @@ class PhysarumApp {
             const y = (e.clientY - rect.top) * (this.height / rect.height);
             this.trailMap.clearRegion(x, y, 50);
         });
+
+        // Maze toggle button
+        const mazeToggleBtn = document.getElementById('maze-toggle-btn');
+        if (mazeToggleBtn) {
+            mazeToggleBtn.addEventListener('click', () => this.toggleMaze());
+        }
+
+        // Maze regenerate button
+        const mazeRegenBtn = document.getElementById('maze-regen-btn');
+        if (mazeRegenBtn) {
+            mazeRegenBtn.addEventListener('click', () => this.regenerateMaze());
+        }
+
+        // Maze complexity slider
+        const mazeComplexitySlider = document.getElementById('maze-complexity');
+        const mazeComplexityValue = document.getElementById('maze-complexity-value');
+        if (mazeComplexitySlider) {
+            mazeComplexitySlider.addEventListener('input', (e) => {
+                const complexity = parseInt(e.target.value);
+                mazeComplexityValue.textContent = complexity + 'x' + complexity;
+                this.mazeMap.setDimensions(complexity, complexity);
+                this.mazeMap.getMask(this.width, this.height);
+                if (this.mazeMap.enabled) {
+                    this.trailMap.clear();
+                    this.engine.initializeInMaze(this.mazeMap);
+                }
+            });
+        }
+
+        // Wall thickness slider
+        const wallThicknessSlider = document.getElementById('wall-thickness');
+        const wallThicknessValue = document.getElementById('wall-thickness-value');
+        if (wallThicknessSlider) {
+            wallThicknessSlider.addEventListener('input', (e) => {
+                const thickness = parseInt(e.target.value);
+                wallThicknessValue.textContent = thickness + 'px';
+                this.mazeMap.setWallThickness(thickness);
+                this.mazeMap.getMask(this.width, this.height);
+            });
+        }
+    }
+
+    toggleMaze() {
+        const enabled = this.mazeMap.toggle();
+        const mazeToggleBtn = document.getElementById('maze-toggle-btn');
+        if (mazeToggleBtn) {
+            mazeToggleBtn.textContent = enabled ? 'Disable Maze' : 'Enable Maze';
+            mazeToggleBtn.classList.toggle('active', enabled);
+        }
+
+        // Reinitialize agents when maze is toggled
+        this.trailMap.clear();
+        if (enabled) {
+            this.engine.initializeInMaze(this.mazeMap);
+        } else {
+            this.engine.initializeCircular(this.width / 2, this.height / 2, this.width / 4);
+        }
+    }
+
+    regenerateMaze() {
+        this.mazeMap.reset();
+        this.mazeMap.getMask(this.width, this.height);
+        this.trailMap.clear();
+        if (this.mazeMap.enabled) {
+            this.engine.initializeInMaze(this.mazeMap);
+        }
     }
 
     formatNumber(num) {
@@ -139,8 +210,12 @@ class PhysarumApp {
         // Reset trail map
         this.trailMap.clear();
 
-        // Reinitialize agents
-        this.engine.initializeCircular(this.width / 2, this.height / 2, this.width / 4);
+        // Reinitialize agents (respect maze if enabled)
+        if (this.mazeMap.enabled) {
+            this.engine.initializeInMaze(this.mazeMap);
+        } else {
+            this.engine.initializeCircular(this.width / 2, this.height / 2, this.width / 4);
+        }
 
         // Reset sliders to default values
         this.resetSliders();
@@ -178,19 +253,46 @@ class PhysarumApp {
     }
 
     update() {
-        // Deposit pheromones at agent positions
-        this.engine.deposit(this.trailMap, this.trailMap.depositAmount);
+        // Deposit pheromones at agent positions (avoid walls)
+        this.engine.deposit(this.trailMap, this.trailMap.depositAmount, this.mazeMap);
 
         // Update trail map (diffusion + decay)
         this.trailMap.update();
 
-        // Update agents (sensing + steering + movement)
-        this.engine.update(this.trailMap);
+        // Update agents (sensing + steering + movement + wall collision)
+        this.engine.update(this.trailMap, this.mazeMap);
     }
 
     render() {
         // Render trail map to canvas
         this.trailMap.render(this.ctx);
+
+        // Overlay maze walls if enabled
+        if (this.mazeMap.enabled) {
+            this.renderMazeOverlay();
+        }
+    }
+
+    renderMazeOverlay() {
+        if (!this.mazeMap.mask) return;
+
+        const imageData = this.ctx.getImageData(0, 0, this.width, this.height);
+        const pixels = imageData.data;
+        const mask = this.mazeMap.mask;
+
+        // Darken wall pixels
+        for (let i = 0; i < mask.length; i++) {
+            if (mask[i] === 0) {
+                const pixelIdx = i * 4;
+                // Dark wall color
+                pixels[pixelIdx] = 25;      // R
+                pixels[pixelIdx + 1] = 25;  // G
+                pixels[pixelIdx + 2] = 35;  // B
+                // Alpha stays 255
+            }
+        }
+
+        this.ctx.putImageData(imageData, 0, 0);
     }
 
     updateFPS() {

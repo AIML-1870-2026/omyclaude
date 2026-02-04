@@ -10,6 +10,7 @@ A high-performance bio-simulation of Physarum polycephalum (slime mold) demonstr
 
 - **50,000+ Agents**: Vectorized simulation using TypedArrays for high performance
 - **Emergent Networks**: Watch slime mold-like transport networks self-organize
+- **Procedural Mazes**: Perfect maze generation with wall collision physics
 - **Real-time Controls**: Adjust all simulation parameters on the fly
 - **Bio-fluorescence Visualization**: Beautiful green glow effect mimicking biological imaging
 - **Dynamic Rerouting**: Click to clear regions and observe network rebuilding
@@ -36,6 +37,10 @@ This simple ruleset produces complex, self-organizing transport networks.
 | Sensor Distance | How far ahead agents sense |
 | Decay Rate | How quickly pheromones fade |
 | Deposit Amount | Pheromone strength per agent |
+| Enable Maze | Toggle procedural maze overlay |
+| New Maze | Generate a new random maze |
+| Maze Complexity | Grid size (10x10 to 80x80) |
+| Wall Thickness | Width of maze walls in pixels |
 
 ## File Structure
 
@@ -44,6 +49,7 @@ Physarum-Engine/
 ├── index.html      # HTML structure and UI
 ├── styles.css      # All styling
 ├── config.js       # Simulation constants
+├── maze.js         # Procedural maze generator (MazeMap class)
 ├── engine.js       # Agent simulation (PhysarumEngine class)
 ├── simulation.js   # Trail map (TrailMap class)
 ├── app.js          # Main application loop
@@ -73,6 +79,7 @@ Observe these phenomena in the simulation:
 - **Branch Merging**: Thin trails consolidate into major pathways
 - **Shortest Paths**: Networks naturally optimize for efficiency
 - **Adaptive Rerouting**: Click to disrupt and watch the network rebuild
+- **Maze Solving**: Enable maze mode to watch agents find paths through corridors
 
 ## Course
 

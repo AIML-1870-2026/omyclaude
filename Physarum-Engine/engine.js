@@ -47,6 +47,41 @@ class PhysarumEngine {
         }
     }
 
+    /**
+     * Initialize agents avoiding maze walls
+     * Places agents only in open paths
+     */
+    initializeInMaze(mazeMap) {
+        if (!mazeMap || !mazeMap.mask) {
+            this.initializeAgents();
+            return;
+        }
+
+        let placed = 0;
+        const maxAttempts = this.agentCount * 10;
+        let attempts = 0;
+
+        while (placed < this.agentCount && attempts < maxAttempts) {
+            const x = Math.random() * this.width;
+            const y = Math.random() * this.height;
+
+            if (!mazeMap.isBlocked(x, y)) {
+                this.positionsX[placed] = x;
+                this.positionsY[placed] = y;
+                this.headings[placed] = Math.random() * Math.PI * 2;
+                placed++;
+            }
+            attempts++;
+        }
+
+        // Fill remaining with random positions if we couldn't place them all
+        for (let i = placed; i < this.agentCount; i++) {
+            this.positionsX[i] = Math.random() * this.width;
+            this.positionsY[i] = Math.random() * this.height;
+            this.headings[i] = Math.random() * Math.PI * 2;
+        }
+    }
+
     // Resize agent arrays (when agent count changes)
     resize(newCount) {
         if (newCount === this.agentCount) return;
@@ -109,11 +144,14 @@ class PhysarumEngine {
     /**
      * Update all agents - sensing, steering, and movement
      * This is the main simulation step
+     * @param {TrailMap} trailMap - The pheromone trail map
+     * @param {MazeMap} mazeMap - Optional maze for collision detection
      */
-    update(trailMap) {
+    update(trailMap, mazeMap = null) {
         const cos = Math.cos;
         const sin = Math.sin;
         const PI2 = Math.PI * 2;
+        const useMaze = mazeMap && mazeMap.enabled && mazeMap.mask;
 
         for (let i = 0; i < this.agentCount; i++) {
             const x = this.positionsX[i];
@@ -137,9 +175,16 @@ class PhysarumEngine {
             const ry = y + sinRight * this.sensorDistance;
 
             // Sample trail at sensor positions
-            const centerVal = this.sampleTrail(trailMap, cx, cy);
-            const leftVal = this.sampleTrail(trailMap, lx, ly);
-            const rightVal = this.sampleTrail(trailMap, rx, ry);
+            let centerVal = this.sampleTrail(trailMap, cx, cy);
+            let leftVal = this.sampleTrail(trailMap, lx, ly);
+            let rightVal = this.sampleTrail(trailMap, rx, ry);
+
+            // If maze is enabled, treat walls as repulsive (set sensor to 0)
+            if (useMaze) {
+                if (mazeMap.isBlocked(cx, cy)) centerVal = 0;
+                if (mazeMap.isBlocked(lx, ly)) leftVal = 0;
+                if (mazeMap.isBlocked(rx, ry)) rightVal = 0;
+            }
 
             // Steering logic based on sensor values
             let newTheta = theta;
@@ -161,16 +206,33 @@ class PhysarumEngine {
 
             // Normalize heading to [0, 2π]
             newTheta = ((newTheta % PI2) + PI2) % PI2;
-            this.headings[i] = newTheta;
 
-            // Move forward
+            // Calculate new position
             let newX = x + cos(newTheta) * this.moveSpeed;
             let newY = y + sin(newTheta) * this.moveSpeed;
 
-            // Toroidal wrapping
-            newX = ((newX % this.width) + this.width) % this.width;
-            newY = ((newY % this.height) + this.height) % this.height;
+            // Handle maze collision
+            if (useMaze) {
+                // Clamp to bounds (no toroidal wrapping with maze)
+                newX = Math.max(0, Math.min(this.width - 1, newX));
+                newY = Math.max(0, Math.min(this.height - 1, newY));
 
+                // Check if new position is blocked
+                if (mazeMap.isBlocked(newX, newY)) {
+                    // Bounce: reverse direction with random variation
+                    newTheta = newTheta + Math.PI + (Math.random() - 0.5) * 0.5;
+                    newTheta = ((newTheta % PI2) + PI2) % PI2;
+                    // Stay at current position
+                    newX = x;
+                    newY = y;
+                }
+            } else {
+                // Toroidal wrapping (no maze)
+                newX = ((newX % this.width) + this.width) % this.width;
+                newY = ((newY % this.height) + this.height) % this.height;
+            }
+
+            this.headings[i] = newTheta;
             this.positionsX[i] = newX;
             this.positionsY[i] = newY;
         }
@@ -178,11 +240,22 @@ class PhysarumEngine {
 
     /**
      * Deposit pheromones on the trail map at agent positions
+     * @param {TrailMap} trailMap - The pheromone trail map
+     * @param {number} amount - Amount to deposit
+     * @param {MazeMap} mazeMap - Optional maze (don't deposit on walls)
      */
-    deposit(trailMap, amount) {
+    deposit(trailMap, amount, mazeMap = null) {
+        const useMaze = mazeMap && mazeMap.enabled && mazeMap.mask;
+
         for (let i = 0; i < this.agentCount; i++) {
             const x = Math.floor(this.positionsX[i]);
             const y = Math.floor(this.positionsY[i]);
+
+            // Don't deposit on walls
+            if (useMaze && mazeMap.isBlocked(x, y)) {
+                continue;
+            }
+
             const idx = y * this.width + x;
             trailMap.data[idx] += amount;
         }

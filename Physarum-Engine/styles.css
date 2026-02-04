@@ -218,6 +218,36 @@ button {
     box-shadow: 0 0 15px rgba(0, 255, 136, 0.4);
 }
 
+/* Maze buttons */
+#maze-toggle-btn {
+    background: linear-gradient(135deg, #4466ff 0%, #2244cc 100%);
+    color: white;
+}
+
+#maze-toggle-btn:hover {
+    background: linear-gradient(135deg, #5577ff 0%, #3355dd 100%);
+    box-shadow: 0 0 15px rgba(68, 102, 255, 0.4);
+}
+
+#maze-toggle-btn.active {
+    background: linear-gradient(135deg, #ff8844 0%, #cc5522 100%);
+}
+
+#maze-toggle-btn.active:hover {
+    background: linear-gradient(135deg, #ff9955 0%, #dd6633 100%);
+    box-shadow: 0 0 15px rgba(255, 136, 68, 0.4);
+}
+
+#maze-regen-btn {
+    background: linear-gradient(135deg, #8844ff 0%, #5522cc 100%);
+    color: white;
+}
+
+#maze-regen-btn:hover {
+    background: linear-gradient(135deg, #9955ff 0%, #6633dd 100%);
+    box-shadow: 0 0 15px rgba(136, 68, 255, 0.4);
+}
+
 /* Info section */
 .info {
     margin-top: auto;
