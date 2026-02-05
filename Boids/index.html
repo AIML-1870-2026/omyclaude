@@ -174,6 +174,7 @@
         // ============================================================
         const CONFIG = {
             boidCount: 1500,
+            maxBoidCount: 10000,
             boundarySize: 100,
 
             // Boid behavior weights
@@ -766,8 +767,81 @@
                 this.scene.add(this.predatorGlow);
             }
 
+            addBoids(count) {
+                const newCount = Math.min(this.boids.length + count, CONFIG.maxBoidCount);
+                const toAdd = newCount - this.boids.length;
+
+                for (let i = 0; i < toAdd; i++) {
+                    this.boids.push(new Boid(CONFIG.boundarySize));
+                }
+
+                this.rebuildInstancedMesh();
+                this.updateBoidCountDisplay();
+            }
+
+            removeBoids(count) {
+                const newCount = Math.max(this.boids.length - count, 50);
+                this.boids.length = newCount;
+                this.rebuildInstancedMesh();
+                this.updateBoidCountDisplay();
+            }
+
+            rebuildInstancedMesh() {
+                // Remove old mesh
+                this.scene.remove(this.instancedMesh);
+                this.instancedMesh.dispose();
+
+                // Create new instanced mesh with updated count
+                const coneGeometry = new THREE.ConeGeometry(0.5, 2.5, 4);
+                coneGeometry.rotateX(Math.PI / 2);
+
+                const material = new THREE.MeshStandardMaterial({
+                    color: 0x00ffff,
+                    emissive: 0x00ffff,
+                    emissiveIntensity: CONFIG.glowIntensity,
+                    metalness: 0.8,
+                    roughness: 0.2
+                });
+
+                this.instancedMesh = new THREE.InstancedMesh(
+                    coneGeometry,
+                    material,
+                    this.boids.length
+                );
+                this.scene.add(this.instancedMesh);
+
+                // Update trail indices
+                const trailCount = Math.min(200, this.boids.length);
+                this.trailBoidIndices = [];
+                for (let i = 0; i < trailCount; i++) {
+                    this.trailBoidIndices.push(Math.floor(i * this.boids.length / trailCount));
+                }
+            }
+
+            updateBoidCountDisplay() {
+                document.getElementById('boid-count').textContent = `Boids: ${this.boids.length}`;
+                if (this.gui) {
+                    this.gui.controllersRecursive().forEach(c => c.updateDisplay());
+                }
+            }
+
             initGUI() {
                 const gui = new GUI({ title: 'Boid DNA' });
+
+                // Population controls at top
+                const popFolder = gui.addFolder('Population');
+                const popControls = {
+                    count: this.boids.length,
+                    add100: () => this.addBoids(100),
+                    add500: () => this.addBoids(500),
+                    remove100: () => this.removeBoids(100),
+                    remove500: () => this.removeBoids(500)
+                };
+                popFolder.add(popControls, 'add100').name('+ 100 Boids');
+                popFolder.add(popControls, 'add500').name('+ 500 Boids');
+                popFolder.add(popControls, 'remove100').name('- 100 Boids');
+                popFolder.add(popControls, 'remove500').name('- 500 Boids');
+                popFolder.open();
 
                 const behaviorFolder = gui.addFolder('Behavior');
                 behaviorFolder.add(CONFIG, 'separation', 0, 5, 0.1).name('Separation');
