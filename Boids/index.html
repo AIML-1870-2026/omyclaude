@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Quest: 3D Boids & Emergence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 14px;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+        #info h1 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #00d4ff;
+        }
+        #info .stats {
+            font-family: monospace;
+            color: #aaa;
+        }
+        #presets {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        .preset-btn {
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #444;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .preset-btn:hover {
+            background: rgba(50,50,50,0.9);
+            border-color: #00d4ff;
+        }
+        .preset-btn.active {
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0,212,255,0.5);
+        }
+        #boid-view-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00d4ff;
+            font-size: 12px;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>🦅 Code Quest: Boids</h1>
+        <div class="stats">
+            <div id="fps">FPS: --</div>
+            <div id="boid-count">Boids: --</div>
+        </div>
+    </div>
+
+    <div id="presets">
+        <button class="preset-btn" data-preset="school">🐟 The School</button>
+        <button class="preset-btn" data-preset="swarm">🦟 The Swarm</button>
+        <button class="preset-btn" data-preset="chaos">💨 Chaos</button>
+        <button class="preset-btn" data-preset="boidview">👁️ Boid's Eye</button>
+    </div>
+
+    <div id="boid-view-indicator">🎥 Riding Boid #<span id="boid-index">0</span> - Click anywhere to exit</div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+        // ============================================================
+        // CONFIGURATION
+        // ============================================================
+        const CONFIG = {
+            boidCount: 1500,
+            boundarySize: 100,
+
+            // Boid behavior weights
+            separation: 1.5,
+            alignment: 1.0,
+            cohesion: 1.0,
+
+            // Perception
+            visualRadius: 10,
+            separationRadius: 5,
+
+            // Movement
+            maxSpeed: 2.0,
+            maxForce: 0.05,
+
+            // Predator
+            predatorEnabled: true,
+            predatorSpeed: 1.8,
+            fleeRadius: 25,
+            fleeWeight: 3.0,
+
+            // Visual
+            colorMode: 'velocity', // 'velocity' or 'position'
+            fogDensity: 0.008,
+
+            // Spatial partitioning
+            gridCellSize: 15,
+
+            // Camera
+            boidViewMode: false,
+            followBoidIndex: 0
+        };
+
+        // ============================================================
+        // SPATIAL GRID - O(N) neighbor lookup instead of O(N²)
+        // ============================================================
+        class SpatialGrid {
+            constructor(cellSize, boundarySize) {
+                this.cellSize = cellSize;
+                this.boundarySize = boundarySize;
+                this.gridSize = Math.ceil((boundarySize * 2) / cellSize);
+                this.cells = new Map();
+            }
+
+            clear() {
+                this.cells.clear();
+            }
+
+            getKey(x, y, z) {
+                const cx = Math.floor((x + this.boundarySize) / this.cellSize);
+                const cy = Math.floor((y + this.boundarySize) / this.cellSize);
+                const cz = Math.floor((z + this.boundarySize) / this.cellSize);
+                return `${cx},${cy},${cz}`;
+            }
+
+            insert(boid) {
+                const key = this.getKey(boid.position.x, boid.position.y, boid.position.z);
+                if (!this.cells.has(key)) {
+                    this.cells.set(key, []);
+                }
+                this.cells.get(key).push(boid);
+            }
+
+            getNeighborKeys(x, y, z) {
+                const keys = [];
+                const cx = Math.floor((x + this.boundarySize) / this.cellSize);
+                const cy = Math.floor((y + this.boundarySize) / this.cellSize);
+                const cz = Math.floor((z + this.boundarySize) / this.cellSize);
+
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dz = -1; dz <= 1; dz++) {
+                            keys.push(`${cx + dx},${cy + dy},${cz + dz}`);
+                        }
+                    }
+                }
+                return keys;
+            }
+
+            getNeighbors(boid, radius) {
+                const neighbors = [];
+                const keys = this.getNeighborKeys(boid.position.x, boid.position.y, boid.position.z);
+                const radiusSq = radius * radius;
+
+                for (const key of keys) {
+                    const cell = this.cells.get(key);
+                    if (cell) {
+                        for (const other of cell) {
+                            if (other !== boid) {
+                                const distSq = boid.position.distanceToSquared(other.position);
+                                if (distSq < radiusSq) {
+                                    neighbors.push(other);
+                                }
+                            }
+                        }
+                    }
+                }
+                return neighbors;
+            }
+        }
+
+        // ============================================================
+        // BOID CLASS
+        // ============================================================
+        class Boid {
+            constructor(boundarySize) {
+                this.position = new THREE.Vector3(
+                    (Math.random() - 0.5) * boundarySize * 1.5,
+                    (Math.random() - 0.5) * boundarySize * 1.5,
+                    (Math.random() - 0.5) * boundarySize * 1.5
+                );
+                this.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2
+                );
+                this.acceleration = new THREE.Vector3();
+                this.boundarySize = boundarySize;
+            }
+
+            applyForce(force) {
+                this.acceleration.add(force);
+            }
+
+            // SEPARATION: Steer away from nearby neighbors
+            separate(neighbors, separationRadius) {
+                const steer = new THREE.Vector3();
+                let count = 0;
+
+                for (const other of neighbors) {
+                    const d = this.position.distanceTo(other.position);
+                    if (d > 0 && d < separationRadius) {
+                        const diff = new THREE.Vector3().subVectors(this.position, other.position);
+                        diff.normalize();
+                        diff.divideScalar(d); // Weight by distance
+                        steer.add(diff);
+                        count++;
+                    }
+                }
+
+                if (count > 0) {
+                    steer.divideScalar(count);
+                    steer.normalize();
+                    steer.multiplyScalar(CONFIG.maxSpeed);
+                    steer.sub(this.velocity);
+                    steer.clampLength(0, CONFIG.maxForce);
+                }
+                return steer;
+            }
+
+            // ALIGNMENT: Steer towards average heading of neighbors
+            align(neighbors) {
+                const avgVelocity = new THREE.Vector3();
+
+                if (neighbors.length === 0) return avgVelocity;
+
+                for (const other of neighbors) {
+                    avgVelocity.add(other.velocity);
+                }
+                avgVelocity.divideScalar(neighbors.length);
+                avgVelocity.normalize();
+                avgVelocity.multiplyScalar(CONFIG.maxSpeed);
+
+                const steer = new THREE.Vector3().subVectors(avgVelocity, this.velocity);
+                steer.clampLength(0, CONFIG.maxForce);
+                return steer;
+            }
+
+            // COHESION: Steer towards center of mass of neighbors
+            cohere(neighbors) {
+                const centerOfMass = new THREE.Vector3();
+
+                if (neighbors.length === 0) return centerOfMass;
+
+                for (const other of neighbors) {
+                    centerOfMass.add(other.position);
+                }
+                centerOfMass.divideScalar(neighbors.length);
+
+                return this.seek(centerOfMass);
+            }
+
+            // FLEE: Steer away from predator
+            flee(predatorPosition, fleeRadius) {
+                const d = this.position.distanceTo(predatorPosition);
+                if (d < fleeRadius) {
+                    const desired = new THREE.Vector3().subVectors(this.position, predatorPosition);
+                    desired.normalize();
+                    desired.multiplyScalar(CONFIG.maxSpeed * 1.5); // Panic speed boost
+
+                    const steer = new THREE.Vector3().subVectors(desired, this.velocity);
+                    steer.clampLength(0, CONFIG.maxForce * 2);
+
+                    // Stronger flee when closer
+                    const urgency = 1 - (d / fleeRadius);
+                    steer.multiplyScalar(1 + urgency * 2);
+
+                    return steer;
+                }
+                return new THREE.Vector3();
+            }
+
+            // Seek a target position
+            seek(target) {
+                const desired = new THREE.Vector3().subVectors(target, this.position);
+                desired.normalize();
+                desired.multiplyScalar(CONFIG.maxSpeed);
+
+                const steer = new THREE.Vector3().subVectors(desired, this.velocity);
+                steer.clampLength(0, CONFIG.maxForce);
+                return steer;
+            }
+
+            // Fish tank boundary - soft steering
+            boundaries() {
+                const margin = 20;
+                const turnForce = 0.5;
+                const steer = new THREE.Vector3();
+                const bound = this.boundarySize;
+
+                if (this.position.x > bound - margin) steer.x = -turnForce;
+                if (this.position.x < -bound + margin) steer.x = turnForce;
+                if (this.position.y > bound - margin) steer.y = -turnForce;
+                if (this.position.y < -bound + margin) steer.y = turnForce;
+                if (this.position.z > bound - margin) steer.z = -turnForce;
+                if (this.position.z < -bound + margin) steer.z = turnForce;
+
+                return steer;
+            }
+
+            flock(neighbors, predatorPosition) {
+                const separation = this.separate(neighbors, CONFIG.separationRadius);
+                const alignment = this.align(neighbors);
+                const cohesion = this.cohere(neighbors);
+                const boundary = this.boundaries();
+
+                separation.multiplyScalar(CONFIG.separation);
+                alignment.multiplyScalar(CONFIG.alignment);
+                cohesion.multiplyScalar(CONFIG.cohesion);
+
+                this.applyForce(separation);
+                this.applyForce(alignment);
+                this.applyForce(cohesion);
+                this.applyForce(boundary);
+
+                // Flee from predator
+                if (CONFIG.predatorEnabled && predatorPosition) {
+                    const flee = this.flee(predatorPosition, CONFIG.fleeRadius);
+                    flee.multiplyScalar(CONFIG.fleeWeight);
+                    this.applyForce(flee);
+                }
+            }
+
+            update() {
+                this.velocity.add(this.acceleration);
+                this.velocity.clampLength(0, CONFIG.maxSpeed);
+                this.position.add(this.velocity);
+                this.acceleration.set(0, 0, 0);
+            }
+        }
+
+        // ============================================================
+        // PREDATOR CLASS
+        // ============================================================
+        class Predator {
+            constructor(boundarySize) {
+                this.position = new THREE.Vector3(0, 0, 0);
+                this.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 2
+                );
+                this.boundarySize = boundarySize;
+            }
+
+            chase(boids) {
+                // Find center of mass of the flock
+                const center = new THREE.Vector3();
+                for (const boid of boids) {
+                    center.add(boid.position);
+                }
+                center.divideScalar(boids.length);
+
+                // Steer towards center
+                const desired = new THREE.Vector3().subVectors(center, this.position);
+                desired.normalize();
+                desired.multiplyScalar(CONFIG.predatorSpeed);
+
+                const steer = new THREE.Vector3().subVectors(desired, this.velocity);
+                steer.clampLength(0, 0.03);
+
+                this.velocity.add(steer);
+                this.velocity.clampLength(0, CONFIG.predatorSpeed);
+                this.position.add(this.velocity);
+
+                // Soft boundaries
+                const bound = this.boundarySize - 10;
+                if (Math.abs(this.position.x) > bound) this.velocity.x *= -0.5;
+                if (Math.abs(this.position.y) > bound) this.velocity.y *= -0.5;
+                if (Math.abs(this.position.z) > bound) this.velocity.z *= -0.5;
+                this.position.clamp(
+                    new THREE.Vector3(-bound, -bound, -bound),
+                    new THREE.Vector3(bound, bound, bound)
+                );
+            }
+        }
+
+        // ============================================================
+        // MAIN APPLICATION
+        // ============================================================
+        class BoidsSimulation {
+            constructor() {
+                this.initScene();
+                this.initBoids();
+                this.initPredator();
+                this.initGUI();
+                this.initPresets();
+                this.initStats();
+                this.animate();
+            }
+
+            initScene() {
+                // Scene
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0a0a15);
+                this.scene.fog = new THREE.FogExp2(0x0a0a15, CONFIG.fogDensity);
+
+                // Camera
+                this.camera = new THREE.PerspectiveCamera(
+                    75,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                );
+                this.camera.position.set(0, 50, 150);
+
+                // Renderer
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                document.body.appendChild(this.renderer.domElement);
+
+                // Controls
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.05;
+                this.controls.maxDistance = 400;
+
+                // Boundary box (wireframe)
+                const boxGeometry = new THREE.BoxGeometry(
+                    CONFIG.boundarySize * 2,
+                    CONFIG.boundarySize * 2,
+                    CONFIG.boundarySize * 2
+                );
+                const boxMaterial = new THREE.LineBasicMaterial({
+                    color: 0x333355,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const wireframe = new THREE.LineSegments(
+                    new THREE.EdgesGeometry(boxGeometry),
+                    boxMaterial
+                );
+                this.scene.add(wireframe);
+
+                // Ambient light
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                this.scene.add(ambientLight);
+
+                // Directional light
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                dirLight.position.set(50, 100, 50);
+                this.scene.add(dirLight);
+
+                // Handle resize
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                // Exit boid view on click
+                this.renderer.domElement.addEventListener('click', () => {
+                    if (CONFIG.boidViewMode) {
+                        this.exitBoidView();
+                    }
+                });
+            }
+
+            initBoids() {
+                this.boids = [];
+                this.spatialGrid = new SpatialGrid(CONFIG.gridCellSize, CONFIG.boundarySize);
+
+                // Create boid instances
+                for (let i = 0; i < CONFIG.boidCount; i++) {
+                    this.boids.push(new Boid(CONFIG.boundarySize));
+                }
+
+                // Create instanced mesh for performance
+                const coneGeometry = new THREE.ConeGeometry(0.5, 2, 4);
+                coneGeometry.rotateX(Math.PI / 2); // Point forward
+
+                const material = new THREE.MeshPhongMaterial({
+                    color: 0x00ffff,
+                    flatShading: true
+                });
+
+                this.instancedMesh = new THREE.InstancedMesh(
+                    coneGeometry,
+                    material,
+                    CONFIG.boidCount
+                );
+                this.scene.add(this.instancedMesh);
+
+                // Temp objects for matrix updates
+                this.dummy = new THREE.Object3D();
+                this.tempColor = new THREE.Color();
+            }
+
+            initPredator() {
+                this.predator = new Predator(CONFIG.boundarySize);
+
+                // Predator mesh (larger, red)
+                const predatorGeometry = new THREE.ConeGeometry(2, 6, 6);
+                predatorGeometry.rotateX(Math.PI / 2);
+
+                const predatorMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xff3333,
+                    emissive: 0x660000,
+                    flatShading: true
+                });
+
+                this.predatorMesh = new THREE.Mesh(predatorGeometry, predatorMaterial);
+                this.scene.add(this.predatorMesh);
+            }
+
+            initGUI() {
+                const gui = new GUI({ title: '🎛️ Boid DNA' });
+
+                const behaviorFolder = gui.addFolder('Behavior');
+                behaviorFolder.add(CONFIG, 'separation', 0, 5, 0.1).name('💥 Separation');
+                behaviorFolder.add(CONFIG, 'alignment', 0, 5, 0.1).name('🧭 Alignment');
+                behaviorFolder.add(CONFIG, 'cohesion', 0, 5, 0.1).name('🧲 Cohesion');
+                behaviorFolder.open();
+
+                const perceptionFolder = gui.addFolder('Perception');
+                perceptionFolder.add(CONFIG, 'visualRadius', 5, 30, 1).name('👁️ Visual Radius');
+                perceptionFolder.add(CONFIG, 'separationRadius', 2, 15, 0.5).name('⚠️ Personal Space');
+
+                const movementFolder = gui.addFolder('Movement');
+                movementFolder.add(CONFIG, 'maxSpeed', 0.5, 5, 0.1).name('⚡ Max Speed');
+                movementFolder.add(CONFIG, 'maxForce', 0.01, 0.2, 0.01).name('💪 Steering Force');
+
+                const predatorFolder = gui.addFolder('🔴 Predator');
+                predatorFolder.add(CONFIG, 'predatorEnabled').name('Enabled');
+                predatorFolder.add(CONFIG, 'predatorSpeed', 0.5, 3, 0.1).name('Speed');
+                predatorFolder.add(CONFIG, 'fleeRadius', 10, 50, 1).name('Flee Radius');
+                predatorFolder.add(CONFIG, 'fleeWeight', 0.5, 5, 0.1).name('Flee Weight');
+
+                const visualFolder = gui.addFolder('Visual');
+                visualFolder.add(CONFIG, 'colorMode', ['velocity', 'position']).name('🎨 Color Mode');
+                visualFolder.add(CONFIG, 'fogDensity', 0, 0.02, 0.001).name('🌫️ Fog').onChange(v => {
+                    this.scene.fog.density = v;
+                });
+
+                this.gui = gui;
+            }
+
+            initPresets() {
+                const buttons = document.querySelectorAll('.preset-btn');
+
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const preset = btn.dataset.preset;
+                        this.applyPreset(preset);
+
+                        buttons.forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                    });
+                });
+            }
+
+            applyPreset(preset) {
+                switch(preset) {
+                    case 'school':
+                        // High alignment, medium cohesion - smooth river
+                        CONFIG.separation = 1.2;
+                        CONFIG.alignment = 2.5;
+                        CONFIG.cohesion = 1.5;
+                        CONFIG.maxSpeed = 2.0;
+                        CONFIG.visualRadius = 15;
+                        break;
+                    case 'swarm':
+                        // Low alignment, tight cohesion - gnat-like buzzing
+                        CONFIG.separation = 2.0;
+                        CONFIG.alignment = 0.5;
+                        CONFIG.cohesion = 3.0;
+                        CONFIG.maxSpeed = 2.5;
+                        CONFIG.visualRadius = 8;
+                        break;
+                    case 'chaos':
+                        // High separation, zero cohesion - gas molecules
+                        CONFIG.separation = 4.0;
+                        CONFIG.alignment = 0.2;
+                        CONFIG.cohesion = 0.0;
+                        CONFIG.maxSpeed = 3.0;
+                        CONFIG.visualRadius = 10;
+                        break;
+                    case 'boidview':
+                        this.enterBoidView();
+                        return;
+                }
+
+                // Update GUI
+                this.gui.controllersRecursive().forEach(c => c.updateDisplay());
+            }
+
+            enterBoidView() {
+                CONFIG.boidViewMode = true;
+                CONFIG.followBoidIndex = Math.floor(Math.random() * this.boids.length);
+                this.controls.enabled = false;
+
+                document.getElementById('boid-view-indicator').style.display = 'block';
+                document.getElementById('boid-index').textContent = CONFIG.followBoidIndex;
+            }
+
+            exitBoidView() {
+                CONFIG.boidViewMode = false;
+                this.controls.enabled = true;
+                this.camera.position.set(0, 50, 150);
+                this.camera.lookAt(0, 0, 0);
+
+                document.getElementById('boid-view-indicator').style.display = 'none';
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            }
+
+            initStats() {
+                this.frameCount = 0;
+                this.lastTime = performance.now();
+                this.fps = 0;
+
+                document.getElementById('boid-count').textContent = `Boids: ${CONFIG.boidCount}`;
+            }
+
+            updateStats() {
+                this.frameCount++;
+                const now = performance.now();
+
+                if (now - this.lastTime >= 1000) {
+                    this.fps = this.frameCount;
+                    this.frameCount = 0;
+                    this.lastTime = now;
+                    document.getElementById('fps').textContent = `FPS: ${this.fps}`;
+                }
+            }
+
+            updateBoids() {
+                // Rebuild spatial grid
+                this.spatialGrid.clear();
+                for (const boid of this.boids) {
+                    this.spatialGrid.insert(boid);
+                }
+
+                const predatorPos = CONFIG.predatorEnabled ? this.predator.position : null;
+
+                // Update each boid
+                for (const boid of this.boids) {
+                    const neighbors = this.spatialGrid.getNeighbors(boid, CONFIG.visualRadius);
+                    boid.flock(neighbors, predatorPos);
+                    boid.update();
+                }
+
+                // Update predator
+                if (CONFIG.predatorEnabled) {
+                    this.predator.chase(this.boids);
+
+                    // Update predator mesh
+                    this.predatorMesh.position.copy(this.predator.position);
+                    if (this.predator.velocity.length() > 0.01) {
+                        const lookTarget = new THREE.Vector3().addVectors(
+                            this.predator.position,
+                            this.predator.velocity
+                        );
+                        this.predatorMesh.lookAt(lookTarget);
+                    }
+                    this.predatorMesh.visible = true;
+                } else {
+                    this.predatorMesh.visible = false;
+                }
+            }
+
+            updateInstancedMesh() {
+                for (let i = 0; i < this.boids.length; i++) {
+                    const boid = this.boids[i];
+
+                    // Position
+                    this.dummy.position.copy(boid.position);
+
+                    // Orientation - point in direction of velocity
+                    if (boid.velocity.length() > 0.01) {
+                        const lookTarget = new THREE.Vector3().addVectors(
+                            boid.position,
+                            boid.velocity
+                        );
+                        this.dummy.lookAt(lookTarget);
+                    }
+
+                    this.dummy.updateMatrix();
+                    this.instancedMesh.setMatrixAt(i, this.dummy.matrix);
+
+                    // Color based on mode
+                    if (CONFIG.colorMode === 'velocity') {
+                        // Speed-based color: slow=blue, fast=red
+                        const speed = boid.velocity.length() / CONFIG.maxSpeed;
+                        this.tempColor.setHSL(0.6 - speed * 0.6, 0.8, 0.5);
+                    } else {
+                        // Position-based rainbow
+                        const hue = (boid.position.x + CONFIG.boundarySize) / (CONFIG.boundarySize * 2);
+                        this.tempColor.setHSL(hue, 0.8, 0.5);
+                    }
+                    this.instancedMesh.setColorAt(i, this.tempColor);
+                }
+
+                this.instancedMesh.instanceMatrix.needsUpdate = true;
+                this.instancedMesh.instanceColor.needsUpdate = true;
+            }
+
+            updateCamera() {
+                if (CONFIG.boidViewMode) {
+                    const boid = this.boids[CONFIG.followBoidIndex];
+
+                    // Position camera slightly behind and above the boid
+                    const offset = boid.velocity.clone().normalize().multiplyScalar(-5);
+                    offset.y += 2;
+
+                    this.camera.position.copy(boid.position).add(offset);
+
+                    // Look in the direction the boid is flying
+                    const lookTarget = new THREE.Vector3().addVectors(
+                        boid.position,
+                        boid.velocity.clone().multiplyScalar(10)
+                    );
+                    this.camera.lookAt(lookTarget);
+                } else {
+                    this.controls.update();
+                }
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                this.updateBoids();
+                this.updateInstancedMesh();
+                this.updateCamera();
+                this.updateStats();
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        // Start the simulation
+        new BoidsSimulation();
+    </script>
+</body>
+</html>
