@@ -31,6 +31,7 @@
             font-size: 18px;
             margin-bottom: 5px;
             color: #00d4ff;
+            text-shadow: 0 0 10px #00d4ff;
         }
         #info .stats {
             font-family: monospace;
@@ -44,6 +45,9 @@
             display: flex;
             gap: 10px;
             z-index: 100;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 90%;
         }
         .preset-btn {
             background: rgba(0,0,0,0.8);
@@ -63,24 +67,77 @@
             border-color: #00d4ff;
             box-shadow: 0 0 10px rgba(0,212,255,0.5);
         }
-        #boid-view-indicator {
+        .preset-btn.predator-cam {
+            border-color: #ff3366;
+        }
+        .preset-btn.predator-cam:hover {
+            border-color: #ff3366;
+            box-shadow: 0 0 10px rgba(255,51,102,0.5);
+        }
+        .preset-btn.predator-cam.active {
+            background: rgba(255,51,102,0.3);
+            border-color: #ff3366;
+            box-shadow: 0 0 15px rgba(255,51,102,0.7);
+        }
+        #camera-indicator {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: #00d4ff;
             font-size: 12px;
             background: rgba(0,0,0,0.7);
-            padding: 5px 10px;
+            padding: 8px 15px;
             border-radius: 4px;
             display: none;
             z-index: 100;
+            text-align: center;
+        }
+        #camera-indicator.boid-view {
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+        }
+        #camera-indicator.predator-cam {
+            color: #ff3366;
+            border: 1px solid #ff3366;
+        }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            border: 2px solid rgba(255,51,102,0.7);
+            border-radius: 50%;
+            display: none;
+            z-index: 99;
+            pointer-events: none;
+        }
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,51,102,0.7);
+        }
+        #crosshair::before {
+            width: 10px;
+            height: 2px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #crosshair::after {
+            width: 2px;
+            height: 10px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
     </style>
 </head>
 <body>
     <div id="info">
-        <h1>🦅 Code Quest: Boids</h1>
+        <h1>Code Quest: Boids</h1>
         <div class="stats">
             <div id="fps">FPS: --</div>
             <div id="boid-count">Boids: --</div>
@@ -88,13 +145,15 @@
     </div>
 
     <div id="presets">
-        <button class="preset-btn" data-preset="school">🐟 The School</button>
-        <button class="preset-btn" data-preset="swarm">🦟 The Swarm</button>
-        <button class="preset-btn" data-preset="chaos">💨 Chaos</button>
-        <button class="preset-btn" data-preset="boidview">👁️ Boid's Eye</button>
+        <button class="preset-btn" data-preset="school">The School</button>
+        <button class="preset-btn" data-preset="swarm">The Swarm</button>
+        <button class="preset-btn" data-preset="chaos">Chaos</button>
+        <button class="preset-btn" data-preset="boidview">Boid's Eye</button>
+        <button class="preset-btn predator-cam" data-preset="predatorcam">Predator Cam</button>
     </div>
 
-    <div id="boid-view-indicator">🎥 Riding Boid #<span id="boid-index">0</span> - Click anywhere to exit</div>
+    <div id="camera-indicator"></div>
+    <div id="crosshair"></div>
 
     <script type="importmap">
     {
@@ -130,7 +189,7 @@
             maxSpeed: 2.0,
             maxForce: 0.05,
 
-            // Predator
+            // Predator (AI)
             predatorEnabled: true,
             predatorSpeed: 1.8,
             fleeRadius: 25,
@@ -138,14 +197,24 @@
 
             // Visual
             colorMode: 'velocity', // 'velocity' or 'position'
-            fogDensity: 0.008,
+            fogDensity: 0.006,
+            trailsEnabled: true,
+            trailLength: 8,
+            glowIntensity: 0.4,
 
             // Spatial partitioning
             gridCellSize: 15,
 
-            // Camera
+            // Camera modes
             boidViewMode: false,
-            followBoidIndex: 0
+            predatorCamMode: false,
+            followBoidIndex: 0,
+
+            // Predator Cam settings
+            cameraPredatorRadius: 35,
+            cameraPredatorWeight: 4.0,
+            mouseSensitivity: 0.002,
+            moveSpeed: 1.5
         };
 
         // ============================================================
@@ -233,6 +302,17 @@
                 );
                 this.acceleration = new THREE.Vector3();
                 this.boundarySize = boundarySize;
+
+                // Trail history
+                this.positionHistory = [];
+                this.maxHistoryLength = 10;
+            }
+
+            updateHistory() {
+                this.positionHistory.unshift(this.position.clone());
+                if (this.positionHistory.length > this.maxHistoryLength) {
+                    this.positionHistory.pop();
+                }
             }
 
             applyForce(force) {
@@ -249,7 +329,7 @@
                     if (d > 0 && d < separationRadius) {
                         const diff = new THREE.Vector3().subVectors(this.position, other.position);
                         diff.normalize();
-                        diff.divideScalar(d); // Weight by distance
+                        diff.divideScalar(d);
                         steer.add(diff);
                         count++;
                     }
@@ -297,20 +377,19 @@
                 return this.seek(centerOfMass);
             }
 
-            // FLEE: Steer away from predator
-            flee(predatorPosition, fleeRadius) {
-                const d = this.position.distanceTo(predatorPosition);
+            // FLEE: Steer away from a threat position
+            flee(threatPosition, fleeRadius, weight = 1) {
+                const d = this.position.distanceTo(threatPosition);
                 if (d < fleeRadius) {
-                    const desired = new THREE.Vector3().subVectors(this.position, predatorPosition);
+                    const desired = new THREE.Vector3().subVectors(this.position, threatPosition);
                     desired.normalize();
-                    desired.multiplyScalar(CONFIG.maxSpeed * 1.5); // Panic speed boost
+                    desired.multiplyScalar(CONFIG.maxSpeed * 1.5);
 
                     const steer = new THREE.Vector3().subVectors(desired, this.velocity);
                     steer.clampLength(0, CONFIG.maxForce * 2);
 
-                    // Stronger flee when closer
                     const urgency = 1 - (d / fleeRadius);
-                    steer.multiplyScalar(1 + urgency * 2);
+                    steer.multiplyScalar((1 + urgency * 2) * weight);
 
                     return steer;
                 }
@@ -345,7 +424,7 @@
                 return steer;
             }
 
-            flock(neighbors, predatorPosition) {
+            flock(neighbors, predatorPosition, cameraPosition) {
                 const separation = this.separate(neighbors, CONFIG.separationRadius);
                 const alignment = this.align(neighbors);
                 const cohesion = this.cohere(neighbors);
@@ -360,15 +439,21 @@
                 this.applyForce(cohesion);
                 this.applyForce(boundary);
 
-                // Flee from predator
+                // Flee from AI predator
                 if (CONFIG.predatorEnabled && predatorPosition) {
-                    const flee = this.flee(predatorPosition, CONFIG.fleeRadius);
-                    flee.multiplyScalar(CONFIG.fleeWeight);
+                    const flee = this.flee(predatorPosition, CONFIG.fleeRadius, CONFIG.fleeWeight);
                     this.applyForce(flee);
+                }
+
+                // Flee from camera (Predator Cam mode)
+                if (CONFIG.predatorCamMode && cameraPosition) {
+                    const fleeCam = this.flee(cameraPosition, CONFIG.cameraPredatorRadius, CONFIG.cameraPredatorWeight);
+                    this.applyForce(fleeCam);
                 }
             }
 
             update() {
+                this.updateHistory();
                 this.velocity.add(this.acceleration);
                 this.velocity.clampLength(0, CONFIG.maxSpeed);
                 this.position.add(this.velocity);
@@ -391,14 +476,12 @@
             }
 
             chase(boids) {
-                // Find center of mass of the flock
                 const center = new THREE.Vector3();
                 for (const boid of boids) {
                     center.add(boid.position);
                 }
                 center.divideScalar(boids.length);
 
-                // Steer towards center
                 const desired = new THREE.Vector3().subVectors(center, this.position);
                 desired.normalize();
                 desired.multiplyScalar(CONFIG.predatorSpeed);
@@ -410,7 +493,6 @@
                 this.velocity.clampLength(0, CONFIG.predatorSpeed);
                 this.position.add(this.velocity);
 
-                // Soft boundaries
                 const bound = this.boundarySize - 10;
                 if (Math.abs(this.position.x) > bound) this.velocity.x *= -0.5;
                 if (Math.abs(this.position.y) > bound) this.velocity.y *= -0.5;
@@ -427,20 +509,25 @@
         // ============================================================
         class BoidsSimulation {
             constructor() {
+                this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
+                this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
+
                 this.initScene();
                 this.initBoids();
+                this.initTrails();
                 this.initPredator();
                 this.initGUI();
                 this.initPresets();
+                this.initControls();
                 this.initStats();
                 this.animate();
             }
 
             initScene() {
-                // Scene
+                // Scene with dark background for high contrast
                 this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(0x0a0a15);
-                this.scene.fog = new THREE.FogExp2(0x0a0a15, CONFIG.fogDensity);
+                this.scene.background = new THREE.Color(0x050510);
+                this.scene.fog = new THREE.FogExp2(0x050510, CONFIG.fogDensity);
 
                 // Camera
                 this.camera = new THREE.PerspectiveCamera(
@@ -451,28 +538,31 @@
                 );
                 this.camera.position.set(0, 50, 150);
 
-                // Renderer
-                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                // Renderer with better quality
+                this.renderer = new THREE.WebGLRenderer({
+                    antialias: true,
+                    powerPreference: "high-performance"
+                });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 document.body.appendChild(this.renderer.domElement);
 
-                // Controls
+                // OrbitControls
                 this.controls = new OrbitControls(this.camera, this.renderer.domElement);
                 this.controls.enableDamping = true;
                 this.controls.dampingFactor = 0.05;
                 this.controls.maxDistance = 400;
 
-                // Boundary box (wireframe)
+                // Boundary box (neon wireframe)
                 const boxGeometry = new THREE.BoxGeometry(
                     CONFIG.boundarySize * 2,
                     CONFIG.boundarySize * 2,
                     CONFIG.boundarySize * 2
                 );
                 const boxMaterial = new THREE.LineBasicMaterial({
-                    color: 0x333355,
+                    color: 0x1a1a3a,
                     transparent: true,
-                    opacity: 0.3
+                    opacity: 0.4
                 });
                 const wireframe = new THREE.LineSegments(
                     new THREE.EdgesGeometry(boxGeometry),
@@ -480,14 +570,22 @@
                 );
                 this.scene.add(wireframe);
 
-                // Ambient light
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                // Enhanced lighting for neon effect
+                const ambientLight = new THREE.AmbientLight(0x404060, 0.3);
                 this.scene.add(ambientLight);
 
-                // Directional light
-                const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
                 dirLight.position.set(50, 100, 50);
                 this.scene.add(dirLight);
+
+                // Add point lights for glow effect
+                const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 200);
+                pointLight1.position.set(0, 50, 0);
+                this.scene.add(pointLight1);
+
+                const pointLight2 = new THREE.PointLight(0xff00ff, 0.3, 200);
+                pointLight2.position.set(50, -50, 50);
+                this.scene.add(pointLight2);
 
                 // Handle resize
                 window.addEventListener('resize', () => {
@@ -495,31 +593,27 @@
                     this.camera.updateProjectionMatrix();
                     this.renderer.setSize(window.innerWidth, window.innerHeight);
                 });
-
-                // Exit boid view on click
-                this.renderer.domElement.addEventListener('click', () => {
-                    if (CONFIG.boidViewMode) {
-                        this.exitBoidView();
-                    }
-                });
             }
 
             initBoids() {
                 this.boids = [];
                 this.spatialGrid = new SpatialGrid(CONFIG.gridCellSize, CONFIG.boundarySize);
 
-                // Create boid instances
                 for (let i = 0; i < CONFIG.boidCount; i++) {
                     this.boids.push(new Boid(CONFIG.boundarySize));
                 }
 
-                // Create instanced mesh for performance
-                const coneGeometry = new THREE.ConeGeometry(0.5, 2, 4);
-                coneGeometry.rotateX(Math.PI / 2); // Point forward
+                // Dart/arrow geometry for clear orientation
+                const coneGeometry = new THREE.ConeGeometry(0.5, 2.5, 4);
+                coneGeometry.rotateX(Math.PI / 2);
 
-                const material = new THREE.MeshPhongMaterial({
+                // Neon material with emissive glow
+                const material = new THREE.MeshStandardMaterial({
                     color: 0x00ffff,
-                    flatShading: true
+                    emissive: 0x00ffff,
+                    emissiveIntensity: CONFIG.glowIntensity,
+                    metalness: 0.8,
+                    roughness: 0.2
                 });
 
                 this.instancedMesh = new THREE.InstancedMesh(
@@ -529,56 +623,170 @@
                 );
                 this.scene.add(this.instancedMesh);
 
-                // Temp objects for matrix updates
                 this.dummy = new THREE.Object3D();
                 this.tempColor = new THREE.Color();
+            }
+
+            initTrails() {
+                // Trail system using line segments
+                const trailCount = Math.min(200, CONFIG.boidCount); // Limit trails for performance
+                this.trailBoidIndices = [];
+
+                // Select evenly distributed boids for trails
+                for (let i = 0; i < trailCount; i++) {
+                    this.trailBoidIndices.push(Math.floor(i * CONFIG.boidCount / trailCount));
+                }
+
+                const maxPoints = trailCount * CONFIG.trailLength * 2;
+                this.trailGeometry = new THREE.BufferGeometry();
+                this.trailPositions = new Float32Array(maxPoints * 3);
+                this.trailColors = new Float32Array(maxPoints * 3);
+
+                this.trailGeometry.setAttribute('position', new THREE.BufferAttribute(this.trailPositions, 3));
+                this.trailGeometry.setAttribute('color', new THREE.BufferAttribute(this.trailColors, 3));
+
+                const trailMaterial = new THREE.LineBasicMaterial({
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.6,
+                    blending: THREE.AdditiveBlending
+                });
+
+                this.trailLines = new THREE.LineSegments(this.trailGeometry, trailMaterial);
+                this.scene.add(this.trailLines);
+            }
+
+            updateTrails() {
+                if (!CONFIG.trailsEnabled) {
+                    this.trailLines.visible = false;
+                    return;
+                }
+                this.trailLines.visible = true;
+
+                let vertexIndex = 0;
+                const trailLength = CONFIG.trailLength;
+
+                for (const boidIndex of this.trailBoidIndices) {
+                    const boid = this.boids[boidIndex];
+                    const history = boid.positionHistory;
+
+                    for (let i = 0; i < Math.min(history.length - 1, trailLength - 1); i++) {
+                        const p1 = history[i];
+                        const p2 = history[i + 1];
+
+                        // Position
+                        this.trailPositions[vertexIndex * 3] = p1.x;
+                        this.trailPositions[vertexIndex * 3 + 1] = p1.y;
+                        this.trailPositions[vertexIndex * 3 + 2] = p1.z;
+
+                        this.trailPositions[(vertexIndex + 1) * 3] = p2.x;
+                        this.trailPositions[(vertexIndex + 1) * 3 + 1] = p2.y;
+                        this.trailPositions[(vertexIndex + 1) * 3 + 2] = p2.z;
+
+                        // Color with fade
+                        const alpha = 1 - (i / trailLength);
+                        let hue;
+                        if (CONFIG.colorMode === 'velocity') {
+                            const speed = boid.velocity.length() / CONFIG.maxSpeed;
+                            hue = 0.6 - speed * 0.6;
+                        } else {
+                            hue = (boid.position.x + CONFIG.boundarySize) / (CONFIG.boundarySize * 2);
+                        }
+
+                        this.tempColor.setHSL(hue, 0.9, 0.5 * alpha);
+
+                        this.trailColors[vertexIndex * 3] = this.tempColor.r;
+                        this.trailColors[vertexIndex * 3 + 1] = this.tempColor.g;
+                        this.trailColors[vertexIndex * 3 + 2] = this.tempColor.b;
+
+                        this.trailColors[(vertexIndex + 1) * 3] = this.tempColor.r * 0.7;
+                        this.trailColors[(vertexIndex + 1) * 3 + 1] = this.tempColor.g * 0.7;
+                        this.trailColors[(vertexIndex + 1) * 3 + 2] = this.tempColor.b * 0.7;
+
+                        vertexIndex += 2;
+                    }
+                }
+
+                // Clear remaining vertices
+                for (let i = vertexIndex * 3; i < this.trailPositions.length; i++) {
+                    this.trailPositions[i] = 0;
+                    this.trailColors[i] = 0;
+                }
+
+                this.trailGeometry.attributes.position.needsUpdate = true;
+                this.trailGeometry.attributes.color.needsUpdate = true;
             }
 
             initPredator() {
                 this.predator = new Predator(CONFIG.boundarySize);
 
-                // Predator mesh (larger, red)
-                const predatorGeometry = new THREE.ConeGeometry(2, 6, 6);
+                // Predator mesh with aggressive neon red
+                const predatorGeometry = new THREE.ConeGeometry(2.5, 7, 6);
                 predatorGeometry.rotateX(Math.PI / 2);
 
-                const predatorMaterial = new THREE.MeshPhongMaterial({
-                    color: 0xff3333,
-                    emissive: 0x660000,
-                    flatShading: true
+                const predatorMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xff2244,
+                    emissive: 0xff0033,
+                    emissiveIntensity: 0.6,
+                    metalness: 0.9,
+                    roughness: 0.1
                 });
 
                 this.predatorMesh = new THREE.Mesh(predatorGeometry, predatorMaterial);
                 this.scene.add(this.predatorMesh);
+
+                // Predator glow sphere
+                const glowGeometry = new THREE.SphereGeometry(CONFIG.fleeRadius, 16, 16);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xff0033,
+                    transparent: true,
+                    opacity: 0.05,
+                    side: THREE.BackSide
+                });
+                this.predatorGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+                this.scene.add(this.predatorGlow);
             }
 
             initGUI() {
-                const gui = new GUI({ title: '🎛️ Boid DNA' });
+                const gui = new GUI({ title: 'Boid DNA' });
 
                 const behaviorFolder = gui.addFolder('Behavior');
-                behaviorFolder.add(CONFIG, 'separation', 0, 5, 0.1).name('💥 Separation');
-                behaviorFolder.add(CONFIG, 'alignment', 0, 5, 0.1).name('🧭 Alignment');
-                behaviorFolder.add(CONFIG, 'cohesion', 0, 5, 0.1).name('🧲 Cohesion');
+                behaviorFolder.add(CONFIG, 'separation', 0, 5, 0.1).name('Separation');
+                behaviorFolder.add(CONFIG, 'alignment', 0, 5, 0.1).name('Alignment');
+                behaviorFolder.add(CONFIG, 'cohesion', 0, 5, 0.1).name('Cohesion');
                 behaviorFolder.open();
 
                 const perceptionFolder = gui.addFolder('Perception');
-                perceptionFolder.add(CONFIG, 'visualRadius', 5, 30, 1).name('👁️ Visual Radius');
-                perceptionFolder.add(CONFIG, 'separationRadius', 2, 15, 0.5).name('⚠️ Personal Space');
+                perceptionFolder.add(CONFIG, 'visualRadius', 5, 30, 1).name('Visual Radius');
+                perceptionFolder.add(CONFIG, 'separationRadius', 2, 15, 0.5).name('Personal Space');
 
                 const movementFolder = gui.addFolder('Movement');
-                movementFolder.add(CONFIG, 'maxSpeed', 0.5, 5, 0.1).name('⚡ Max Speed');
-                movementFolder.add(CONFIG, 'maxForce', 0.01, 0.2, 0.01).name('💪 Steering Force');
+                movementFolder.add(CONFIG, 'maxSpeed', 0.5, 5, 0.1).name('Max Speed');
+                movementFolder.add(CONFIG, 'maxForce', 0.01, 0.2, 0.01).name('Steering Force');
 
-                const predatorFolder = gui.addFolder('🔴 Predator');
-                predatorFolder.add(CONFIG, 'predatorEnabled').name('Enabled');
+                const predatorFolder = gui.addFolder('Predator');
+                predatorFolder.add(CONFIG, 'predatorEnabled').name('AI Predator');
                 predatorFolder.add(CONFIG, 'predatorSpeed', 0.5, 3, 0.1).name('Speed');
-                predatorFolder.add(CONFIG, 'fleeRadius', 10, 50, 1).name('Flee Radius');
+                predatorFolder.add(CONFIG, 'fleeRadius', 10, 50, 1).name('Flee Radius').onChange(v => {
+                    this.predatorGlow.scale.setScalar(v / CONFIG.fleeRadius);
+                });
                 predatorFolder.add(CONFIG, 'fleeWeight', 0.5, 5, 0.1).name('Flee Weight');
 
                 const visualFolder = gui.addFolder('Visual');
-                visualFolder.add(CONFIG, 'colorMode', ['velocity', 'position']).name('🎨 Color Mode');
-                visualFolder.add(CONFIG, 'fogDensity', 0, 0.02, 0.001).name('🌫️ Fog').onChange(v => {
+                visualFolder.add(CONFIG, 'colorMode', ['velocity', 'position']).name('Color Mode');
+                visualFolder.add(CONFIG, 'trailsEnabled').name('Trails');
+                visualFolder.add(CONFIG, 'trailLength', 3, 15, 1).name('Trail Length');
+                visualFolder.add(CONFIG, 'glowIntensity', 0, 1, 0.1).name('Glow').onChange(v => {
+                    this.instancedMesh.material.emissiveIntensity = v;
+                });
+                visualFolder.add(CONFIG, 'fogDensity', 0, 0.015, 0.001).name('Fog').onChange(v => {
                     this.scene.fog.density = v;
                 });
+
+                const camFolder = gui.addFolder('Predator Cam');
+                camFolder.add(CONFIG, 'cameraPredatorRadius', 15, 60, 1).name('Fear Radius');
+                camFolder.add(CONFIG, 'cameraPredatorWeight', 1, 8, 0.5).name('Fear Intensity');
+                camFolder.add(CONFIG, 'moveSpeed', 0.5, 3, 0.1).name('Move Speed');
 
                 this.gui = gui;
             }
@@ -589,8 +797,17 @@
                 buttons.forEach(btn => {
                     btn.addEventListener('click', () => {
                         const preset = btn.dataset.preset;
-                        this.applyPreset(preset);
 
+                        if (preset === 'boidview' || preset === 'predatorcam') {
+                            // Camera modes are toggleable
+                            if (btn.classList.contains('active')) {
+                                this.exitCameraMode();
+                                btn.classList.remove('active');
+                                return;
+                            }
+                        }
+
+                        this.applyPreset(preset);
                         buttons.forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                     });
@@ -598,9 +815,11 @@
             }
 
             applyPreset(preset) {
+                // Exit any active camera mode first
+                this.exitCameraMode();
+
                 switch(preset) {
                     case 'school':
-                        // High alignment, medium cohesion - smooth river
                         CONFIG.separation = 1.2;
                         CONFIG.alignment = 2.5;
                         CONFIG.cohesion = 1.5;
@@ -608,7 +827,6 @@
                         CONFIG.visualRadius = 15;
                         break;
                     case 'swarm':
-                        // Low alignment, tight cohesion - gnat-like buzzing
                         CONFIG.separation = 2.0;
                         CONFIG.alignment = 0.5;
                         CONFIG.cohesion = 3.0;
@@ -616,7 +834,6 @@
                         CONFIG.visualRadius = 8;
                         break;
                     case 'chaos':
-                        // High separation, zero cohesion - gas molecules
                         CONFIG.separation = 4.0;
                         CONFIG.alignment = 0.2;
                         CONFIG.cohesion = 0.0;
@@ -626,29 +843,109 @@
                     case 'boidview':
                         this.enterBoidView();
                         return;
+                    case 'predatorcam':
+                        this.enterPredatorCam();
+                        return;
                 }
 
-                // Update GUI
                 this.gui.controllersRecursive().forEach(c => c.updateDisplay());
+            }
+
+            initControls() {
+                // Keyboard controls for Predator Cam
+                document.addEventListener('keydown', (e) => {
+                    if (CONFIG.predatorCamMode) {
+                        const key = e.key.toLowerCase();
+                        if (key in this.keys) {
+                            this.keys[key] = true;
+                            e.preventDefault();
+                        }
+                        if (key === 'escape') {
+                            this.exitCameraMode();
+                        }
+                    }
+                });
+
+                document.addEventListener('keyup', (e) => {
+                    const key = e.key.toLowerCase();
+                    if (key in this.keys) {
+                        this.keys[key] = false;
+                    }
+                });
+
+                // Mouse controls for Predator Cam
+                this.renderer.domElement.addEventListener('mousemove', (e) => {
+                    if (CONFIG.predatorCamMode && document.pointerLockElement) {
+                        this.euler.setFromQuaternion(this.camera.quaternion);
+                        this.euler.y -= e.movementX * CONFIG.mouseSensitivity;
+                        this.euler.x -= e.movementY * CONFIG.mouseSensitivity;
+                        this.euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.euler.x));
+                        this.camera.quaternion.setFromEuler(this.euler);
+                    }
+                });
+
+                // Click to exit boid view
+                this.renderer.domElement.addEventListener('click', () => {
+                    if (CONFIG.boidViewMode) {
+                        this.exitCameraMode();
+                    } else if (CONFIG.predatorCamMode && !document.pointerLockElement) {
+                        this.renderer.domElement.requestPointerLock();
+                    }
+                });
+
+                document.addEventListener('pointerlockchange', () => {
+                    if (!document.pointerLockElement && CONFIG.predatorCamMode) {
+                        // Show cursor when pointer lock is released
+                    }
+                });
             }
 
             enterBoidView() {
                 CONFIG.boidViewMode = true;
+                CONFIG.predatorCamMode = false;
                 CONFIG.followBoidIndex = Math.floor(Math.random() * this.boids.length);
                 this.controls.enabled = false;
 
-                document.getElementById('boid-view-indicator').style.display = 'block';
-                document.getElementById('boid-index').textContent = CONFIG.followBoidIndex;
+                const indicator = document.getElementById('camera-indicator');
+                indicator.className = 'boid-view';
+                indicator.innerHTML = `Riding Boid #${CONFIG.followBoidIndex} - Click to exit`;
+                indicator.style.display = 'block';
+                document.getElementById('crosshair').style.display = 'none';
             }
 
-            exitBoidView() {
+            enterPredatorCam() {
+                CONFIG.predatorCamMode = true;
                 CONFIG.boidViewMode = false;
+                this.controls.enabled = false;
+
+                // Position camera at a good starting point
+                this.camera.position.set(0, 0, 80);
+                this.camera.lookAt(0, 0, 0);
+                this.euler.setFromQuaternion(this.camera.quaternion);
+
+                const indicator = document.getElementById('camera-indicator');
+                indicator.className = 'predator-cam';
+                indicator.innerHTML = 'PREDATOR CAM<br>WASD to move | Q/E up/down | Mouse to look<br>ESC to exit';
+                indicator.style.display = 'block';
+                document.getElementById('crosshair').style.display = 'block';
+
+                this.renderer.domElement.requestPointerLock();
+            }
+
+            exitCameraMode() {
+                CONFIG.boidViewMode = false;
+                CONFIG.predatorCamMode = false;
                 this.controls.enabled = true;
                 this.camera.position.set(0, 50, 150);
                 this.camera.lookAt(0, 0, 0);
 
-                document.getElementById('boid-view-indicator').style.display = 'none';
+                document.getElementById('camera-indicator').style.display = 'none';
+                document.getElementById('crosshair').style.display = 'none';
                 document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+
+                if (document.pointerLockElement) {
+                    document.exitPointerLock();
+                }
             }
 
             initStats() {
@@ -671,28 +968,64 @@
                 }
             }
 
+            updatePredatorCamMovement() {
+                if (!CONFIG.predatorCamMode) return;
+
+                const moveSpeed = CONFIG.moveSpeed;
+                const direction = new THREE.Vector3();
+
+                // Get camera forward/right vectors
+                const forward = new THREE.Vector3();
+                this.camera.getWorldDirection(forward);
+                forward.y = 0;
+                forward.normalize();
+
+                const right = new THREE.Vector3();
+                right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+
+                // WASD movement
+                if (this.keys.w) direction.add(forward);
+                if (this.keys.s) direction.sub(forward);
+                if (this.keys.d) direction.add(right);
+                if (this.keys.a) direction.sub(right);
+                if (this.keys.e) direction.y += 1;
+                if (this.keys.q) direction.y -= 1;
+
+                if (direction.length() > 0) {
+                    direction.normalize().multiplyScalar(moveSpeed);
+                    this.camera.position.add(direction);
+
+                    // Keep camera within bounds
+                    const bound = CONFIG.boundarySize - 5;
+                    this.camera.position.clamp(
+                        new THREE.Vector3(-bound, -bound, -bound),
+                        new THREE.Vector3(bound, bound, bound)
+                    );
+                }
+            }
+
             updateBoids() {
-                // Rebuild spatial grid
                 this.spatialGrid.clear();
                 for (const boid of this.boids) {
                     this.spatialGrid.insert(boid);
                 }
 
                 const predatorPos = CONFIG.predatorEnabled ? this.predator.position : null;
+                const cameraPos = CONFIG.predatorCamMode ? this.camera.position : null;
 
-                // Update each boid
                 for (const boid of this.boids) {
                     const neighbors = this.spatialGrid.getNeighbors(boid, CONFIG.visualRadius);
-                    boid.flock(neighbors, predatorPos);
+                    boid.flock(neighbors, predatorPos, cameraPos);
                     boid.update();
                 }
 
-                // Update predator
+                // Update AI predator
                 if (CONFIG.predatorEnabled) {
                     this.predator.chase(this.boids);
 
-                    // Update predator mesh
                     this.predatorMesh.position.copy(this.predator.position);
+                    this.predatorGlow.position.copy(this.predator.position);
+
                     if (this.predator.velocity.length() > 0.01) {
                         const lookTarget = new THREE.Vector3().addVectors(
                             this.predator.position,
@@ -701,8 +1034,10 @@
                         this.predatorMesh.lookAt(lookTarget);
                     }
                     this.predatorMesh.visible = true;
+                    this.predatorGlow.visible = true;
                 } else {
                     this.predatorMesh.visible = false;
+                    this.predatorGlow.visible = false;
                 }
             }
 
@@ -710,10 +1045,8 @@
                 for (let i = 0; i < this.boids.length; i++) {
                     const boid = this.boids[i];
 
-                    // Position
                     this.dummy.position.copy(boid.position);
 
-                    // Orientation - point in direction of velocity
                     if (boid.velocity.length() > 0.01) {
                         const lookTarget = new THREE.Vector3().addVectors(
                             boid.position,
@@ -725,15 +1058,13 @@
                     this.dummy.updateMatrix();
                     this.instancedMesh.setMatrixAt(i, this.dummy.matrix);
 
-                    // Color based on mode
+                    // Neon colors
                     if (CONFIG.colorMode === 'velocity') {
-                        // Speed-based color: slow=blue, fast=red
                         const speed = boid.velocity.length() / CONFIG.maxSpeed;
-                        this.tempColor.setHSL(0.6 - speed * 0.6, 0.8, 0.5);
+                        this.tempColor.setHSL(0.55 - speed * 0.55, 1.0, 0.55);
                     } else {
-                        // Position-based rainbow
                         const hue = (boid.position.x + CONFIG.boundarySize) / (CONFIG.boundarySize * 2);
-                        this.tempColor.setHSL(hue, 0.8, 0.5);
+                        this.tempColor.setHSL(hue, 1.0, 0.55);
                     }
                     this.instancedMesh.setColorAt(i, this.tempColor);
                 }
@@ -746,18 +1077,18 @@
                 if (CONFIG.boidViewMode) {
                     const boid = this.boids[CONFIG.followBoidIndex];
 
-                    // Position camera slightly behind and above the boid
                     const offset = boid.velocity.clone().normalize().multiplyScalar(-5);
                     offset.y += 2;
 
                     this.camera.position.copy(boid.position).add(offset);
 
-                    // Look in the direction the boid is flying
                     const lookTarget = new THREE.Vector3().addVectors(
                         boid.position,
                         boid.velocity.clone().multiplyScalar(10)
                     );
                     this.camera.lookAt(lookTarget);
+                } else if (CONFIG.predatorCamMode) {
+                    this.updatePredatorCamMovement();
                 } else {
                     this.controls.update();
                 }
@@ -768,6 +1099,7 @@
 
                 this.updateBoids();
                 this.updateInstancedMesh();
+                this.updateTrails();
                 this.updateCamera();
                 this.updateStats();
 
