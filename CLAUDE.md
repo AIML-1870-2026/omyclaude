@@ -21,6 +21,7 @@ Current Projects:
 - Stellar-Web/ - Orbital Gravity Simulator
 - Snake-Quest/ - The Living Circuit
 - Physarum-Engine/ - Slime Mold Transport Network
+- Boids/ - 3D Flocking Simulation (GPU Compute)
 
 ## Commands
 
