@@ -37,6 +37,16 @@
             font-family: monospace;
             color: #aaa;
         }
+        #info .gpu-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff00ff, #00ffff);
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 10px;
+            margin-left: 5px;
+        }
         #presets {
             position: absolute;
             bottom: 20px;
@@ -78,6 +88,17 @@
             background: rgba(255,51,102,0.3);
             border-color: #ff3366;
             box-shadow: 0 0 15px rgba(255,51,102,0.7);
+        }
+        .preset-btn.god-mode {
+            border-color: #ff00ff;
+            background: linear-gradient(135deg, rgba(255,0,255,0.2), rgba(0,255,255,0.2));
+        }
+        .preset-btn.god-mode:hover {
+            box-shadow: 0 0 15px rgba(255,0,255,0.5);
+        }
+        .preset-btn.god-mode.active {
+            background: linear-gradient(135deg, rgba(255,0,255,0.4), rgba(0,255,255,0.4));
+            box-shadow: 0 0 20px rgba(255,0,255,0.7);
         }
         #camera-indicator {
             position: absolute;
@@ -137,7 +158,7 @@
 </head>
 <body>
     <div id="info">
-        <h1>Code Quest: Boids</h1>
+        <h1>Code Quest: Boids <span id="gpu-badge" class="gpu-badge" style="display:none;">GPU</span></h1>
         <div class="stats">
             <div id="fps">FPS: --</div>
             <div id="boid-count">Boids: --</div>
@@ -150,6 +171,7 @@
         <button class="preset-btn" data-preset="chaos">Chaos</button>
         <button class="preset-btn" data-preset="boidview">Boid's Eye</button>
         <button class="preset-btn predator-cam" data-preset="predatorcam">Predator Cam</button>
+        <button class="preset-btn god-mode" data-preset="godmode">GOD MODE</button>
     </div>
 
     <div id="camera-indicator"></div>
@@ -168,6 +190,7 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+        import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
 
         // ============================================================
         // CONFIGURATION
@@ -175,7 +198,11 @@
         const CONFIG = {
             boidCount: 1500,
             maxBoidCount: 10000,
+            gpuBoidCount: 32768, // Must be power of 2 for texture (256x128)
             boundarySize: 100,
+
+            // GPU Mode
+            gpuMode: false,
 
             // Boid behavior weights
             separation: 1.5,
@@ -197,7 +224,7 @@
             fleeWeight: 3.0,
 
             // Visual
-            colorMode: 'velocity', // 'velocity' or 'position'
+            colorMode: 'velocity',
             fogDensity: 0.006,
             trailsEnabled: true,
             trailLength: 8,
@@ -219,19 +246,185 @@
         };
 
         // ============================================================
+        // GPU COMPUTE SHADERS
+        // ============================================================
+        const positionShader = `
+            uniform float time;
+            uniform float delta;
+            uniform float boundarySize;
+            uniform float maxSpeed;
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / resolution.xy;
+                vec4 pos = texture2D(texturePosition, uv);
+                vec4 vel = texture2D(textureVelocity, uv);
+
+                // Update position
+                pos.xyz += vel.xyz * delta * 60.0;
+
+                // Boundary wrap (pacman style for GPU - simpler)
+                float bound = boundarySize;
+                if (pos.x > bound) pos.x = -bound;
+                if (pos.x < -bound) pos.x = bound;
+                if (pos.y > bound) pos.y = -bound;
+                if (pos.y < -bound) pos.y = bound;
+                if (pos.z > bound) pos.z = -bound;
+                if (pos.z < -bound) pos.z = bound;
+
+                gl_FragColor = pos;
+            }
+        `;
+
+        const velocityShader = `
+            uniform float time;
+            uniform float delta;
+            uniform float separationWeight;
+            uniform float alignmentWeight;
+            uniform float cohesionWeight;
+            uniform float visualRadius;
+            uniform float separationRadius;
+            uniform float maxSpeed;
+            uniform float maxForce;
+            uniform float boundarySize;
+            uniform vec3 predatorPos;
+            uniform float predatorEnabled;
+            uniform float fleeRadius;
+            uniform float fleeWeight;
+
+            // Hash function for pseudo-random sampling
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / resolution.xy;
+                vec4 pos = texture2D(texturePosition, uv);
+                vec4 vel = texture2D(textureVelocity, uv);
+
+                vec3 position = pos.xyz;
+                vec3 velocity = vel.xyz;
+
+                // Boid forces
+                vec3 separation = vec3(0.0);
+                vec3 alignment = vec3(0.0);
+                vec3 cohesion = vec3(0.0);
+
+                float separationCount = 0.0;
+                float neighborCount = 0.0;
+
+                // Sample neighbors (optimized sampling pattern)
+                float visualRadiusSq = visualRadius * visualRadius;
+                float separationRadiusSq = separationRadius * separationRadius;
+
+                // Check a subset of boids for performance
+                for (float y = 0.0; y < resolution.y; y += 4.0) {
+                    for (float x = 0.0; x < resolution.x; x += 4.0) {
+                        vec2 otherUV = vec2(x, y) / resolution.xy;
+                        if (distance(uv, otherUV) < 0.001) continue;
+
+                        vec4 otherPos = texture2D(texturePosition, otherUV);
+                        vec4 otherVel = texture2D(textureVelocity, otherUV);
+
+                        vec3 diff = position - otherPos.xyz;
+                        float distSq = dot(diff, diff);
+
+                        if (distSq < visualRadiusSq && distSq > 0.0) {
+                            float dist = sqrt(distSq);
+
+                            // Separation
+                            if (distSq < separationRadiusSq) {
+                                separation += normalize(diff) / dist;
+                                separationCount += 1.0;
+                            }
+
+                            // Alignment
+                            alignment += otherVel.xyz;
+
+                            // Cohesion
+                            cohesion += otherPos.xyz;
+
+                            neighborCount += 1.0;
+                        }
+                    }
+                }
+
+                vec3 acceleration = vec3(0.0);
+
+                // Apply separation
+                if (separationCount > 0.0) {
+                    separation /= separationCount;
+                    separation = normalize(separation) * maxSpeed - velocity;
+                    if (length(separation) > maxForce) separation = normalize(separation) * maxForce;
+                    acceleration += separation * separationWeight;
+                }
+
+                // Apply alignment
+                if (neighborCount > 0.0) {
+                    alignment /= neighborCount;
+                    alignment = normalize(alignment) * maxSpeed - velocity;
+                    if (length(alignment) > maxForce) alignment = normalize(alignment) * maxForce;
+                    acceleration += alignment * alignmentWeight;
+
+                    // Apply cohesion
+                    cohesion /= neighborCount;
+                    vec3 desired = normalize(cohesion - position) * maxSpeed;
+                    vec3 steer = desired - velocity;
+                    if (length(steer) > maxForce) steer = normalize(steer) * maxForce;
+                    acceleration += steer * cohesionWeight;
+                }
+
+                // Flee from predator
+                if (predatorEnabled > 0.5) {
+                    float predDist = distance(position, predatorPos);
+                    if (predDist < fleeRadius) {
+                        vec3 flee = normalize(position - predatorPos) * maxSpeed * 1.5 - velocity;
+                        if (length(flee) > maxForce * 2.0) flee = normalize(flee) * maxForce * 2.0;
+                        float urgency = 1.0 - (predDist / fleeRadius);
+                        acceleration += flee * fleeWeight * (1.0 + urgency * 2.0);
+                    }
+                }
+
+                // Soft boundary steering
+                float margin = 20.0;
+                float turnForce = 0.3;
+                float bound = boundarySize;
+
+                if (position.x > bound - margin) acceleration.x -= turnForce;
+                if (position.x < -bound + margin) acceleration.x += turnForce;
+                if (position.y > bound - margin) acceleration.y -= turnForce;
+                if (position.y < -bound + margin) acceleration.y += turnForce;
+                if (position.z > bound - margin) acceleration.z -= turnForce;
+                if (position.z < -bound + margin) acceleration.z += turnForce;
+
+                // Update velocity
+                velocity += acceleration * delta * 60.0;
+
+                // Clamp speed
+                float speed = length(velocity);
+                if (speed > maxSpeed) {
+                    velocity = normalize(velocity) * maxSpeed;
+                }
+
+                // Minimum speed to keep things moving
+                if (speed < 0.1) {
+                    velocity = normalize(velocity + vec3(0.01, 0.01, 0.01)) * 0.5;
+                }
+
+                gl_FragColor = vec4(velocity, 1.0);
+            }
+        `;
+
+        // ============================================================
         // SPATIAL GRID - O(N) neighbor lookup instead of O(N²)
         // ============================================================
         class SpatialGrid {
             constructor(cellSize, boundarySize) {
                 this.cellSize = cellSize;
                 this.boundarySize = boundarySize;
-                this.gridSize = Math.ceil((boundarySize * 2) / cellSize);
                 this.cells = new Map();
             }
 
-            clear() {
-                this.cells.clear();
-            }
+            clear() { this.cells.clear(); }
 
             getKey(x, y, z) {
                 const cx = Math.floor((x + this.boundarySize) / this.cellSize);
@@ -242,41 +435,27 @@
 
             insert(boid) {
                 const key = this.getKey(boid.position.x, boid.position.y, boid.position.z);
-                if (!this.cells.has(key)) {
-                    this.cells.set(key, []);
-                }
+                if (!this.cells.has(key)) this.cells.set(key, []);
                 this.cells.get(key).push(boid);
-            }
-
-            getNeighborKeys(x, y, z) {
-                const keys = [];
-                const cx = Math.floor((x + this.boundarySize) / this.cellSize);
-                const cy = Math.floor((y + this.boundarySize) / this.cellSize);
-                const cz = Math.floor((z + this.boundarySize) / this.cellSize);
-
-                for (let dx = -1; dx <= 1; dx++) {
-                    for (let dy = -1; dy <= 1; dy++) {
-                        for (let dz = -1; dz <= 1; dz++) {
-                            keys.push(`${cx + dx},${cy + dy},${cz + dz}`);
-                        }
-                    }
-                }
-                return keys;
             }
 
             getNeighbors(boid, radius) {
                 const neighbors = [];
-                const keys = this.getNeighborKeys(boid.position.x, boid.position.y, boid.position.z);
+                const cx = Math.floor((boid.position.x + this.boundarySize) / this.cellSize);
+                const cy = Math.floor((boid.position.y + this.boundarySize) / this.cellSize);
+                const cz = Math.floor((boid.position.z + this.boundarySize) / this.cellSize);
                 const radiusSq = radius * radius;
 
-                for (const key of keys) {
-                    const cell = this.cells.get(key);
-                    if (cell) {
-                        for (const other of cell) {
-                            if (other !== boid) {
-                                const distSq = boid.position.distanceToSquared(other.position);
-                                if (distSq < radiusSq) {
-                                    neighbors.push(other);
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dz = -1; dz <= 1; dz++) {
+                            const key = `${cx + dx},${cy + dy},${cz + dz}`;
+                            const cell = this.cells.get(key);
+                            if (cell) {
+                                for (const other of cell) {
+                                    if (other !== boid && boid.position.distanceToSquared(other.position) < radiusSq) {
+                                        neighbors.push(other);
+                                    }
                                 }
                             }
                         }
@@ -287,7 +466,7 @@
         }
 
         // ============================================================
-        // BOID CLASS
+        // BOID CLASS (CPU Mode)
         // ============================================================
         class Boid {
             constructor(boundarySize) {
@@ -303,160 +482,97 @@
                 );
                 this.acceleration = new THREE.Vector3();
                 this.boundarySize = boundarySize;
-
-                // Trail history
                 this.positionHistory = [];
-                this.maxHistoryLength = 10;
             }
 
             updateHistory() {
                 this.positionHistory.unshift(this.position.clone());
-                if (this.positionHistory.length > this.maxHistoryLength) {
-                    this.positionHistory.pop();
-                }
+                if (this.positionHistory.length > 10) this.positionHistory.pop();
             }
 
-            applyForce(force) {
-                this.acceleration.add(force);
-            }
+            applyForce(force) { this.acceleration.add(force); }
 
-            // SEPARATION: Steer away from nearby neighbors
-            separate(neighbors, separationRadius) {
+            separate(neighbors) {
                 const steer = new THREE.Vector3();
                 let count = 0;
-
                 for (const other of neighbors) {
                     const d = this.position.distanceTo(other.position);
-                    if (d > 0 && d < separationRadius) {
+                    if (d > 0 && d < CONFIG.separationRadius) {
                         const diff = new THREE.Vector3().subVectors(this.position, other.position);
-                        diff.normalize();
-                        diff.divideScalar(d);
+                        diff.normalize().divideScalar(d);
                         steer.add(diff);
                         count++;
                     }
                 }
-
                 if (count > 0) {
-                    steer.divideScalar(count);
-                    steer.normalize();
-                    steer.multiplyScalar(CONFIG.maxSpeed);
-                    steer.sub(this.velocity);
+                    steer.divideScalar(count).normalize().multiplyScalar(CONFIG.maxSpeed).sub(this.velocity);
                     steer.clampLength(0, CONFIG.maxForce);
                 }
                 return steer;
             }
 
-            // ALIGNMENT: Steer towards average heading of neighbors
             align(neighbors) {
-                const avgVelocity = new THREE.Vector3();
-
-                if (neighbors.length === 0) return avgVelocity;
-
-                for (const other of neighbors) {
-                    avgVelocity.add(other.velocity);
-                }
-                avgVelocity.divideScalar(neighbors.length);
-                avgVelocity.normalize();
-                avgVelocity.multiplyScalar(CONFIG.maxSpeed);
-
-                const steer = new THREE.Vector3().subVectors(avgVelocity, this.velocity);
+                if (neighbors.length === 0) return new THREE.Vector3();
+                const avg = new THREE.Vector3();
+                for (const other of neighbors) avg.add(other.velocity);
+                avg.divideScalar(neighbors.length).normalize().multiplyScalar(CONFIG.maxSpeed);
+                const steer = avg.sub(this.velocity);
                 steer.clampLength(0, CONFIG.maxForce);
                 return steer;
             }
 
-            // COHESION: Steer towards center of mass of neighbors
             cohere(neighbors) {
-                const centerOfMass = new THREE.Vector3();
-
-                if (neighbors.length === 0) return centerOfMass;
-
-                for (const other of neighbors) {
-                    centerOfMass.add(other.position);
-                }
-                centerOfMass.divideScalar(neighbors.length);
-
-                return this.seek(centerOfMass);
+                if (neighbors.length === 0) return new THREE.Vector3();
+                const center = new THREE.Vector3();
+                for (const other of neighbors) center.add(other.position);
+                center.divideScalar(neighbors.length);
+                const desired = center.sub(this.position).normalize().multiplyScalar(CONFIG.maxSpeed);
+                const steer = desired.sub(this.velocity);
+                steer.clampLength(0, CONFIG.maxForce);
+                return steer;
             }
 
-            // FLEE: Steer away from a threat position
-            flee(threatPosition, fleeRadius, weight = 1) {
-                const d = this.position.distanceTo(threatPosition);
-                if (d < fleeRadius) {
-                    const desired = new THREE.Vector3().subVectors(this.position, threatPosition);
-                    desired.normalize();
-                    desired.multiplyScalar(CONFIG.maxSpeed * 1.5);
-
-                    const steer = new THREE.Vector3().subVectors(desired, this.velocity);
+            flee(pos, radius, weight) {
+                const d = this.position.distanceTo(pos);
+                if (d < radius) {
+                    const desired = new THREE.Vector3().subVectors(this.position, pos).normalize().multiplyScalar(CONFIG.maxSpeed * 1.5);
+                    const steer = desired.sub(this.velocity);
                     steer.clampLength(0, CONFIG.maxForce * 2);
-
-                    const urgency = 1 - (d / fleeRadius);
-                    steer.multiplyScalar((1 + urgency * 2) * weight);
-
-                    return steer;
+                    const urgency = 1 - (d / radius);
+                    return steer.multiplyScalar((1 + urgency * 2) * weight);
                 }
                 return new THREE.Vector3();
             }
 
-            // Seek a target position
-            seek(target) {
-                const desired = new THREE.Vector3().subVectors(target, this.position);
-                desired.normalize();
-                desired.multiplyScalar(CONFIG.maxSpeed);
-
-                const steer = new THREE.Vector3().subVectors(desired, this.velocity);
-                steer.clampLength(0, CONFIG.maxForce);
-                return steer;
-            }
-
-            // Fish tank boundary - soft steering
             boundaries() {
-                const margin = 20;
-                const turnForce = 0.5;
+                const margin = 20, turnForce = 0.5;
                 const steer = new THREE.Vector3();
-                const bound = this.boundarySize;
-
-                if (this.position.x > bound - margin) steer.x = -turnForce;
-                if (this.position.x < -bound + margin) steer.x = turnForce;
-                if (this.position.y > bound - margin) steer.y = -turnForce;
-                if (this.position.y < -bound + margin) steer.y = turnForce;
-                if (this.position.z > bound - margin) steer.z = -turnForce;
-                if (this.position.z < -bound + margin) steer.z = turnForce;
-
+                const b = this.boundarySize;
+                if (this.position.x > b - margin) steer.x = -turnForce;
+                if (this.position.x < -b + margin) steer.x = turnForce;
+                if (this.position.y > b - margin) steer.y = -turnForce;
+                if (this.position.y < -b + margin) steer.y = turnForce;
+                if (this.position.z > b - margin) steer.z = -turnForce;
+                if (this.position.z < -b + margin) steer.z = turnForce;
                 return steer;
             }
 
-            flock(neighbors, predatorPosition, cameraPosition) {
-                const separation = this.separate(neighbors, CONFIG.separationRadius);
-                const alignment = this.align(neighbors);
-                const cohesion = this.cohere(neighbors);
-                const boundary = this.boundaries();
-
-                separation.multiplyScalar(CONFIG.separation);
-                alignment.multiplyScalar(CONFIG.alignment);
-                cohesion.multiplyScalar(CONFIG.cohesion);
-
-                this.applyForce(separation);
-                this.applyForce(alignment);
-                this.applyForce(cohesion);
-                this.applyForce(boundary);
-
-                // Flee from AI predator
-                if (CONFIG.predatorEnabled && predatorPosition) {
-                    const flee = this.flee(predatorPosition, CONFIG.fleeRadius, CONFIG.fleeWeight);
-                    this.applyForce(flee);
+            flock(neighbors, predatorPos, cameraPos) {
+                this.applyForce(this.separate(neighbors).multiplyScalar(CONFIG.separation));
+                this.applyForce(this.align(neighbors).multiplyScalar(CONFIG.alignment));
+                this.applyForce(this.cohere(neighbors).multiplyScalar(CONFIG.cohesion));
+                this.applyForce(this.boundaries());
+                if (CONFIG.predatorEnabled && predatorPos) {
+                    this.applyForce(this.flee(predatorPos, CONFIG.fleeRadius, CONFIG.fleeWeight));
                 }
-
-                // Flee from camera (Predator Cam mode)
-                if (CONFIG.predatorCamMode && cameraPosition) {
-                    const fleeCam = this.flee(cameraPosition, CONFIG.cameraPredatorRadius, CONFIG.cameraPredatorWeight);
-                    this.applyForce(fleeCam);
+                if (CONFIG.predatorCamMode && cameraPos) {
+                    this.applyForce(this.flee(cameraPos, CONFIG.cameraPredatorRadius, CONFIG.cameraPredatorWeight));
                 }
             }
 
             update() {
                 this.updateHistory();
-                this.velocity.add(this.acceleration);
-                this.velocity.clampLength(0, CONFIG.maxSpeed);
+                this.velocity.add(this.acceleration).clampLength(0, CONFIG.maxSpeed);
                 this.position.add(this.velocity);
                 this.acceleration.set(0, 0, 0);
             }
@@ -468,40 +584,39 @@
         class Predator {
             constructor(boundarySize) {
                 this.position = new THREE.Vector3(0, 0, 0);
-                this.velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 2,
-                    (Math.random() - 0.5) * 2,
-                    (Math.random() - 0.5) * 2
-                );
+                this.velocity = new THREE.Vector3((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2);
                 this.boundarySize = boundarySize;
             }
 
-            chase(boids) {
+            chase(boids, gpuMode, gpuPositions) {
                 const center = new THREE.Vector3();
-                for (const boid of boids) {
-                    center.add(boid.position);
+                if (gpuMode && gpuPositions) {
+                    // Sample from GPU position data
+                    const step = Math.max(1, Math.floor(gpuPositions.length / 12 / 100));
+                    let count = 0;
+                    for (let i = 0; i < gpuPositions.length; i += step * 4) {
+                        center.x += gpuPositions[i];
+                        center.y += gpuPositions[i + 1];
+                        center.z += gpuPositions[i + 2];
+                        count++;
+                    }
+                    if (count > 0) center.divideScalar(count);
+                } else {
+                    for (const boid of boids) center.add(boid.position);
+                    center.divideScalar(boids.length);
                 }
-                center.divideScalar(boids.length);
 
-                const desired = new THREE.Vector3().subVectors(center, this.position);
-                desired.normalize();
-                desired.multiplyScalar(CONFIG.predatorSpeed);
-
-                const steer = new THREE.Vector3().subVectors(desired, this.velocity);
+                const desired = center.sub(this.position).normalize().multiplyScalar(CONFIG.predatorSpeed);
+                const steer = desired.sub(this.velocity);
                 steer.clampLength(0, 0.03);
-
-                this.velocity.add(steer);
-                this.velocity.clampLength(0, CONFIG.predatorSpeed);
+                this.velocity.add(steer).clampLength(0, CONFIG.predatorSpeed);
                 this.position.add(this.velocity);
 
                 const bound = this.boundarySize - 10;
                 if (Math.abs(this.position.x) > bound) this.velocity.x *= -0.5;
                 if (Math.abs(this.position.y) > bound) this.velocity.y *= -0.5;
                 if (Math.abs(this.position.z) > bound) this.velocity.z *= -0.5;
-                this.position.clamp(
-                    new THREE.Vector3(-bound, -bound, -bound),
-                    new THREE.Vector3(bound, bound, bound)
-                );
+                this.position.clamp(new THREE.Vector3(-bound, -bound, -bound), new THREE.Vector3(bound, bound, bound));
             }
         }
 
@@ -512,6 +627,10 @@
             constructor() {
                 this.keys = { w: false, a: false, s: false, d: false, q: false, e: false };
                 this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
+                this.gpuCompute = null;
+                this.positionVariable = null;
+                this.velocityVariable = null;
+                this.gpuPositionData = null;
 
                 this.initScene();
                 this.initBoids();
@@ -525,89 +644,50 @@
             }
 
             initScene() {
-                // Scene with dark background for high contrast
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(0x050510);
                 this.scene.fog = new THREE.FogExp2(0x050510, CONFIG.fogDensity);
 
-                // Camera
-                this.camera = new THREE.PerspectiveCamera(
-                    75,
-                    window.innerWidth / window.innerHeight,
-                    0.1,
-                    1000
-                );
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 this.camera.position.set(0, 50, 150);
 
-                // Renderer with better quality
-                this.renderer = new THREE.WebGLRenderer({
-                    antialias: true,
-                    powerPreference: "high-performance"
-                });
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                 document.body.appendChild(this.renderer.domElement);
 
-                // OrbitControls
                 this.controls = new OrbitControls(this.camera, this.renderer.domElement);
                 this.controls.enableDamping = true;
                 this.controls.dampingFactor = 0.05;
                 this.controls.maxDistance = 400;
 
-                // Boundary box (neon wireframe)
-                const boxGeometry = new THREE.BoxGeometry(
-                    CONFIG.boundarySize * 2,
-                    CONFIG.boundarySize * 2,
-                    CONFIG.boundarySize * 2
-                );
-                const boxMaterial = new THREE.LineBasicMaterial({
-                    color: 0x00ffff,
-                    transparent: true,
-                    opacity: 0.6
-                });
-                const wireframe = new THREE.LineSegments(
-                    new THREE.EdgesGeometry(boxGeometry),
-                    boxMaterial
-                );
-                this.scene.add(wireframe);
+                // Boundary box
+                const boxGeo = new THREE.BoxGeometry(CONFIG.boundarySize * 2, CONFIG.boundarySize * 2, CONFIG.boundarySize * 2);
+                const boxMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6 });
+                this.scene.add(new THREE.LineSegments(new THREE.EdgesGeometry(boxGeo), boxMat));
 
-                // Add glowing corner markers
-                const cornerSize = 8;
-                const cornerGeo = new THREE.BoxGeometry(cornerSize, cornerSize, cornerSize);
-                const cornerMat = new THREE.MeshBasicMaterial({
-                    color: 0x00ffff,
-                    transparent: true,
-                    opacity: 0.3
-                });
-                const bound = CONFIG.boundarySize;
-                const corners = [
-                    [-1, -1, -1], [-1, -1, 1], [-1, 1, -1], [-1, 1, 1],
-                    [1, -1, -1], [1, -1, 1], [1, 1, -1], [1, 1, 1]
-                ];
-                corners.forEach(([x, y, z]) => {
+                // Corner markers
+                const cornerGeo = new THREE.BoxGeometry(8, 8, 8);
+                const cornerMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3 });
+                const b = CONFIG.boundarySize;
+                [[-1,-1,-1],[-1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1],[1,-1,1],[1,1,-1],[1,1,1]].forEach(([x,y,z]) => {
                     const corner = new THREE.Mesh(cornerGeo, cornerMat);
-                    corner.position.set(x * bound, y * bound, z * bound);
+                    corner.position.set(x * b, y * b, z * b);
                     this.scene.add(corner);
                 });
 
-                // Enhanced lighting for neon effect
-                const ambientLight = new THREE.AmbientLight(0x404060, 0.3);
-                this.scene.add(ambientLight);
-
+                // Lighting
+                this.scene.add(new THREE.AmbientLight(0x404060, 0.3));
                 const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
                 dirLight.position.set(50, 100, 50);
                 this.scene.add(dirLight);
+                const pl1 = new THREE.PointLight(0x00ffff, 0.5, 200);
+                pl1.position.set(0, 50, 0);
+                this.scene.add(pl1);
+                const pl2 = new THREE.PointLight(0xff00ff, 0.3, 200);
+                pl2.position.set(50, -50, 50);
+                this.scene.add(pl2);
 
-                // Add point lights for glow effect
-                const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 200);
-                pointLight1.position.set(0, 50, 0);
-                this.scene.add(pointLight1);
-
-                const pointLight2 = new THREE.PointLight(0xff00ff, 0.3, 200);
-                pointLight2.position.set(50, -50, 50);
-                this.scene.add(pointLight2);
-
-                // Handle resize
                 window.addEventListener('resize', () => {
                     this.camera.aspect = window.innerWidth / window.innerHeight;
                     this.camera.updateProjectionMatrix();
@@ -618,229 +698,301 @@
             initBoids() {
                 this.boids = [];
                 this.spatialGrid = new SpatialGrid(CONFIG.gridCellSize, CONFIG.boundarySize);
-
                 for (let i = 0; i < CONFIG.boidCount; i++) {
                     this.boids.push(new Boid(CONFIG.boundarySize));
                 }
 
-                // Dart/arrow geometry for clear orientation
-                const coneGeometry = new THREE.ConeGeometry(0.5, 2.5, 4);
-                coneGeometry.rotateX(Math.PI / 2);
-
-                // Neon material with emissive glow
-                const material = new THREE.MeshStandardMaterial({
-                    color: 0x00ffff,
-                    emissive: 0x00ffff,
-                    emissiveIntensity: CONFIG.glowIntensity,
-                    metalness: 0.8,
-                    roughness: 0.2
+                // CPU instanced mesh
+                const coneGeo = new THREE.ConeGeometry(0.5, 2.5, 4);
+                coneGeo.rotateX(Math.PI / 2);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: CONFIG.glowIntensity, metalness: 0.8, roughness: 0.2
                 });
-
-                this.instancedMesh = new THREE.InstancedMesh(
-                    coneGeometry,
-                    material,
-                    CONFIG.boidCount
-                );
+                this.instancedMesh = new THREE.InstancedMesh(coneGeo, mat, CONFIG.boidCount);
                 this.scene.add(this.instancedMesh);
-
                 this.dummy = new THREE.Object3D();
                 this.tempColor = new THREE.Color();
             }
 
-            initTrails() {
-                // Trail system using line segments
-                const trailCount = Math.min(200, CONFIG.boidCount); // Limit trails for performance
-                this.trailBoidIndices = [];
+            initGPUCompute() {
+                // Texture size (power of 2)
+                const width = 256;
+                const height = Math.ceil(CONFIG.gpuBoidCount / width);
+                this.gpuWidth = width;
+                this.gpuHeight = height;
 
-                // Select evenly distributed boids for trails
+                this.gpuCompute = new GPUComputationRenderer(width, height, this.renderer);
+
+                if (!this.renderer.capabilities.isWebGL2) {
+                    console.error('WebGL2 not supported');
+                    return false;
+                }
+
+                // Create initial textures
+                const posTexture = this.gpuCompute.createTexture();
+                const velTexture = this.gpuCompute.createTexture();
+
+                // Fill with random data
+                const posData = posTexture.image.data;
+                const velData = velTexture.image.data;
+                const bound = CONFIG.boundarySize;
+
+                for (let i = 0; i < posData.length; i += 4) {
+                    posData[i] = (Math.random() - 0.5) * bound * 1.8;
+                    posData[i + 1] = (Math.random() - 0.5) * bound * 1.8;
+                    posData[i + 2] = (Math.random() - 0.5) * bound * 1.8;
+                    posData[i + 3] = 1;
+
+                    velData[i] = (Math.random() - 0.5) * 2;
+                    velData[i + 1] = (Math.random() - 0.5) * 2;
+                    velData[i + 2] = (Math.random() - 0.5) * 2;
+                    velData[i + 3] = 1;
+                }
+
+                this.positionVariable = this.gpuCompute.addVariable('texturePosition', positionShader, posTexture);
+                this.velocityVariable = this.gpuCompute.addVariable('textureVelocity', velocityShader, velTexture);
+
+                this.gpuCompute.setVariableDependencies(this.positionVariable, [this.positionVariable, this.velocityVariable]);
+                this.gpuCompute.setVariableDependencies(this.velocityVariable, [this.positionVariable, this.velocityVariable]);
+
+                // Position uniforms
+                const posUniforms = this.positionVariable.material.uniforms;
+                posUniforms['time'] = { value: 0 };
+                posUniforms['delta'] = { value: 0 };
+                posUniforms['boundarySize'] = { value: CONFIG.boundarySize };
+                posUniforms['maxSpeed'] = { value: CONFIG.maxSpeed };
+
+                // Velocity uniforms
+                const velUniforms = this.velocityVariable.material.uniforms;
+                velUniforms['time'] = { value: 0 };
+                velUniforms['delta'] = { value: 0 };
+                velUniforms['separationWeight'] = { value: CONFIG.separation };
+                velUniforms['alignmentWeight'] = { value: CONFIG.alignment };
+                velUniforms['cohesionWeight'] = { value: CONFIG.cohesion };
+                velUniforms['visualRadius'] = { value: CONFIG.visualRadius };
+                velUniforms['separationRadius'] = { value: CONFIG.separationRadius };
+                velUniforms['maxSpeed'] = { value: CONFIG.maxSpeed };
+                velUniforms['maxForce'] = { value: CONFIG.maxForce };
+                velUniforms['boundarySize'] = { value: CONFIG.boundarySize };
+                velUniforms['predatorPos'] = { value: new THREE.Vector3() };
+                velUniforms['predatorEnabled'] = { value: CONFIG.predatorEnabled ? 1.0 : 0.0 };
+                velUniforms['fleeRadius'] = { value: CONFIG.fleeRadius };
+                velUniforms['fleeWeight'] = { value: CONFIG.fleeWeight };
+
+                const error = this.gpuCompute.init();
+                if (error !== null) {
+                    console.error('GPU Compute error:', error);
+                    return false;
+                }
+
+                // Create GPU points mesh
+                const positions = new Float32Array(CONFIG.gpuBoidCount * 3);
+                const colors = new Float32Array(CONFIG.gpuBoidCount * 3);
+                const references = new Float32Array(CONFIG.gpuBoidCount * 2);
+
+                for (let i = 0; i < CONFIG.gpuBoidCount; i++) {
+                    const x = (i % width) / width;
+                    const y = Math.floor(i / width) / height;
+                    references[i * 2] = x;
+                    references[i * 2 + 1] = y;
+                    colors[i * 3] = 0;
+                    colors[i * 3 + 1] = 1;
+                    colors[i * 3 + 2] = 1;
+                }
+
+                const gpuGeo = new THREE.BufferGeometry();
+                gpuGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                gpuGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                gpuGeo.setAttribute('reference', new THREE.BufferAttribute(references, 2));
+
+                const gpuMat = new THREE.ShaderMaterial({
+                    uniforms: {
+                        texturePosition: { value: null },
+                        textureVelocity: { value: null },
+                        cameraConstant: { value: this.getCameraConstant() },
+                        boundarySize: { value: CONFIG.boundarySize },
+                        maxSpeed: { value: CONFIG.maxSpeed }
+                    },
+                    vertexShader: `
+                        uniform sampler2D texturePosition;
+                        uniform sampler2D textureVelocity;
+                        uniform float cameraConstant;
+                        uniform float boundarySize;
+                        uniform float maxSpeed;
+                        attribute vec2 reference;
+                        varying vec3 vColor;
+
+                        void main() {
+                            vec4 pos = texture2D(texturePosition, reference);
+                            vec4 vel = texture2D(textureVelocity, reference);
+
+                            // Color by speed
+                            float speed = length(vel.xyz) / maxSpeed;
+                            vColor = mix(vec3(0.0, 0.5, 1.0), vec3(1.0, 0.3, 0.5), speed);
+
+                            vec4 mvPosition = modelViewMatrix * vec4(pos.xyz, 1.0);
+                            gl_PointSize = cameraConstant / -mvPosition.z;
+                            gl_Position = projectionMatrix * mvPosition;
+                        }
+                    `,
+                    fragmentShader: `
+                        varying vec3 vColor;
+                        void main() {
+                            float r = length(gl_PointCoord - vec2(0.5));
+                            if (r > 0.5) discard;
+                            float alpha = 1.0 - smoothstep(0.3, 0.5, r);
+                            gl_FragColor = vec4(vColor * 1.5, alpha);
+                        }
+                    `,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+
+                this.gpuPoints = new THREE.Points(gpuGeo, gpuMat);
+                this.gpuPoints.visible = false;
+                this.scene.add(this.gpuPoints);
+
+                return true;
+            }
+
+            getCameraConstant() {
+                return window.innerHeight / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)));
+            }
+
+            initTrails() {
+                const trailCount = Math.min(200, CONFIG.boidCount);
+                this.trailBoidIndices = [];
                 for (let i = 0; i < trailCount; i++) {
                     this.trailBoidIndices.push(Math.floor(i * CONFIG.boidCount / trailCount));
                 }
-
                 const maxPoints = trailCount * CONFIG.trailLength * 2;
                 this.trailGeometry = new THREE.BufferGeometry();
                 this.trailPositions = new Float32Array(maxPoints * 3);
                 this.trailColors = new Float32Array(maxPoints * 3);
-
                 this.trailGeometry.setAttribute('position', new THREE.BufferAttribute(this.trailPositions, 3));
                 this.trailGeometry.setAttribute('color', new THREE.BufferAttribute(this.trailColors, 3));
-
-                const trailMaterial = new THREE.LineBasicMaterial({
-                    vertexColors: true,
-                    transparent: true,
-                    opacity: 0.6,
-                    blending: THREE.AdditiveBlending
-                });
-
-                this.trailLines = new THREE.LineSegments(this.trailGeometry, trailMaterial);
+                const trailMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
+                this.trailLines = new THREE.LineSegments(this.trailGeometry, trailMat);
                 this.scene.add(this.trailLines);
             }
 
             updateTrails() {
-                if (!CONFIG.trailsEnabled) {
+                if (!CONFIG.trailsEnabled || CONFIG.gpuMode) {
                     this.trailLines.visible = false;
                     return;
                 }
                 this.trailLines.visible = true;
-
-                let vertexIndex = 0;
-                const trailLength = CONFIG.trailLength;
-
-                for (const boidIndex of this.trailBoidIndices) {
-                    const boid = this.boids[boidIndex];
-                    const history = boid.positionHistory;
-
-                    for (let i = 0; i < Math.min(history.length - 1, trailLength - 1); i++) {
-                        const p1 = history[i];
-                        const p2 = history[i + 1];
-
-                        // Position
-                        this.trailPositions[vertexIndex * 3] = p1.x;
-                        this.trailPositions[vertexIndex * 3 + 1] = p1.y;
-                        this.trailPositions[vertexIndex * 3 + 2] = p1.z;
-
-                        this.trailPositions[(vertexIndex + 1) * 3] = p2.x;
-                        this.trailPositions[(vertexIndex + 1) * 3 + 1] = p2.y;
-                        this.trailPositions[(vertexIndex + 1) * 3 + 2] = p2.z;
-
-                        // Color with fade
-                        const alpha = 1 - (i / trailLength);
-                        let hue;
-                        if (CONFIG.colorMode === 'velocity') {
-                            const speed = boid.velocity.length() / CONFIG.maxSpeed;
-                            hue = 0.6 - speed * 0.6;
-                        } else {
-                            hue = (boid.position.x + CONFIG.boundarySize) / (CONFIG.boundarySize * 2);
-                        }
-
+                let vi = 0;
+                for (const bi of this.trailBoidIndices) {
+                    if (bi >= this.boids.length) continue;
+                    const boid = this.boids[bi];
+                    const hist = boid.positionHistory;
+                    for (let i = 0; i < Math.min(hist.length - 1, CONFIG.trailLength - 1); i++) {
+                        const p1 = hist[i], p2 = hist[i + 1];
+                        this.trailPositions[vi * 3] = p1.x; this.trailPositions[vi * 3 + 1] = p1.y; this.trailPositions[vi * 3 + 2] = p1.z;
+                        this.trailPositions[(vi + 1) * 3] = p2.x; this.trailPositions[(vi + 1) * 3 + 1] = p2.y; this.trailPositions[(vi + 1) * 3 + 2] = p2.z;
+                        const alpha = 1 - (i / CONFIG.trailLength);
+                        const speed = boid.velocity.length() / CONFIG.maxSpeed;
+                        const hue = CONFIG.colorMode === 'velocity' ? 0.6 - speed * 0.6 : (boid.position.x + CONFIG.boundarySize) / (CONFIG.boundarySize * 2);
                         this.tempColor.setHSL(hue, 0.9, 0.5 * alpha);
-
-                        this.trailColors[vertexIndex * 3] = this.tempColor.r;
-                        this.trailColors[vertexIndex * 3 + 1] = this.tempColor.g;
-                        this.trailColors[vertexIndex * 3 + 2] = this.tempColor.b;
-
-                        this.trailColors[(vertexIndex + 1) * 3] = this.tempColor.r * 0.7;
-                        this.trailColors[(vertexIndex + 1) * 3 + 1] = this.tempColor.g * 0.7;
-                        this.trailColors[(vertexIndex + 1) * 3 + 2] = this.tempColor.b * 0.7;
-
-                        vertexIndex += 2;
+                        this.trailColors[vi * 3] = this.tempColor.r; this.trailColors[vi * 3 + 1] = this.tempColor.g; this.trailColors[vi * 3 + 2] = this.tempColor.b;
+                        this.trailColors[(vi + 1) * 3] = this.tempColor.r * 0.7; this.trailColors[(vi + 1) * 3 + 1] = this.tempColor.g * 0.7; this.trailColors[(vi + 1) * 3 + 2] = this.tempColor.b * 0.7;
+                        vi += 2;
                     }
                 }
-
-                // Clear remaining vertices
-                for (let i = vertexIndex * 3; i < this.trailPositions.length; i++) {
-                    this.trailPositions[i] = 0;
-                    this.trailColors[i] = 0;
-                }
-
+                for (let i = vi * 3; i < this.trailPositions.length; i++) { this.trailPositions[i] = 0; this.trailColors[i] = 0; }
                 this.trailGeometry.attributes.position.needsUpdate = true;
                 this.trailGeometry.attributes.color.needsUpdate = true;
             }
 
             initPredator() {
                 this.predator = new Predator(CONFIG.boundarySize);
-
-                // Predator mesh with aggressive neon red
-                const predatorGeometry = new THREE.ConeGeometry(2.5, 7, 6);
-                predatorGeometry.rotateX(Math.PI / 2);
-
-                const predatorMaterial = new THREE.MeshStandardMaterial({
-                    color: 0xff2244,
-                    emissive: 0xff0033,
-                    emissiveIntensity: 0.6,
-                    metalness: 0.9,
-                    roughness: 0.1
-                });
-
-                this.predatorMesh = new THREE.Mesh(predatorGeometry, predatorMaterial);
+                const predGeo = new THREE.ConeGeometry(2.5, 7, 6);
+                predGeo.rotateX(Math.PI / 2);
+                const predMat = new THREE.MeshStandardMaterial({ color: 0xff2244, emissive: 0xff0033, emissiveIntensity: 0.6, metalness: 0.9, roughness: 0.1 });
+                this.predatorMesh = new THREE.Mesh(predGeo, predMat);
                 this.scene.add(this.predatorMesh);
-
-                // Predator glow sphere
-                const glowGeometry = new THREE.SphereGeometry(CONFIG.fleeRadius, 16, 16);
-                const glowMaterial = new THREE.MeshBasicMaterial({
-                    color: 0xff0033,
-                    transparent: true,
-                    opacity: 0.05,
-                    side: THREE.BackSide
-                });
-                this.predatorGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+                const glowGeo = new THREE.SphereGeometry(CONFIG.fleeRadius, 16, 16);
+                const glowMat = new THREE.MeshBasicMaterial({ color: 0xff0033, transparent: true, opacity: 0.05, side: THREE.BackSide });
+                this.predatorGlow = new THREE.Mesh(glowGeo, glowMat);
                 this.scene.add(this.predatorGlow);
             }
 
-            addBoids(count) {
-                const newCount = Math.min(this.boids.length + count, CONFIG.maxBoidCount);
-                const toAdd = newCount - this.boids.length;
-
-                for (let i = 0; i < toAdd; i++) {
-                    this.boids.push(new Boid(CONFIG.boundarySize));
+            enableGPUMode() {
+                if (!this.gpuCompute) {
+                    const success = this.initGPUCompute();
+                    if (!success) {
+                        alert('GPU Compute not supported on this device');
+                        CONFIG.gpuMode = false;
+                        return;
+                    }
                 }
+                CONFIG.gpuMode = true;
+                this.instancedMesh.visible = false;
+                this.gpuPoints.visible = true;
+                this.trailLines.visible = false;
+                document.getElementById('gpu-badge').style.display = 'inline-block';
+                this.updateBoidCountDisplay();
+            }
 
+            disableGPUMode() {
+                CONFIG.gpuMode = false;
+                this.instancedMesh.visible = true;
+                if (this.gpuPoints) this.gpuPoints.visible = false;
+                document.getElementById('gpu-badge').style.display = 'none';
+                this.updateBoidCountDisplay();
+            }
+
+            addBoids(count) {
+                if (CONFIG.gpuMode) return;
+                const newCount = Math.min(this.boids.length + count, CONFIG.maxBoidCount);
+                for (let i = this.boids.length; i < newCount; i++) this.boids.push(new Boid(CONFIG.boundarySize));
                 this.rebuildInstancedMesh();
                 this.updateBoidCountDisplay();
             }
 
             removeBoids(count) {
-                const newCount = Math.max(this.boids.length - count, 50);
-                this.boids.length = newCount;
+                if (CONFIG.gpuMode) return;
+                this.boids.length = Math.max(this.boids.length - count, 50);
                 this.rebuildInstancedMesh();
                 this.updateBoidCountDisplay();
             }
 
             rebuildInstancedMesh() {
-                // Remove old mesh
                 this.scene.remove(this.instancedMesh);
                 this.instancedMesh.dispose();
-
-                // Create new instanced mesh with updated count
-                const coneGeometry = new THREE.ConeGeometry(0.5, 2.5, 4);
-                coneGeometry.rotateX(Math.PI / 2);
-
-                const material = new THREE.MeshStandardMaterial({
-                    color: 0x00ffff,
-                    emissive: 0x00ffff,
-                    emissiveIntensity: CONFIG.glowIntensity,
-                    metalness: 0.8,
-                    roughness: 0.2
-                });
-
-                this.instancedMesh = new THREE.InstancedMesh(
-                    coneGeometry,
-                    material,
-                    this.boids.length
-                );
+                const coneGeo = new THREE.ConeGeometry(0.5, 2.5, 4);
+                coneGeo.rotateX(Math.PI / 2);
+                const mat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: CONFIG.glowIntensity, metalness: 0.8, roughness: 0.2 });
+                this.instancedMesh = new THREE.InstancedMesh(coneGeo, mat, this.boids.length);
+                this.instancedMesh.visible = !CONFIG.gpuMode;
                 this.scene.add(this.instancedMesh);
-
-                // Update trail indices
-                const trailCount = Math.min(200, this.boids.length);
+                const tc = Math.min(200, this.boids.length);
                 this.trailBoidIndices = [];
-                for (let i = 0; i < trailCount; i++) {
-                    this.trailBoidIndices.push(Math.floor(i * this.boids.length / trailCount));
-                }
+                for (let i = 0; i < tc; i++) this.trailBoidIndices.push(Math.floor(i * this.boids.length / tc));
             }
 
             updateBoidCountDisplay() {
-                document.getElementById('boid-count').textContent = `Boids: ${this.boids.length}`;
-                if (this.gui) {
-                    this.gui.controllersRecursive().forEach(c => c.updateDisplay());
-                }
+                const count = CONFIG.gpuMode ? CONFIG.gpuBoidCount : this.boids.length;
+                document.getElementById('boid-count').textContent = `Boids: ${count.toLocaleString()}`;
             }
 
             initGUI() {
                 const gui = new GUI({ title: 'Boid DNA' });
 
-                // Population controls at top
+                // Population
                 const popFolder = gui.addFolder('Population');
-                const popControls = {
-                    count: this.boids.length,
+                const popCtrls = {
                     add100: () => this.addBoids(100),
                     add500: () => this.addBoids(500),
                     remove100: () => this.removeBoids(100),
                     remove500: () => this.removeBoids(500)
                 };
-                popFolder.add(popControls, 'add100').name('+ 100 Boids');
-                popFolder.add(popControls, 'add500').name('+ 500 Boids');
-                popFolder.add(popControls, 'remove100').name('- 100 Boids');
-                popFolder.add(popControls, 'remove500').name('- 500 Boids');
+                popFolder.add(popCtrls, 'add100').name('+ 100 Boids');
+                popFolder.add(popCtrls, 'add500').name('+ 500 Boids');
+                popFolder.add(popCtrls, 'remove100').name('- 100 Boids');
+                popFolder.add(popCtrls, 'remove500').name('- 500 Boids');
                 popFolder.open();
 
                 const behaviorFolder = gui.addFolder('Behavior');
@@ -860,21 +1012,15 @@
                 const predatorFolder = gui.addFolder('Predator');
                 predatorFolder.add(CONFIG, 'predatorEnabled').name('AI Predator');
                 predatorFolder.add(CONFIG, 'predatorSpeed', 0.5, 3, 0.1).name('Speed');
-                predatorFolder.add(CONFIG, 'fleeRadius', 10, 50, 1).name('Flee Radius').onChange(v => {
-                    this.predatorGlow.scale.setScalar(v / CONFIG.fleeRadius);
-                });
+                predatorFolder.add(CONFIG, 'fleeRadius', 10, 50, 1).name('Flee Radius');
                 predatorFolder.add(CONFIG, 'fleeWeight', 0.5, 5, 0.1).name('Flee Weight');
 
                 const visualFolder = gui.addFolder('Visual');
                 visualFolder.add(CONFIG, 'colorMode', ['velocity', 'position']).name('Color Mode');
-                visualFolder.add(CONFIG, 'trailsEnabled').name('Trails');
+                visualFolder.add(CONFIG, 'trailsEnabled').name('Trails (CPU only)');
                 visualFolder.add(CONFIG, 'trailLength', 3, 15, 1).name('Trail Length');
-                visualFolder.add(CONFIG, 'glowIntensity', 0, 1, 0.1).name('Glow').onChange(v => {
-                    this.instancedMesh.material.emissiveIntensity = v;
-                });
-                visualFolder.add(CONFIG, 'fogDensity', 0, 0.015, 0.001).name('Fog').onChange(v => {
-                    this.scene.fog.density = v;
-                });
+                visualFolder.add(CONFIG, 'glowIntensity', 0, 1, 0.1).name('Glow').onChange(v => { this.instancedMesh.material.emissiveIntensity = v; });
+                visualFolder.add(CONFIG, 'fogDensity', 0, 0.015, 0.001).name('Fog').onChange(v => { this.scene.fog.density = v; });
 
                 const camFolder = gui.addFolder('Predator Cam');
                 camFolder.add(CONFIG, 'cameraPredatorRadius', 15, 60, 1).name('Fear Radius');
@@ -885,88 +1031,54 @@
             }
 
             initPresets() {
-                const buttons = document.querySelectorAll('.preset-btn');
-
-                buttons.forEach(btn => {
+                document.querySelectorAll('.preset-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const preset = btn.dataset.preset;
-
-                        if (preset === 'boidview' || preset === 'predatorcam') {
-                            // Camera modes are toggleable
-                            if (btn.classList.contains('active')) {
-                                this.exitCameraMode();
-                                btn.classList.remove('active');
-                                return;
-                            }
+                        if ((preset === 'boidview' || preset === 'predatorcam' || preset === 'godmode') && btn.classList.contains('active')) {
+                            if (preset === 'godmode') this.disableGPUMode();
+                            else this.exitCameraMode();
+                            btn.classList.remove('active');
+                            return;
                         }
-
                         this.applyPreset(preset);
-                        buttons.forEach(b => b.classList.remove('active'));
+                        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
                         btn.classList.add('active');
                     });
                 });
             }
 
             applyPreset(preset) {
-                // Exit any active camera mode first
+                if (preset !== 'godmode') this.disableGPUMode();
                 this.exitCameraMode();
-
                 switch(preset) {
                     case 'school':
-                        CONFIG.separation = 1.2;
-                        CONFIG.alignment = 2.5;
-                        CONFIG.cohesion = 1.5;
-                        CONFIG.maxSpeed = 2.0;
-                        CONFIG.visualRadius = 15;
+                        CONFIG.separation = 1.2; CONFIG.alignment = 2.5; CONFIG.cohesion = 1.5; CONFIG.maxSpeed = 2.0; CONFIG.visualRadius = 15;
                         break;
                     case 'swarm':
-                        CONFIG.separation = 2.0;
-                        CONFIG.alignment = 0.5;
-                        CONFIG.cohesion = 3.0;
-                        CONFIG.maxSpeed = 2.5;
-                        CONFIG.visualRadius = 8;
+                        CONFIG.separation = 2.0; CONFIG.alignment = 0.5; CONFIG.cohesion = 3.0; CONFIG.maxSpeed = 2.5; CONFIG.visualRadius = 8;
                         break;
                     case 'chaos':
-                        CONFIG.separation = 4.0;
-                        CONFIG.alignment = 0.2;
-                        CONFIG.cohesion = 0.0;
-                        CONFIG.maxSpeed = 3.0;
-                        CONFIG.visualRadius = 10;
+                        CONFIG.separation = 4.0; CONFIG.alignment = 0.2; CONFIG.cohesion = 0.0; CONFIG.maxSpeed = 3.0; CONFIG.visualRadius = 10;
                         break;
                     case 'boidview':
-                        this.enterBoidView();
-                        return;
+                        this.enterBoidView(); return;
                     case 'predatorcam':
-                        this.enterPredatorCam();
-                        return;
+                        this.enterPredatorCam(); return;
+                    case 'godmode':
+                        this.enableGPUMode(); return;
                 }
-
                 this.gui.controllersRecursive().forEach(c => c.updateDisplay());
             }
 
             initControls() {
-                // Keyboard controls for Predator Cam
                 document.addEventListener('keydown', (e) => {
                     if (CONFIG.predatorCamMode) {
                         const key = e.key.toLowerCase();
-                        if (key in this.keys) {
-                            this.keys[key] = true;
-                            e.preventDefault();
-                        }
-                        if (key === 'escape') {
-                            this.exitCameraMode();
-                        }
+                        if (key in this.keys) { this.keys[key] = true; e.preventDefault(); }
+                        if (key === 'escape') this.exitCameraMode();
                     }
                 });
-
-                document.addEventListener('keyup', (e) => {
-                    const key = e.key.toLowerCase();
-                    if (key in this.keys) {
-                        this.keys[key] = false;
-                    }
-                });
-
-                // Mouse controls for Predator Cam
+                document.addEventListener('keyup', (e) => { const key = e.key.toLowerCase(); if (key in this.keys) this.keys[key] = false; });
                 this.renderer.domElement.addEventListener('mousemove', (e) => {
                     if (CONFIG.predatorCamMode && document.pointerLockElement) {
                         this.euler.setFromQuaternion(this.camera.quaternion);
@@ -976,33 +1088,22 @@
                         this.camera.quaternion.setFromEuler(this.euler);
                     }
                 });
-
-                // Click to exit boid view
                 this.renderer.domElement.addEventListener('click', () => {
-                    if (CONFIG.boidViewMode) {
-                        this.exitCameraMode();
-                    } else if (CONFIG.predatorCamMode && !document.pointerLockElement) {
-                        this.renderer.domElement.requestPointerLock();
-                    }
-                });
-
-                document.addEventListener('pointerlockchange', () => {
-                    if (!document.pointerLockElement && CONFIG.predatorCamMode) {
-                        // Show cursor when pointer lock is released
-                    }
+                    if (CONFIG.boidViewMode) this.exitCameraMode();
+                    else if (CONFIG.predatorCamMode && !document.pointerLockElement) this.renderer.domElement.requestPointerLock();
                 });
             }
 
             enterBoidView() {
+                if (CONFIG.gpuMode) return;
                 CONFIG.boidViewMode = true;
                 CONFIG.predatorCamMode = false;
                 CONFIG.followBoidIndex = Math.floor(Math.random() * this.boids.length);
                 this.controls.enabled = false;
-
-                const indicator = document.getElementById('camera-indicator');
-                indicator.className = 'boid-view';
-                indicator.innerHTML = `Riding Boid #${CONFIG.followBoidIndex} - Click to exit`;
-                indicator.style.display = 'block';
+                const ind = document.getElementById('camera-indicator');
+                ind.className = 'boid-view';
+                ind.innerHTML = `Riding Boid #${CONFIG.followBoidIndex} - Click to exit`;
+                ind.style.display = 'block';
                 document.getElementById('crosshair').style.display = 'none';
             }
 
@@ -1010,18 +1111,14 @@
                 CONFIG.predatorCamMode = true;
                 CONFIG.boidViewMode = false;
                 this.controls.enabled = false;
-
-                // Position camera at a good starting point
                 this.camera.position.set(0, 0, 80);
                 this.camera.lookAt(0, 0, 0);
                 this.euler.setFromQuaternion(this.camera.quaternion);
-
-                const indicator = document.getElementById('camera-indicator');
-                indicator.className = 'predator-cam';
-                indicator.innerHTML = 'PREDATOR CAM<br>WASD to move | Q/E up/down | Mouse to look<br>ESC to exit';
-                indicator.style.display = 'block';
+                const ind = document.getElementById('camera-indicator');
+                ind.className = 'predator-cam';
+                ind.innerHTML = 'PREDATOR CAM<br>WASD to move | Q/E up/down | Mouse to look<br>ESC to exit';
+                ind.style.display = 'block';
                 document.getElementById('crosshair').style.display = 'block';
-
                 this.renderer.domElement.requestPointerLock();
             }
 
@@ -1031,28 +1128,23 @@
                 this.controls.enabled = true;
                 this.camera.position.set(0, 50, 150);
                 this.camera.lookAt(0, 0, 0);
-
                 document.getElementById('camera-indicator').style.display = 'none';
                 document.getElementById('crosshair').style.display = 'none';
-                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-
-                if (document.pointerLockElement) {
-                    document.exitPointerLock();
-                }
+                document.querySelectorAll('.preset-btn:not(.god-mode)').forEach(b => b.classList.remove('active'));
+                if (document.pointerLockElement) document.exitPointerLock();
             }
 
             initStats() {
                 this.frameCount = 0;
                 this.lastTime = performance.now();
                 this.fps = 0;
-
-                document.getElementById('boid-count').textContent = `Boids: ${CONFIG.boidCount}`;
+                this.lastDelta = 0.016;
+                this.updateBoidCountDisplay();
             }
 
             updateStats() {
                 this.frameCount++;
                 const now = performance.now();
-
                 if (now - this.lastTime >= 1000) {
                     this.fps = this.frameCount;
                     this.frameCount = 0;
@@ -1063,123 +1155,121 @@
 
             updatePredatorCamMovement() {
                 if (!CONFIG.predatorCamMode) return;
-
-                const moveSpeed = CONFIG.moveSpeed;
-                const direction = new THREE.Vector3();
-
-                // Get camera forward/right vectors
+                const dir = new THREE.Vector3();
                 const forward = new THREE.Vector3();
                 this.camera.getWorldDirection(forward);
                 forward.y = 0;
                 forward.normalize();
-
-                const right = new THREE.Vector3();
-                right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
-
-                // WASD movement
-                if (this.keys.w) direction.add(forward);
-                if (this.keys.s) direction.sub(forward);
-                if (this.keys.d) direction.add(right);
-                if (this.keys.a) direction.sub(right);
-                if (this.keys.e) direction.y += 1;
-                if (this.keys.q) direction.y -= 1;
-
-                if (direction.length() > 0) {
-                    direction.normalize().multiplyScalar(moveSpeed);
-                    this.camera.position.add(direction);
-
-                    // Keep camera within bounds
-                    const bound = CONFIG.boundarySize - 5;
-                    this.camera.position.clamp(
-                        new THREE.Vector3(-bound, -bound, -bound),
-                        new THREE.Vector3(bound, bound, bound)
-                    );
+                const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
+                if (this.keys.w) dir.add(forward);
+                if (this.keys.s) dir.sub(forward);
+                if (this.keys.d) dir.add(right);
+                if (this.keys.a) dir.sub(right);
+                if (this.keys.e) dir.y += 1;
+                if (this.keys.q) dir.y -= 1;
+                if (dir.length() > 0) {
+                    dir.normalize().multiplyScalar(CONFIG.moveSpeed);
+                    this.camera.position.add(dir);
+                    const b = CONFIG.boundarySize - 5;
+                    this.camera.position.clamp(new THREE.Vector3(-b, -b, -b), new THREE.Vector3(b, b, b));
                 }
             }
 
-            updateBoids() {
+            updateBoidsCPU() {
                 this.spatialGrid.clear();
-                for (const boid of this.boids) {
-                    this.spatialGrid.insert(boid);
-                }
-
-                const predatorPos = CONFIG.predatorEnabled ? this.predator.position : null;
-                const cameraPos = CONFIG.predatorCamMode ? this.camera.position : null;
-
+                for (const boid of this.boids) this.spatialGrid.insert(boid);
+                const predPos = CONFIG.predatorEnabled ? this.predator.position : null;
+                const camPos = CONFIG.predatorCamMode ? this.camera.position : null;
                 for (const boid of this.boids) {
                     const neighbors = this.spatialGrid.getNeighbors(boid, CONFIG.visualRadius);
-                    boid.flock(neighbors, predatorPos, cameraPos);
+                    boid.flock(neighbors, predPos, camPos);
                     boid.update();
                 }
+            }
 
-                // Update AI predator
+            updateBoidsGPU(delta) {
+                const velUniforms = this.velocityVariable.material.uniforms;
+                velUniforms['delta'].value = delta;
+                velUniforms['separationWeight'].value = CONFIG.separation;
+                velUniforms['alignmentWeight'].value = CONFIG.alignment;
+                velUniforms['cohesionWeight'].value = CONFIG.cohesion;
+                velUniforms['visualRadius'].value = CONFIG.visualRadius;
+                velUniforms['separationRadius'].value = CONFIG.separationRadius;
+                velUniforms['maxSpeed'].value = CONFIG.maxSpeed;
+                velUniforms['maxForce'].value = CONFIG.maxForce;
+                velUniforms['predatorEnabled'].value = CONFIG.predatorEnabled ? 1.0 : 0.0;
+                velUniforms['fleeRadius'].value = CONFIG.fleeRadius;
+                velUniforms['fleeWeight'].value = CONFIG.fleeWeight;
                 if (CONFIG.predatorEnabled) {
-                    this.predator.chase(this.boids);
+                    velUniforms['predatorPos'].value.copy(this.predator.position);
+                }
 
-                    this.predatorMesh.position.copy(this.predator.position);
-                    this.predatorGlow.position.copy(this.predator.position);
+                const posUniforms = this.positionVariable.material.uniforms;
+                posUniforms['delta'].value = delta;
+                posUniforms['maxSpeed'].value = CONFIG.maxSpeed;
 
-                    if (this.predator.velocity.length() > 0.01) {
-                        const lookTarget = new THREE.Vector3().addVectors(
-                            this.predator.position,
-                            this.predator.velocity
-                        );
-                        this.predatorMesh.lookAt(lookTarget);
-                    }
-                    this.predatorMesh.visible = true;
-                    this.predatorGlow.visible = true;
-                } else {
+                this.gpuCompute.compute();
+
+                // Update GPU points material
+                this.gpuPoints.material.uniforms.texturePosition.value = this.gpuCompute.getCurrentRenderTarget(this.positionVariable).texture;
+                this.gpuPoints.material.uniforms.textureVelocity.value = this.gpuCompute.getCurrentRenderTarget(this.velocityVariable).texture;
+                this.gpuPoints.material.uniforms.cameraConstant.value = this.getCameraConstant();
+                this.gpuPoints.material.uniforms.maxSpeed.value = CONFIG.maxSpeed;
+            }
+
+            updatePredator(delta) {
+                if (!CONFIG.predatorEnabled) {
                     this.predatorMesh.visible = false;
                     this.predatorGlow.visible = false;
+                    return;
                 }
+
+                if (CONFIG.gpuMode) {
+                    // Read position data from GPU for predator targeting
+                    const rt = this.gpuCompute.getCurrentRenderTarget(this.positionVariable);
+                    const width = this.gpuWidth;
+                    const height = this.gpuHeight;
+
+                    // Sample a few positions for center calculation
+                    this.predator.chase([], true, null);
+                } else {
+                    this.predator.chase(this.boids, false, null);
+                }
+
+                this.predatorMesh.position.copy(this.predator.position);
+                this.predatorGlow.position.copy(this.predator.position);
+                if (this.predator.velocity.length() > 0.01) {
+                    this.predatorMesh.lookAt(this.predator.position.clone().add(this.predator.velocity));
+                }
+                this.predatorMesh.visible = true;
+                this.predatorGlow.visible = true;
             }
 
             updateInstancedMesh() {
                 for (let i = 0; i < this.boids.length; i++) {
                     const boid = this.boids[i];
-
                     this.dummy.position.copy(boid.position);
-
                     if (boid.velocity.length() > 0.01) {
-                        const lookTarget = new THREE.Vector3().addVectors(
-                            boid.position,
-                            boid.velocity
-                        );
-                        this.dummy.lookAt(lookTarget);
+                        this.dummy.lookAt(boid.position.clone().add(boid.velocity));
                     }
-
                     this.dummy.updateMatrix();
                     this.instancedMesh.setMatrixAt(i, this.dummy.matrix);
-
-                    // Neon colors
-                    if (CONFIG.colorMode === 'velocity') {
-                        const speed = boid.velocity.length() / CONFIG.maxSpeed;
-                        this.tempColor.setHSL(0.55 - speed * 0.55, 1.0, 0.55);
-                    } else {
-                        const hue = (boid.position.x + CONFIG.boundarySize) / (CONFIG.boundarySize * 2);
-                        this.tempColor.setHSL(hue, 1.0, 0.55);
-                    }
+                    const speed = boid.velocity.length() / CONFIG.maxSpeed;
+                    const hue = CONFIG.colorMode === 'velocity' ? 0.55 - speed * 0.55 : (boid.position.x + CONFIG.boundarySize) / (CONFIG.boundarySize * 2);
+                    this.tempColor.setHSL(hue, 1.0, 0.55);
                     this.instancedMesh.setColorAt(i, this.tempColor);
                 }
-
                 this.instancedMesh.instanceMatrix.needsUpdate = true;
                 this.instancedMesh.instanceColor.needsUpdate = true;
             }
 
             updateCamera() {
-                if (CONFIG.boidViewMode) {
+                if (CONFIG.boidViewMode && !CONFIG.gpuMode) {
                     const boid = this.boids[CONFIG.followBoidIndex];
-
                     const offset = boid.velocity.clone().normalize().multiplyScalar(-5);
                     offset.y += 2;
-
                     this.camera.position.copy(boid.position).add(offset);
-
-                    const lookTarget = new THREE.Vector3().addVectors(
-                        boid.position,
-                        boid.velocity.clone().multiplyScalar(10)
-                    );
-                    this.camera.lookAt(lookTarget);
+                    this.camera.lookAt(boid.position.clone().add(boid.velocity.clone().multiplyScalar(10)));
                 } else if (CONFIG.predatorCamMode) {
                     this.updatePredatorCamMovement();
                 } else {
@@ -1190,8 +1280,18 @@
             animate() {
                 requestAnimationFrame(() => this.animate());
 
-                this.updateBoids();
-                this.updateInstancedMesh();
+                const now = performance.now();
+                const delta = Math.min((now - (this.lastFrameTime || now)) / 1000, 0.1);
+                this.lastFrameTime = now;
+
+                if (CONFIG.gpuMode) {
+                    this.updateBoidsGPU(delta);
+                } else {
+                    this.updateBoidsCPU();
+                    this.updateInstancedMesh();
+                }
+
+                this.updatePredator(delta);
                 this.updateTrails();
                 this.updateCamera();
                 this.updateStats();
@@ -1200,7 +1300,6 @@
             }
         }
 
-        // Start the simulation
         new BoidsSimulation();
     </script>
 </body>
