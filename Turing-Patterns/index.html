@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON MORPHOGENESIS // The Living Canvas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: #fff;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* Glassmorphism HUD */
+        .hud {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(10, 10, 20, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            z-index: 100;
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .hud h1 {
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #0ff;
+            text-shadow: 0 0 20px #0ff;
+            margin-bottom: 8px;
+        }
+
+        .hud h2 {
+            font-size: 10px;
+            font-weight: 400;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 20px;
+        }
+
+        /* Chaos Pad */
+        .chaos-pad-container {
+            margin-bottom: 20px;
+        }
+
+        .chaos-pad-label {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 8px;
+        }
+
+        .chaos-pad {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg,
+                rgba(0, 50, 50, 0.8) 0%,
+                rgba(50, 0, 50, 0.8) 50%,
+                rgba(50, 50, 0, 0.8) 100%);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 8px;
+            position: relative;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        .chaos-pad-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 20% 20%;
+            pointer-events: none;
+        }
+
+        /* Stability regions overlay */
+        .chaos-pad-regions {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        .region {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+        }
+
+        .region-spots { top: 60%; left: 20%; width: 25%; height: 30%; }
+        .region-maze { top: 30%; left: 40%; width: 30%; height: 35%; }
+        .region-chaos { top: 10%; left: 70%; width: 20%; height: 25%; }
+
+        .chaos-pad-puck {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background: radial-gradient(circle, #fff 0%, #0ff 50%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow:
+                0 0 20px #0ff,
+                0 0 40px #0ff,
+                0 0 60px rgba(0, 255, 255, 0.5);
+            pointer-events: none;
+            transition: box-shadow 0.1s;
+        }
+
+        .chaos-pad-axes {
+            position: absolute;
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+        }
+
+        .axis-f { bottom: 4px; left: 50%; transform: translateX(-50%); }
+        .axis-k { top: 50%; right: 4px; transform: translateY(-50%) rotate(-90deg); }
+
+        /* Stats Display */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 14px;
+            color: #0ff;
+            text-shadow: 0 0 10px #0ff;
+        }
+
+        /* Presets */
+        .section-label {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 8px;
+        }
+
+        .presets {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 6px;
+            color: #0ff;
+            font-size: 11px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .preset-btn.active {
+            background: rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        /* Theme Selector */
+        .theme-select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 12px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .theme-select option {
+            background: #111;
+        }
+
+        /* Speed Slider */
+        .slider-container {
+            margin-bottom: 20px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .slider-label {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .slider-value {
+            font-size: 10px;
+            color: #0ff;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: rgba(0, 255, 255, 0.2);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #0ff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px #0ff;
+        }
+
+        /* Control Buttons */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .ctrl-btn {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 11px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .ctrl-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .ctrl-btn.primary {
+            background: rgba(0, 255, 255, 0.2);
+            border-color: rgba(0, 255, 255, 0.4);
+            color: #0ff;
+        }
+
+        .ctrl-btn.primary:hover {
+            background: rgba(0, 255, 255, 0.3);
+        }
+
+        /* Tool Indicator */
+        .tools-info {
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+        }
+
+        .tool-key {
+            color: #0ff;
+            font-weight: bold;
+        }
+
+        /* FPS Counter */
+        .fps {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: rgba(0, 255, 255, 0.6);
+            z-index: 100;
+        }
+
+        /* Cursor indicator */
+        .cursor-indicator {
+            position: fixed;
+            pointer-events: none;
+            width: 40px;
+            height: 40px;
+            border: 2px solid #0ff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .cursor-indicator.active {
+            opacity: 1;
+            box-shadow: 0 0 20px #0ff;
+        }
+
+        .cursor-indicator.eraser {
+            border-color: #f0f;
+            box-shadow: 0 0 20px #f0f;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div class="cursor-indicator" id="cursor-indicator"></div>
+
+    <div class="hud">
+        <h1>NEON MORPHOGENESIS</h1>
+        <h2>The Living Canvas</h2>
+
+        <div class="chaos-pad-container">
+            <div class="chaos-pad-label">CHAOS PAD</div>
+            <div class="chaos-pad" id="chaos-pad">
+                <div class="chaos-pad-grid"></div>
+                <div class="chaos-pad-regions">
+                    <div class="region region-spots"></div>
+                    <div class="region region-maze"></div>
+                    <div class="region region-chaos"></div>
+                </div>
+                <div class="chaos-pad-puck" id="chaos-puck"></div>
+                <div class="chaos-pad-axes axis-f">FEED (f) →</div>
+                <div class="chaos-pad-axes axis-k">KILL (k) →</div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-label">FEED (f)</div>
+                <div class="stat-value" id="stat-f">0.0550</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">KILL (k)</div>
+                <div class="stat-value" id="stat-k">0.0620</div>
+            </div>
+        </div>
+
+        <div class="section-label">PRESETS</div>
+        <div class="presets">
+            <button class="preset-btn" data-f="0.0367" data-k="0.0649">MITOSIS</button>
+            <button class="preset-btn active" data-f="0.0545" data-k="0.062">CORAL</button>
+            <button class="preset-btn" data-f="0.062" data-k="0.061">U-SKATE</button>
+            <button class="preset-btn" data-f="0.039" data-k="0.058">BLACK HOLE</button>
+        </div>
+
+        <div class="section-label">VISUAL THEME</div>
+        <select class="theme-select" id="theme-select">
+            <option value="neon">Neon Night (Synthwave)</option>
+            <option value="xray">X-Ray (Medical)</option>
+            <option value="acid">Acid Trip (Rainbow)</option>
+            <option value="biohazard">Bio-Hazard (Toxic)</option>
+        </select>
+
+        <div class="slider-container">
+            <div class="slider-header">
+                <span class="slider-label">SIMULATION SPEED</span>
+                <span class="slider-value" id="speed-value">10x</span>
+            </div>
+            <input type="range" id="speed-slider" min="1" max="50" value="10">
+        </div>
+
+        <div class="slider-container">
+            <div class="slider-header">
+                <span class="slider-label">BRUSH SIZE</span>
+                <span class="slider-value" id="brush-value">30px</span>
+            </div>
+            <input type="range" id="brush-slider" min="10" max="100" value="30">
+        </div>
+
+        <div class="controls">
+            <button class="ctrl-btn primary" id="btn-clear">CLEAR</button>
+            <button class="ctrl-btn" id="btn-randomize">RANDOMIZE</button>
+            <button class="ctrl-btn" id="btn-pause">PAUSE</button>
+            <button class="ctrl-btn" id="btn-snapshot">SNAPSHOT</button>
+        </div>
+
+        <div class="tools-info">
+            <span class="tool-key">LEFT CLICK</span> Seed reaction<br>
+            <span class="tool-key">RIGHT CLICK</span> Erase area<br>
+            <span class="tool-key">DRAG</span> Disrupt flow
+        </div>
+    </div>
+
+    <div class="fps" id="fps">60 FPS</div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // ============================================
+        // GRAY-SCOTT REACTION-DIFFUSION SHADERS
+        // ============================================
+
+        const computeShader = `
+            uniform vec2 resolution;
+            uniform float feed;
+            uniform float kill;
+            uniform float deltaTime;
+            uniform float diffusionU;
+            uniform float diffusionV;
+            uniform vec2 mousePos;
+            uniform float mouseRadius;
+            uniform int mouseAction; // 0=none, 1=seed, 2=erase, 3=disrupt
+            uniform vec2 prevMousePos;
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / resolution;
+                vec2 texel = 1.0 / resolution;
+
+                // Sample current state
+                vec4 current = texture2D(textureChemicals, uv);
+                float U = current.r;
+                float V = current.g;
+
+                // Laplacian (9-point stencil for smoother diffusion)
+                float laplacianU = 0.0;
+                float laplacianV = 0.0;
+
+                // Center weight: -1, neighbors: 0.2, diagonals: 0.05
+                vec4 n  = texture2D(textureChemicals, uv + vec2(0.0, texel.y));
+                vec4 s  = texture2D(textureChemicals, uv + vec2(0.0, -texel.y));
+                vec4 e  = texture2D(textureChemicals, uv + vec2(texel.x, 0.0));
+                vec4 w  = texture2D(textureChemicals, uv + vec2(-texel.x, 0.0));
+                vec4 ne = texture2D(textureChemicals, uv + vec2(texel.x, texel.y));
+                vec4 nw = texture2D(textureChemicals, uv + vec2(-texel.x, texel.y));
+                vec4 se = texture2D(textureChemicals, uv + vec2(texel.x, -texel.y));
+                vec4 sw = texture2D(textureChemicals, uv + vec2(-texel.x, -texel.y));
+
+                laplacianU = 0.2 * (n.r + s.r + e.r + w.r) + 0.05 * (ne.r + nw.r + se.r + sw.r) - U;
+                laplacianV = 0.2 * (n.g + s.g + e.g + w.g) + 0.05 * (ne.g + nw.g + se.g + sw.g) - V;
+
+                // Gray-Scott equations
+                float reaction = U * V * V;
+                float dU = diffusionU * laplacianU - reaction + feed * (1.0 - U);
+                float dV = diffusionV * laplacianV + reaction - (feed + kill) * V;
+
+                U += dU * deltaTime;
+                V += dV * deltaTime;
+
+                // Mouse interactions
+                vec2 fragPos = gl_FragCoord.xy;
+                float dist = distance(fragPos, mousePos * resolution);
+
+                if (mouseAction == 1 && dist < mouseRadius) {
+                    // Seed: inject V
+                    float strength = 1.0 - dist / mouseRadius;
+                    V = mix(V, 1.0, strength * 0.5);
+                }
+                else if (mouseAction == 2 && dist < mouseRadius) {
+                    // Erase: reset to initial state
+                    float strength = 1.0 - dist / mouseRadius;
+                    U = mix(U, 1.0, strength * 0.3);
+                    V = mix(V, 0.0, strength * 0.3);
+                }
+                else if (mouseAction == 3 && dist < mouseRadius * 2.0) {
+                    // Disrupt: push chemicals based on mouse movement
+                    vec2 mouseDir = (mousePos - prevMousePos) * resolution;
+                    float pushStrength = length(mouseDir) * 0.01;
+                    vec2 pushOffset = normalize(mouseDir + vec2(0.001)) * texel * pushStrength;
+                    vec4 pushed = texture2D(textureChemicals, uv - pushOffset * (1.0 - dist / (mouseRadius * 2.0)));
+                    U = mix(U, pushed.r, 0.3);
+                    V = mix(V, pushed.g, 0.3);
+                }
+
+                // Clamp values
+                U = clamp(U, 0.0, 1.0);
+                V = clamp(V, 0.0, 1.0);
+
+                gl_FragColor = vec4(U, V, 0.0, 1.0);
+            }
+        `;
+
+        const displayShader = `
+            uniform vec2 resolution;
+            uniform sampler2D textureChemicals;
+            uniform int theme;
+            uniform float time;
+
+            // HSV to RGB conversion
+            vec3 hsv2rgb(vec3 c) {
+                vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+            }
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / resolution;
+                vec4 chemicals = texture2D(textureChemicals, uv);
+                float v = chemicals.g;
+                float u = chemicals.r;
+
+                vec3 color;
+
+                if (theme == 0) {
+                    // Neon Night (Synthwave)
+                    vec3 bg = vec3(0.1, 0.0, 0.15);
+                    vec3 cyan = vec3(0.0, 1.0, 1.0);
+                    vec3 magenta = vec3(1.0, 0.0, 0.8);
+
+                    float intensity = smoothstep(0.1, 0.5, v);
+                    color = mix(bg, cyan, intensity);
+                    color = mix(color, magenta, v * v);
+
+                    // Glow effect
+                    color += vec3(0.0, 0.3, 0.3) * v * v * v;
+                }
+                else if (theme == 1) {
+                    // X-Ray (Medical)
+                    float intensity = 1.0 - v;
+                    color = vec3(intensity);
+
+                    // Subtle blue tint
+                    color.b += v * 0.1;
+                }
+                else if (theme == 2) {
+                    // Acid Trip (Rainbow)
+                    float hue = v * 0.8 + time * 0.1;
+                    float sat = 0.8 + v * 0.2;
+                    float val = 0.2 + v * 0.8;
+                    color = hsv2rgb(vec3(hue, sat, val));
+                }
+                else if (theme == 3) {
+                    // Bio-Hazard (Toxic)
+                    vec3 bg = vec3(0.02, 0.05, 0.02);
+                    vec3 toxic = vec3(0.6, 1.0, 0.0);
+                    vec3 warning = vec3(1.0, 0.8, 0.0);
+
+                    float intensity = smoothstep(0.1, 0.6, v);
+                    color = mix(bg, toxic, intensity);
+                    color = mix(color, warning, v * v * v);
+                }
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // ============================================
+        // APPLICATION STATE
+        // ============================================
+
+        const state = {
+            feed: 0.0545,
+            kill: 0.062,
+            diffusionU: 1.0,
+            diffusionV: 0.5,
+            speed: 10,
+            brushSize: 30,
+            theme: 0,
+            paused: false,
+            mouseAction: 0,
+            mousePos: new THREE.Vector2(0, 0),
+            prevMousePos: new THREE.Vector2(0, 0),
+            isMouseDown: false
+        };
+
+        // ============================================
+        // THREE.JS SETUP
+        // ============================================
+
+        const container = document.getElementById('canvas-container');
+        const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(1); // Lower for performance
+        container.appendChild(renderer.domElement);
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+        // Resolution for simulation
+        const simWidth = Math.min(window.innerWidth, 1024);
+        const simHeight = Math.min(window.innerHeight, 1024);
+
+        // ============================================
+        // GPGPU PING-PONG SETUP
+        // ============================================
+
+        let renderTargets = [];
+        let currentTarget = 0;
+
+        function createRenderTarget() {
+            return new THREE.WebGLRenderTarget(simWidth, simHeight, {
+                minFilter: THREE.LinearFilter,
+                magFilter: THREE.LinearFilter,
+                format: THREE.RGBAFormat,
+                type: THREE.FloatType
+            });
+        }
+
+        renderTargets[0] = createRenderTarget();
+        renderTargets[1] = createRenderTarget();
+
+        // Compute material
+        const computeMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                textureChemicals: { value: null },
+                resolution: { value: new THREE.Vector2(simWidth, simHeight) },
+                feed: { value: state.feed },
+                kill: { value: state.kill },
+                deltaTime: { value: 1.0 },
+                diffusionU: { value: state.diffusionU },
+                diffusionV: { value: state.diffusionV },
+                mousePos: { value: state.mousePos },
+                prevMousePos: { value: state.prevMousePos },
+                mouseRadius: { value: state.brushSize },
+                mouseAction: { value: 0 }
+            },
+            vertexShader: `
+                void main() {
+                    gl_Position = vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: computeShader
+        });
+
+        // Display material
+        const displayMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                textureChemicals: { value: null },
+                resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+                theme: { value: state.theme },
+                time: { value: 0 }
+            },
+            vertexShader: `
+                void main() {
+                    gl_Position = vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: displayShader
+        });
+
+        // Full-screen quad
+        const geometry = new THREE.PlaneGeometry(2, 2);
+        const computeMesh = new THREE.Mesh(geometry, computeMaterial);
+        const displayMesh = new THREE.Mesh(geometry, displayMaterial);
+
+        const computeScene = new THREE.Scene();
+        computeScene.add(computeMesh);
+        scene.add(displayMesh);
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+
+        function initializeChemicals(randomize = false) {
+            const data = new Float32Array(simWidth * simHeight * 4);
+
+            for (let i = 0; i < simWidth * simHeight; i++) {
+                const x = (i % simWidth) / simWidth;
+                const y = Math.floor(i / simWidth) / simHeight;
+
+                // U = 1, V = 0 everywhere (substrate filled, no activator)
+                data[i * 4 + 0] = 1.0; // U
+                data[i * 4 + 1] = 0.0; // V
+                data[i * 4 + 2] = 0.0;
+                data[i * 4 + 3] = 1.0;
+
+                if (randomize) {
+                    // Add random seeds
+                    if (Math.random() < 0.01) {
+                        data[i * 4 + 0] = 0.5;
+                        data[i * 4 + 1] = 0.25;
+                    }
+                } else {
+                    // Add center seed
+                    const dx = x - 0.5;
+                    const dy = y - 0.5;
+                    if (dx * dx + dy * dy < 0.01) {
+                        data[i * 4 + 0] = 0.5;
+                        data[i * 4 + 1] = 0.25;
+                    }
+                }
+            }
+
+            const texture = new THREE.DataTexture(
+                data, simWidth, simHeight,
+                THREE.RGBAFormat, THREE.FloatType
+            );
+            texture.needsUpdate = true;
+
+            // Copy to both render targets
+            const initMaterial = new THREE.MeshBasicMaterial({ map: texture });
+            const initMesh = new THREE.Mesh(geometry, initMaterial);
+            const initScene = new THREE.Scene();
+            initScene.add(initMesh);
+
+            renderer.setRenderTarget(renderTargets[0]);
+            renderer.render(initScene, camera);
+            renderer.setRenderTarget(renderTargets[1]);
+            renderer.render(initScene, camera);
+            renderer.setRenderTarget(null);
+
+            initMaterial.dispose();
+            texture.dispose();
+        }
+
+        initializeChemicals();
+
+        // ============================================
+        // ANIMATION LOOP
+        // ============================================
+
+        let frameCount = 0;
+        let lastFpsTime = performance.now();
+        const fpsElement = document.getElementById('fps');
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (!state.paused) {
+                // Run simulation steps
+                for (let i = 0; i < state.speed; i++) {
+                    const readTarget = renderTargets[currentTarget];
+                    const writeTarget = renderTargets[1 - currentTarget];
+
+                    computeMaterial.uniforms.textureChemicals.value = readTarget.texture;
+                    computeMaterial.uniforms.feed.value = state.feed;
+                    computeMaterial.uniforms.kill.value = state.kill;
+                    computeMaterial.uniforms.mouseRadius.value = state.brushSize;
+                    computeMaterial.uniforms.mousePos.value = state.mousePos;
+                    computeMaterial.uniforms.prevMousePos.value = state.prevMousePos;
+                    computeMaterial.uniforms.mouseAction.value = state.mouseAction;
+
+                    renderer.setRenderTarget(writeTarget);
+                    renderer.render(computeScene, camera);
+
+                    currentTarget = 1 - currentTarget;
+
+                    // Clear mouse action after first iteration
+                    if (i === 0 && !state.isMouseDown) {
+                        state.mouseAction = 0;
+                    }
+                }
+            }
+
+            // Display
+            displayMaterial.uniforms.textureChemicals.value = renderTargets[currentTarget].texture;
+            displayMaterial.uniforms.theme.value = state.theme;
+            displayMaterial.uniforms.time.value = performance.now() * 0.001;
+
+            renderer.setRenderTarget(null);
+            renderer.render(scene, camera);
+
+            // FPS counter
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFpsTime >= 1000) {
+                fpsElement.textContent = `${frameCount} FPS`;
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+        }
+
+        animate();
+
+        // ============================================
+        // CHAOS PAD
+        // ============================================
+
+        const chaosPad = document.getElementById('chaos-pad');
+        const chaosPuck = document.getElementById('chaos-puck');
+        const statF = document.getElementById('stat-f');
+        const statK = document.getElementById('stat-k');
+
+        // F range: 0.01 - 0.1, K range: 0.04 - 0.07
+        const fMin = 0.01, fMax = 0.1;
+        const kMin = 0.04, kMax = 0.07;
+
+        function updateChaosPad(x, y) {
+            const rect = chaosPad.getBoundingClientRect();
+            const px = Math.max(0, Math.min(1, x));
+            const py = Math.max(0, Math.min(1, y));
+
+            state.feed = fMin + px * (fMax - fMin);
+            state.kill = kMin + (1 - py) * (kMax - kMin);
+
+            chaosPuck.style.left = `${px * 100}%`;
+            chaosPuck.style.top = `${py * 100}%`;
+
+            statF.textContent = state.feed.toFixed(4);
+            statK.textContent = state.kill.toFixed(4);
+
+            // Remove active from all preset buttons
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        }
+
+        function setPadFromValues(f, k) {
+            const px = (f - fMin) / (fMax - fMin);
+            const py = 1 - (k - kMin) / (kMax - kMin);
+            updateChaosPad(px, py);
+        }
+
+        let padDragging = false;
+
+        chaosPad.addEventListener('mousedown', (e) => {
+            padDragging = true;
+            const rect = chaosPad.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width;
+            const y = (e.clientY - rect.top) / rect.height;
+            updateChaosPad(x, y);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (padDragging) {
+                const rect = chaosPad.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+                updateChaosPad(x, y);
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            padDragging = false;
+        });
+
+        // Initialize pad position
+        setPadFromValues(state.feed, state.kill);
+
+        // ============================================
+        // CANVAS MOUSE INTERACTION
+        // ============================================
+
+        const canvas = renderer.domElement;
+        const cursorIndicator = document.getElementById('cursor-indicator');
+
+        canvas.addEventListener('mousedown', (e) => {
+            state.isMouseDown = true;
+            state.prevMousePos.copy(state.mousePos);
+            state.mousePos.set(
+                e.clientX / window.innerWidth,
+                1 - e.clientY / window.innerHeight
+            );
+
+            if (e.button === 0) {
+                state.mouseAction = 1; // Seed
+                cursorIndicator.classList.remove('eraser');
+            } else if (e.button === 2) {
+                state.mouseAction = 2; // Erase
+                cursorIndicator.classList.add('eraser');
+            }
+
+            cursorIndicator.classList.add('active');
+            cursorIndicator.style.left = e.clientX + 'px';
+            cursorIndicator.style.top = e.clientY + 'px';
+            cursorIndicator.style.width = state.brushSize * 2 + 'px';
+            cursorIndicator.style.height = state.brushSize * 2 + 'px';
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            state.prevMousePos.copy(state.mousePos);
+            state.mousePos.set(
+                e.clientX / window.innerWidth,
+                1 - e.clientY / window.innerHeight
+            );
+
+            if (state.isMouseDown) {
+                if (state.mouseAction !== 2) {
+                    state.mouseAction = 3; // Disrupt while dragging
+                }
+                cursorIndicator.style.left = e.clientX + 'px';
+                cursorIndicator.style.top = e.clientY + 'px';
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            state.isMouseDown = false;
+            state.mouseAction = 0;
+            cursorIndicator.classList.remove('active');
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            state.isMouseDown = false;
+            state.mouseAction = 0;
+            cursorIndicator.classList.remove('active');
+        });
+
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // ============================================
+        // UI CONTROLS
+        // ============================================
+
+        // Presets
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const f = parseFloat(btn.dataset.f);
+                const k = parseFloat(btn.dataset.k);
+                setPadFromValues(f, k);
+
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Theme
+        const themeSelect = document.getElementById('theme-select');
+        themeSelect.addEventListener('change', () => {
+            const themes = ['neon', 'xray', 'acid', 'biohazard'];
+            state.theme = themes.indexOf(themeSelect.value);
+        });
+
+        // Speed slider
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        speedSlider.addEventListener('input', () => {
+            state.speed = parseInt(speedSlider.value);
+            speedValue.textContent = state.speed + 'x';
+        });
+
+        // Brush slider
+        const brushSlider = document.getElementById('brush-slider');
+        const brushValue = document.getElementById('brush-value');
+        brushSlider.addEventListener('input', () => {
+            state.brushSize = parseInt(brushSlider.value);
+            brushValue.textContent = state.brushSize + 'px';
+        });
+
+        // Buttons
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            initializeChemicals(false);
+        });
+
+        document.getElementById('btn-randomize').addEventListener('click', () => {
+            initializeChemicals(true);
+        });
+
+        document.getElementById('btn-pause').addEventListener('click', (e) => {
+            state.paused = !state.paused;
+            e.target.textContent = state.paused ? 'PLAY' : 'PAUSE';
+        });
+
+        document.getElementById('btn-snapshot').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `morphogenesis-${Date.now()}.png`;
+            link.href = renderer.domElement.toDataURL('image/png');
+            link.click();
+        });
+
+        // ============================================
+        // RESIZE HANDLER
+        // ============================================
+
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            displayMaterial.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
