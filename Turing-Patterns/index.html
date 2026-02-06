@@ -956,6 +956,9 @@
 
                 document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+
+                // Reset canvas with new parameters to see pattern form
+                initializeChemicals(false);
             });
         });
 
