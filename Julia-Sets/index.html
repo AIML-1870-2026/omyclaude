@@ -12,8 +12,10 @@
         <canvas id="juliaCanvas"></canvas>
     </div>
 
-    <!-- Loading Indicator -->
-    <div id="loading" class="loading">Rendering</div>
+    <!-- Zoom Display -->
+    <div id="zoomIndicator" class="zoom-indicator">
+        Zoom: <span id="zoomDisplay">1.00x</span>
+    </div>
 
     <!-- Control Panel -->
     <div class="control-panel">
@@ -35,8 +37,8 @@
             </div>
 
             <div class="control-group">
-                <label>Iterations <span id="valueIterations" class="value">256</span></label>
-                <input type="range" id="iterations" min="32" max="1024" step="32" value="256">
+                <label>Base Iterations <span id="valueIterations" class="value">256</span></label>
+                <input type="range" id="iterations" min="64" max="2000" step="64" value="256">
             </div>
 
             <!-- Presets -->

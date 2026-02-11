@@ -302,6 +302,26 @@ input[type="range"]::-moz-range-thumb {
     color: var(--accent-cyan);
 }
 
+/* Zoom Indicator */
+.zoom-indicator {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+}
+
+.zoom-indicator #zoomDisplay {
+    color: var(--accent-magenta);
+    font-weight: bold;
+}
+
 /* Action Buttons */
 .action-buttons {
     display: flex;
