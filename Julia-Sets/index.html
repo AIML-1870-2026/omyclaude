@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Odyssey - Julia Set Explorer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Main Julia Set Canvas -->
+    <div class="canvas-container">
+        <canvas id="juliaCanvas"></canvas>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loading" class="loading">Rendering</div>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <div class="panel-header">
+            <h1>Fractal Odyssey</h1>
+            <button id="panelToggle" class="panel-toggle">−</button>
+        </div>
+
+        <div class="panel-content">
+            <!-- C Parameter Controls -->
+            <div class="control-group">
+                <label>Real (Re) <span id="valueCReal" class="value">-0.1230</span></label>
+                <input type="range" id="cReal" min="-2" max="2" step="0.001" value="-0.123">
+            </div>
+
+            <div class="control-group">
+                <label>Imaginary (Im) <span id="valueCImag" class="value">0.7450</span></label>
+                <input type="range" id="cImag" min="-2" max="2" step="0.001" value="0.745">
+            </div>
+
+            <div class="control-group">
+                <label>Iterations <span id="valueIterations" class="value">256</span></label>
+                <input type="range" id="iterations" min="32" max="1024" step="32" value="256">
+            </div>
+
+            <!-- Presets -->
+            <div class="control-group">
+                <label>Presets</label>
+                <div class="preset-gallery">
+                    <button class="btn preset-btn active" data-preset="rabbit">Rabbit</button>
+                    <button class="btn preset-btn" data-preset="sanmarco">San Marco</button>
+                    <button class="btn preset-btn" data-preset="dendrite">Dendrite</button>
+                    <button class="btn preset-btn" data-preset="spiral">Spiral</button>
+                    <button class="btn preset-btn" data-preset="galaxy">Galaxy</button>
+                    <button class="btn preset-btn" data-preset="lightning">Lightning</button>
+                </div>
+            </div>
+
+            <!-- Color Palettes -->
+            <div class="control-group">
+                <label>Color Palette</label>
+                <div class="palette-selector">
+                    <div class="palette-swatch palette-electric active" data-palette="electric" title="Electric Blue"></div>
+                    <div class="palette-swatch palette-inferno" data-palette="inferno" title="Inferno"></div>
+                    <div class="palette-swatch palette-deepspace" data-palette="deepspace" title="Deep Space"></div>
+                    <div class="palette-swatch palette-psychedelic" data-palette="psychedelic" title="Psychedelic"></div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button id="btnSave" class="btn">Save</button>
+                <button id="btnMorph" class="btn">Morph</button>
+                <button id="btnReset" class="btn">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mandelbrot Navigator -->
+    <div class="navigator">
+        <div class="navigator-header">Mandelbrot Navigator</div>
+        <canvas id="mandelbrotCanvas"></canvas>
+    </div>
+
+    <!-- Coordinate Display -->
+    <div id="coordDisplay" class="coord-display">
+        z = <span>0.0000</span> + <span>0.0000</span>i
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
