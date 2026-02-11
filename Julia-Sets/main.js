@@ -21,8 +21,8 @@ const juliaShaderSource = `
     uniform vec2 u_c;
     uniform vec2 u_pan;
     uniform float u_zoom;
-    uniform int u_maxIter;
-    uniform int u_palette;
+    uniform float u_maxIter;
+    uniform float u_palette;
 
     // HSL to RGB conversion
     vec3 hsl2rgb(float h, float s, float l) {
@@ -56,10 +56,10 @@ const juliaShaderSource = `
         return hsl2rgb(h, 1.0, 0.5);
     }
 
-    vec3 getColor(float t, int palette) {
-        if (palette == 0) return electricBlue(t);
-        if (palette == 1) return inferno(t);
-        if (palette == 2) return deepSpace(t);
+    vec3 getColor(float t, float palette) {
+        if (palette < 0.5) return electricBlue(t);
+        if (palette < 1.5) return inferno(t);
+        if (palette < 2.5) return deepSpace(t);
         return psychedelic(t);
     }
 
@@ -70,11 +70,11 @@ const juliaShaderSource = `
         vec2 z = uv;
         vec2 c = u_c;
 
-        int iter = 0;
+        float iter = 0.0;
         float zMag2 = 0.0;
 
         // Julia iteration: z = z² + c
-        for (int i = 0; i < 10000; i++) {
+        for (float i = 0.0; i < 10000.0; i += 1.0) {
             if (i >= u_maxIter) break;
 
             zMag2 = z.x * z.x + z.y * z.y;
@@ -84,15 +84,15 @@ const juliaShaderSource = `
             z.y = 2.0 * z.x * z.y + c.y;
             z.x = xNew;
 
-            iter++;
+            iter += 1.0;
         }
 
         if (iter >= u_maxIter) {
             gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
         } else {
             // Smooth coloring
-            float smoothed = float(iter) + 1.0 - log(log(sqrt(zMag2))) / log(2.0);
-            float t = smoothed / float(u_maxIter);
+            float smoothed = iter + 1.0 - log(log(sqrt(zMag2))) / log(2.0);
+            float t = smoothed / u_maxIter;
             vec3 color = getColor(t, u_palette);
             gl_FragColor = vec4(color, 1.0);
         }
@@ -105,8 +105,8 @@ const mandelbrotShaderSource = `
     uniform vec2 u_resolution;
     uniform vec2 u_pan;
     uniform float u_zoom;
-    uniform int u_maxIter;
-    uniform int u_palette;
+    uniform float u_maxIter;
+    uniform float u_palette;
     uniform vec2 u_marker;
 
     vec3 hsl2rgb(float h, float s, float l) {
@@ -131,10 +131,10 @@ const mandelbrotShaderSource = `
         vec2 z = vec2(0.0);
         vec2 c = uv;
 
-        int iter = 0;
+        float iter = 0.0;
         float zMag2 = 0.0;
 
-        for (int i = 0; i < 500; i++) {
+        for (float i = 0.0; i < 500.0; i += 1.0) {
             if (i >= u_maxIter) break;
 
             zMag2 = z.x * z.x + z.y * z.y;
@@ -144,7 +144,7 @@ const mandelbrotShaderSource = `
             z.y = 2.0 * z.x * z.y + c.y;
             z.x = xNew;
 
-            iter++;
+            iter += 1.0;
         }
 
         // Draw marker for current c value
@@ -159,8 +159,8 @@ const mandelbrotShaderSource = `
         if (iter >= u_maxIter) {
             gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
         } else {
-            float smoothed = float(iter) + 1.0 - log(log(sqrt(zMag2))) / log(2.0);
-            float t = smoothed / float(u_maxIter);
+            float smoothed = iter + 1.0 - log(log(sqrt(zMag2))) / log(2.0);
+            float t = smoothed / u_maxIter;
             vec3 color = getColor(t);
             gl_FragColor = vec4(color, 1.0);
         }
@@ -176,7 +176,7 @@ const state = {
     cReal: -0.123,
     cImag: 0.745,
 
-    // View parameters - use high precision for deep zoom
+    // View parameters
     zoom: 200,
     panX: 0,
     panY: 0,
@@ -236,6 +236,11 @@ function createProgram(gl, vertexSource, fragmentSource) {
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexSource);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
 
+    if (!vertexShader || !fragmentShader) {
+        console.error('Failed to create shaders');
+        return null;
+    }
+
     const program = gl.createProgram();
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
@@ -260,6 +265,11 @@ function setupWebGL(canvas, fragmentSource) {
     }
 
     const program = createProgram(gl, vertexShaderSource, fragmentSource);
+    if (!program) {
+        console.error('Failed to create program');
+        return null;
+    }
+
     gl.useProgram(program);
 
     // Create full-screen quad
@@ -289,12 +299,24 @@ function init() {
     // Setup Julia canvas with WebGL
     juliaCanvas = document.getElementById('juliaCanvas');
     const juliaSetup = setupWebGL(juliaCanvas, juliaShaderSource);
+
+    if (!juliaSetup) {
+        console.error('Failed to setup Julia WebGL');
+        return;
+    }
+
     juliaGL = juliaSetup.gl;
     juliaProgram = juliaSetup.program;
 
     // Setup Mandelbrot canvas with WebGL
     mandelbrotCanvas = document.getElementById('mandelbrotCanvas');
     const mandelbrotSetup = setupWebGL(mandelbrotCanvas, mandelbrotShaderSource);
+
+    if (!mandelbrotSetup) {
+        console.error('Failed to setup Mandelbrot WebGL');
+        return;
+    }
+
     mandelbrotGL = mandelbrotSetup.gl;
     mandelbrotProgram = mandelbrotSetup.program;
 
@@ -317,8 +339,8 @@ function init() {
     resize();
     window.addEventListener('resize', resize);
 
-    // Start render loop
-    requestAnimationFrame(render);
+    // Initial render
+    render();
 }
 
 // =============================================================================
@@ -336,6 +358,8 @@ function resize() {
     mandelbrotCanvas.width = navRect.width * window.devicePixelRatio;
     mandelbrotCanvas.height = navRect.height * window.devicePixelRatio;
     mandelbrotGL.viewport(0, 0, mandelbrotCanvas.width, mandelbrotCanvas.height);
+
+    render();
 }
 
 // =============================================================================
@@ -345,10 +369,6 @@ function resize() {
 function render() {
     renderJulia();
     renderMandelbrot();
-
-    if (state.isMorphing) {
-        requestAnimationFrame(render);
-    }
 }
 
 function renderJulia() {
@@ -364,13 +384,13 @@ function renderJulia() {
         iterations = Math.min(10000, Math.floor(state.maxIterations + zoomFactor * 100));
     }
 
-    // Set uniforms
+    // Set uniforms (all floats now)
     gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), juliaCanvas.width, juliaCanvas.height);
     gl.uniform2f(gl.getUniformLocation(program, 'u_c'), state.cReal, state.cImag);
     gl.uniform2f(gl.getUniformLocation(program, 'u_pan'), state.panX, state.panY);
     gl.uniform1f(gl.getUniformLocation(program, 'u_zoom'), state.zoom);
-    gl.uniform1i(gl.getUniformLocation(program, 'u_maxIter'), iterations);
-    gl.uniform1i(gl.getUniformLocation(program, 'u_palette'), state.palette);
+    gl.uniform1f(gl.getUniformLocation(program, 'u_maxIter'), iterations);
+    gl.uniform1f(gl.getUniformLocation(program, 'u_palette'), state.palette);
 
     // Draw
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -393,8 +413,8 @@ function renderMandelbrot() {
     gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), mandelbrotCanvas.width, mandelbrotCanvas.height);
     gl.uniform2f(gl.getUniformLocation(program, 'u_pan'), -0.5, 0);
     gl.uniform1f(gl.getUniformLocation(program, 'u_zoom'), zoom);
-    gl.uniform1i(gl.getUniformLocation(program, 'u_maxIter'), 100);
-    gl.uniform1i(gl.getUniformLocation(program, 'u_palette'), state.palette);
+    gl.uniform1f(gl.getUniformLocation(program, 'u_maxIter'), 100);
+    gl.uniform1f(gl.getUniformLocation(program, 'u_palette'), state.palette);
     gl.uniform2f(gl.getUniformLocation(program, 'u_marker'), state.cReal, state.cImag);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
