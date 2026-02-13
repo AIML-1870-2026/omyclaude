@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #0a1929;
+}
+
+/* Custom checkbox styling */
+input[type='checkbox'] {
+  accent-color: #38b2ac;
+}
+
+/* Custom scrollbar for the heatmap container */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 6px;
+}
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: #102a43;
+  border-radius: 3px;
+}
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #334e68;
+  border-radius: 3px;
+}
+
+/* Number input spinner styling */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  opacity: 1;
+}

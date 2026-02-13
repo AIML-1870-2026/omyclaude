@@ -256,9 +256,13 @@ When I say "Deploy":
 ### New Assignment
 When I say "Start [AssignmentName]":
 
-1. Create a folder called `[AssignmentName]` in the root
-2. Create a starter `index.html` inside it
-3. Tell me the folder is ready
+1. Create a folder called `[AssignmentName]/` in the root
+2. Create subfolders: `css/`, `js/`, `assets/`
+3. Create starter files:
+   - `index.html` (links to `css/style.css` and `js/main.js`)
+   - `css/style.css` (base reset/styles)
+   - `js/main.js` (entry point with DOMContentLoaded)
+4. Tell me the folder is ready
 
 ### Show My URLs
 When I say "Show my URLs" or "Where's my stuff?":
@@ -267,11 +271,30 @@ When I say "Show my URLs" or "Where's my stuff?":
 2. For each, show the live URL pattern
 
 ## Coding Standards
-- Single HTML file projects preferred (unless specified otherwise)
+- New projects use separated files with dedicated subfolders (see structure below)
+- Existing single-file projects (Boids, Turing-Patterns, etc.) stay as-is unless refactored
 - No personally identifiable information in code or comments
 - Use descriptive folder names (e.g., "Julia-Set-Explorer" not "assignment3")
 
+## New Project Folder Structure
+When creating a new project, use this layout:
+```
+ProjectName/
+  index.html          ← Main HTML (minimal, links to css/js)
+  css/
+    style.css         ← All styles
+  js/
+    main.js           ← Core application logic
+  assets/             ← Images, fonts, audio, data files
+```
+- `index.html` should link to `css/style.css` and `js/main.js`
+- Additional JS modules go in `js/` (e.g., `js/utils.js`, `js/renderer.js`)
+- Additional stylesheets go in `css/` (e.g., `css/components.css`)
+- Keep `assets/` organized by type if needed (e.g., `assets/images/`, `assets/audio/`)
+
 ## File Naming
 - Main file: `index.html`
-- Assets: lowercase, hyphens (e.g., `particle-system.js`)
+- Stylesheets: lowercase, hyphens (e.g., `css/particle-effects.css`)
+- Scripts: lowercase, hyphens (e.g., `js/particle-system.js`)
+- Assets: lowercase, hyphens (e.g., `assets/hero-bg.png`)
 - Assignment folders: Descriptive names or `Assignment-XX`

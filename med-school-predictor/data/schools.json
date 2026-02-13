@@ -1,0 +1,584 @@
+{
+  "lastUpdated": "2025-02-12",
+  "dataSources": [
+    "AAMC MSAR (Medical School Admission Requirements)",
+    "AAMC FACTS Tables 2023-2024 & 2024-2025",
+    "Individual school class profile pages",
+    "ProspectiveDoctor GPA/MCAT Database (2024-2025)",
+    "CollegeTuitionCompare.com (2025-2026 data)",
+    "School admissions websites and newsroom announcements"
+  ],
+  "notes": "Statistics reflect most recent publicly available data as of early 2025. 'Average' may represent mean or median depending on how each school reports. Acceptance rate = enrolled / applied (not just offered admission). OOS = Out of State. In-state percentage reflects matriculant residency composition.",
+  "schools": [
+    {
+      "id": "unmc",
+      "name": "University of Nebraska Medical Center",
+      "shortName": "UNMC",
+      "fullName": "University of Nebraska College of Medicine",
+      "type": "MD",
+      "ownership": "public",
+      "location": {
+        "city": "Omaha",
+        "state": "NE",
+        "region": "Midwest"
+      },
+      "founded": 1881,
+      "admissions": {
+        "applicationCycles": "2024-2025",
+        "totalApplicants": 2311,
+        "interviewed": 416,
+        "interviewRate": 17.11,
+        "classSize": 142,
+        "acceptanceRate": 6.14,
+        "acceptedToInterviewedRatio": 0.341
+      },
+      "academics": {
+        "medianMCAT": 511,
+        "averageMCAT": 516,
+        "mcatRange": {
+          "p10": null,
+          "p25": null,
+          "p50": 511,
+          "p75": null,
+          "p90": null
+        },
+        "medianGPA": 3.84,
+        "averageGPA": 3.94,
+        "gpaRange": {
+          "p10": null,
+          "p25": null,
+          "p50": 3.84,
+          "p75": null,
+          "p90": null
+        }
+      },
+      "demographics": {
+        "percentMale": 52.8,
+        "percentFemale": 47.2,
+        "inStatePercent": 84.5,
+        "outOfStatePercent": 15.5,
+        "preferenceState": "NE",
+        "statePreferenceStrength": "very_strong"
+      },
+      "tuition": {
+        "inState": 40500,
+        "outOfState": 54980,
+        "year": "2025-2026"
+      },
+      "mission": {
+        "focus": ["rural_medicine", "primary_care", "research"],
+        "description": "Improve health through education, research, and patient care with emphasis on Nebraska's healthcare needs"
+      },
+      "requirements": {
+        "prerequisites": [
+          "Biology (8 semester hours with labs)",
+          "General Chemistry (8 semester hours with labs)",
+          "Organic Chemistry (8 semester hours with labs)",
+          "Physics (8 semester hours with labs)",
+          "Humanities/Social Sciences (12 hours)",
+          "English Composition (3 hours)",
+          "Calculus or Statistics (3 credits)",
+          "Biochemistry (3 hours)",
+          "Genetics (3 hours)"
+        ],
+        "mcatRequired": true,
+        "mcatMinimum": null,
+        "casperRequired": false,
+        "lettersOfRec": "Committee letter or 3+ individual letters"
+      },
+      "urls": {
+        "admissions": "https://www.unmc.edu/com/prospective/admissions/index.html",
+        "classProfile": "https://www.unmc.edu/newsroom/2024/08/09/deans-message-new-arrivals-new-efforts/"
+      }
+    },
+    {
+      "id": "creighton",
+      "name": "Creighton University School of Medicine",
+      "shortName": "Creighton",
+      "fullName": "Creighton University School of Medicine",
+      "type": "MD",
+      "ownership": "private",
+      "location": {
+        "city": "Omaha",
+        "state": "NE",
+        "region": "Midwest",
+        "additionalCampuses": ["Phoenix, AZ"]
+      },
+      "founded": 1892,
+      "admissions": {
+        "applicationCycles": "2024-2025",
+        "totalApplicants": 6162,
+        "interviewed": 955,
+        "interviewRate": 15.5,
+        "classSize": 250,
+        "acceptanceRate": 4.06,
+        "acceptedToInterviewedRatio": 0.262
+      },
+      "academics": {
+        "medianMCAT": 513,
+        "averageMCAT": 513,
+        "mcatRange": {
+          "p10": null,
+          "p25": 510,
+          "p50": 513,
+          "p75": 518,
+          "p90": null
+        },
+        "medianGPA": 3.86,
+        "averageGPA": 3.86,
+        "gpaRange": {
+          "p10": null,
+          "p25": null,
+          "p50": 3.86,
+          "p75": null,
+          "p90": null
+        }
+      },
+      "demographics": {
+        "percentMale": 42.8,
+        "percentFemale": 57.2,
+        "inStatePercent": 4.0,
+        "outOfStatePercent": 96.0,
+        "preferenceState": null,
+        "statePreferenceStrength": "none"
+      },
+      "tuition": {
+        "inState": 72554,
+        "outOfState": 72554,
+        "year": "2025-2026"
+      },
+      "mission": {
+        "focus": ["service", "jesuit_values", "holistic_care", "underserved"],
+        "description": "In Creighton's Jesuit, Catholic tradition, improve the human condition with diverse education, research, and comprehensive patient care"
+      },
+      "requirements": {
+        "prerequisites": [
+          "Biochemistry",
+          "Human/Animal Physiology (advanced level)",
+          "Statistics",
+          "English (2 courses emphasizing writing)",
+          "General Biology (recommended)",
+          "General Chemistry (recommended)",
+          "Organic Chemistry (recommended)",
+          "General Physics (recommended)",
+          "Psychology (recommended)",
+          "Sociology (recommended)"
+        ],
+        "mcatRequired": true,
+        "mcatMinimum": null,
+        "casperRequired": false,
+        "lettersOfRec": "Committee letter or individual letters; details on secondary application"
+      },
+      "urls": {
+        "admissions": "https://medschool.creighton.edu/program/Medicine-MD",
+        "classProfile": "https://www.creighton.edu/medicine/programs/medicine-md/class-profile"
+      }
+    },
+    {
+      "id": "unl_kearney",
+      "name": "UNMC Kearney Regional Campus",
+      "shortName": "UNMC-Kearney",
+      "fullName": "University of Nebraska College of Medicine - Kearney Regional Campus",
+      "type": "MD",
+      "ownership": "public",
+      "location": {
+        "city": "Kearney",
+        "state": "NE",
+        "region": "Midwest"
+      },
+      "founded": 2026,
+      "admissions": {
+        "applicationCycles": "2025-2026 (inaugural class)",
+        "totalApplicants": null,
+        "interviewed": null,
+        "interviewRate": null,
+        "classSize": null,
+        "acceptanceRate": null,
+        "acceptedToInterviewedRatio": null
+      },
+      "academics": {
+        "medianMCAT": null,
+        "averageMCAT": null,
+        "medianGPA": null,
+        "averageGPA": null
+      },
+      "demographics": {
+        "inStatePercent": null,
+        "outOfStatePercent": null,
+        "preferenceState": "NE",
+        "statePreferenceStrength": "very_strong"
+      },
+      "tuition": {
+        "inState": null,
+        "outOfState": null
+      },
+      "mission": {
+        "focus": ["rural_medicine", "primary_care"],
+        "description": "First class expected Fall 2026. Regional campus focused on training physicians for rural Nebraska communities."
+      },
+      "urls": {
+        "admissions": "https://www.unmc.edu/com/"
+      }
+    },
+    {
+      "id": "uiowa",
+      "name": "University of Iowa Carver College of Medicine",
+      "shortName": "Iowa",
+      "fullName": "University of Iowa Roy J. and Lucille A. Carver College of Medicine",
+      "type": "MD",
+      "ownership": "public",
+      "location": { "city": "Iowa City", "state": "IA", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": null,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 512,
+        "averageMCAT": 512,
+        "medianGPA": 3.85,
+        "averageGPA": 3.85
+      },
+      "demographics": {
+        "inStatePercent": 70,
+        "outOfStatePercent": 30,
+        "preferenceState": "IA",
+        "statePreferenceStrength": "strong"
+      },
+      "tuition": { "inState": 43202, "outOfState": 62698 },
+      "urls": {
+        "admissions": "https://medicine.uiowa.edu/md/admission-medical-school-md"
+      }
+    },
+    {
+      "id": "ukansas",
+      "name": "University of Kansas School of Medicine",
+      "shortName": "KU Med",
+      "fullName": "University of Kansas School of Medicine",
+      "type": "MD",
+      "ownership": "public",
+      "location": { "city": "Kansas City", "state": "KS", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": null,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 512,
+        "averageMCAT": 512,
+        "medianGPA": 3.88,
+        "averageGPA": 3.88
+      },
+      "demographics": {
+        "inStatePercent": 80,
+        "outOfStatePercent": 20,
+        "preferenceState": "KS",
+        "statePreferenceStrength": "strong"
+      },
+      "tuition": { "inState": 41375, "outOfState": 66975 },
+      "urls": {
+        "admissions": "https://www.kumc.edu/school-of-medicine/education/admissions.html"
+      }
+    },
+    {
+      "id": "umo_columbia",
+      "name": "University of Missouri School of Medicine",
+      "shortName": "Mizzou Med",
+      "fullName": "University of Missouri - Columbia School of Medicine",
+      "type": "MD",
+      "ownership": "public",
+      "location": { "city": "Columbia", "state": "MO", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": null,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 509,
+        "averageMCAT": 509,
+        "medianGPA": 3.86,
+        "averageGPA": 3.86
+      },
+      "demographics": {
+        "inStatePercent": 85,
+        "outOfStatePercent": 15,
+        "preferenceState": "MO",
+        "statePreferenceStrength": "very_strong"
+      },
+      "tuition": { "inState": 37532, "outOfState": 70496 },
+      "urls": {
+        "admissions": "https://medicine.missouri.edu/admissions/"
+      }
+    },
+    {
+      "id": "slu",
+      "name": "Saint Louis University School of Medicine",
+      "shortName": "SLU Med",
+      "fullName": "Saint Louis University School of Medicine",
+      "type": "MD",
+      "ownership": "private",
+      "location": { "city": "St. Louis", "state": "MO", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": null,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 514,
+        "averageMCAT": 514,
+        "medianGPA": 3.91,
+        "averageGPA": 3.91
+      },
+      "demographics": {
+        "inStatePercent": null,
+        "outOfStatePercent": null,
+        "preferenceState": null,
+        "statePreferenceStrength": "none"
+      },
+      "tuition": { "inState": 66734, "outOfState": 66734 },
+      "urls": {
+        "admissions": "https://www.slu.edu/medicine/admissions"
+      }
+    },
+    {
+      "id": "usd_sanford",
+      "name": "University of South Dakota Sanford School of Medicine",
+      "shortName": "USD Med",
+      "fullName": "University of South Dakota Sanford School of Medicine",
+      "type": "MD",
+      "ownership": "public",
+      "location": { "city": "Vermillion", "state": "SD", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": 65,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 509,
+        "averageMCAT": 509,
+        "medianGPA": 3.82,
+        "averageGPA": 3.82
+      },
+      "demographics": {
+        "inStatePercent": 80,
+        "outOfStatePercent": 20,
+        "preferenceState": "SD",
+        "statePreferenceStrength": "very_strong"
+      },
+      "tuition": { "inState": 36394, "outOfState": 71338 },
+      "urls": {
+        "admissions": "https://www.usd.edu/medicine"
+      }
+    },
+    {
+      "id": "minnesota_tc",
+      "name": "University of Minnesota Medical School",
+      "shortName": "UMN Med",
+      "fullName": "University of Minnesota Medical School - Twin Cities",
+      "type": "MD",
+      "ownership": "public",
+      "location": { "city": "Minneapolis", "state": "MN", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": null,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 513,
+        "averageMCAT": 513,
+        "medianGPA": 3.81,
+        "averageGPA": 3.81
+      },
+      "demographics": {
+        "inStatePercent": 60,
+        "outOfStatePercent": 40,
+        "preferenceState": "MN",
+        "statePreferenceStrength": "moderate"
+      },
+      "tuition": { "inState": 44516, "outOfState": 62412 },
+      "urls": {
+        "admissions": "https://www.med.umn.edu/admissions"
+      }
+    },
+    {
+      "id": "colorado",
+      "name": "University of Colorado School of Medicine",
+      "shortName": "CU Med",
+      "fullName": "University of Colorado School of Medicine",
+      "type": "MD",
+      "ownership": "public",
+      "location": { "city": "Aurora", "state": "CO", "region": "West" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": null,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 514,
+        "averageMCAT": 514,
+        "medianGPA": 3.83,
+        "averageGPA": 3.83
+      },
+      "demographics": {
+        "inStatePercent": 65,
+        "outOfStatePercent": 35,
+        "preferenceState": "CO",
+        "statePreferenceStrength": "moderate"
+      },
+      "tuition": { "inState": 40479, "outOfState": 65615 },
+      "urls": {
+        "admissions": "https://www.ucdenver.edu/academics/colleges/medicalschool/education/Admissions/"
+      }
+    },
+    {
+      "id": "northwestern",
+      "name": "Northwestern University Feinberg School of Medicine",
+      "shortName": "Northwestern",
+      "fullName": "Northwestern University The Feinberg School of Medicine",
+      "type": "MD",
+      "ownership": "private",
+      "location": { "city": "Chicago", "state": "IL", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": null,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 520,
+        "averageMCAT": 520,
+        "medianGPA": 3.91,
+        "averageGPA": 3.91
+      },
+      "demographics": {
+        "inStatePercent": null,
+        "outOfStatePercent": null,
+        "preferenceState": null,
+        "statePreferenceStrength": "none"
+      },
+      "tuition": { "inState": 68586, "outOfState": 68586 },
+      "urls": {
+        "admissions": "https://www.feinberg.northwestern.edu/admissions/"
+      }
+    },
+    {
+      "id": "washu",
+      "name": "Washington University School of Medicine",
+      "shortName": "WashU",
+      "fullName": "Washington University in St. Louis School of Medicine",
+      "type": "MD",
+      "ownership": "private",
+      "location": { "city": "St. Louis", "state": "MO", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": null,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 521,
+        "averageMCAT": 521,
+        "medianGPA": 3.94,
+        "averageGPA": 3.94
+      },
+      "demographics": {
+        "inStatePercent": null,
+        "outOfStatePercent": null,
+        "preferenceState": null,
+        "statePreferenceStrength": "none"
+      },
+      "tuition": { "inState": 67899, "outOfState": 67899 },
+      "urls": {
+        "admissions": "https://medicine.wustl.edu/education/admissions/"
+      }
+    },
+    {
+      "id": "mayo",
+      "name": "Mayo Clinic Alix School of Medicine",
+      "shortName": "Mayo",
+      "fullName": "Mayo Clinic Alix School of Medicine",
+      "type": "MD",
+      "ownership": "private",
+      "location": { "city": "Rochester", "state": "MN", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": 50,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 520,
+        "averageMCAT": 520,
+        "medianGPA": 3.94,
+        "averageGPA": 3.94
+      },
+      "demographics": {
+        "inStatePercent": null,
+        "outOfStatePercent": null,
+        "preferenceState": null,
+        "statePreferenceStrength": "none"
+      },
+      "tuition": { "inState": 62690, "outOfState": 62690 },
+      "urls": {
+        "admissions": "https://college.mayo.edu/academics/school-of-medicine/"
+      }
+    },
+    {
+      "id": "indiana",
+      "name": "Indiana University School of Medicine",
+      "shortName": "IU Med",
+      "fullName": "Indiana University School of Medicine",
+      "type": "MD",
+      "ownership": "public",
+      "location": { "city": "Indianapolis", "state": "IN", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": 365,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 513,
+        "averageMCAT": 513,
+        "medianGPA": 3.76,
+        "averageGPA": 3.76
+      },
+      "demographics": {
+        "inStatePercent": 70,
+        "outOfStatePercent": 30,
+        "preferenceState": "IN",
+        "statePreferenceStrength": "strong"
+      },
+      "tuition": { "inState": 39074, "outOfState": 64034 },
+      "urls": {
+        "admissions": "https://medicine.iu.edu/education/md/admissions/"
+      }
+    },
+    {
+      "id": "michigan",
+      "name": "University of Michigan Medical School",
+      "shortName": "Michigan Med",
+      "fullName": "University of Michigan Medical School",
+      "type": "MD",
+      "ownership": "public",
+      "location": { "city": "Ann Arbor", "state": "MI", "region": "Midwest" },
+      "admissions": {
+        "totalApplicants": null,
+        "classSize": 170,
+        "acceptanceRate": null
+      },
+      "academics": {
+        "medianMCAT": 518,
+        "averageMCAT": 518,
+        "medianGPA": 3.87,
+        "averageGPA": 3.87
+      },
+      "demographics": {
+        "inStatePercent": 45,
+        "outOfStatePercent": 55,
+        "preferenceState": "MI",
+        "statePreferenceStrength": "moderate"
+      },
+      "tuition": { "inState": 42062, "outOfState": 62986 },
+      "urls": {
+        "admissions": "https://medicine.umich.edu/medschool/education/md-program/admissions"
+      }
+    }
+  ]
+}
