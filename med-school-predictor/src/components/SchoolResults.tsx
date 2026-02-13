@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import type { SchoolOdds, SchoolCategory } from '../types';
+import { useState, useMemo } from 'react';
+import type { SchoolOdds } from '../types';
 import SchoolCard from './SchoolCard';
+import FilterBar, { type SortKey, type FilterCategory, type FilterType } from './FilterBar';
 
 interface SchoolResultsProps {
   results: SchoolOdds[];
@@ -8,87 +9,50 @@ interface SchoolResultsProps {
   userMcat: number;
 }
 
-type SortKey = 'odds' | 'name' | 'mcat' | 'gpa';
-type FilterCategory = 'all' | SchoolCategory;
-
-const FILTER_OPTIONS: { key: FilterCategory; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'safety', label: 'Safety' },
-  { key: 'target', label: 'Target' },
-  { key: 'reach', label: 'Reach' },
-  { key: 'far_reach', label: 'Far Reach' },
-];
-
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'odds', label: 'Chances' },
-  { key: 'name', label: 'Name' },
-  { key: 'mcat', label: 'MCAT' },
-  { key: 'gpa', label: 'GPA' },
-];
-
 export default function SchoolResults({ results, userGpa, userMcat }: SchoolResultsProps) {
-  const [filter, setFilter] = useState<FilterCategory>('all');
+  const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
+  const [filterType, setFilterType] = useState<FilterType>('all');
   const [sortKey, setSortKey] = useState<SortKey>('odds');
 
-  const filtered = filter === 'all' ? results : results.filter((r) => r.category === filter);
-
-  const sorted = [...filtered].sort((a, b) => {
-    switch (sortKey) {
-      case 'odds':
-        return b.finalOdds - a.finalOdds;
-      case 'name':
-        return a.shortName.localeCompare(b.shortName);
-      case 'mcat':
-        return (b.schoolMedianMCAT ?? 0) - (a.schoolMedianMCAT ?? 0);
-      case 'gpa':
-        return (b.schoolMedianGPA ?? 0) - (a.schoolMedianGPA ?? 0);
+  const processed = useMemo(() => {
+    let list = results;
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((r) =>
+        r.shortName.toLowerCase().includes(q) ||
+        r.schoolName.toLowerCase().includes(q) ||
+        r.schoolState.toLowerCase().includes(q),
+      );
     }
-  });
+    if (filterCategory !== 'all') list = list.filter((r) => r.category === filterCategory);
+    if (filterType !== 'all') list = list.filter((r) => r.schoolType === filterType);
+
+    return [...list].sort((a, b) => {
+      switch (sortKey) {
+        case 'odds': return b.finalOdds - a.finalOdds;
+        case 'name': return a.shortName.localeCompare(b.shortName);
+        case 'state': return a.schoolState.localeCompare(b.schoolState) || b.finalOdds - a.finalOdds;
+        case 'mcat': return (b.schoolAvgMCAT ?? 0) - (a.schoolAvgMCAT ?? 0);
+        case 'gpa': return (b.schoolAvgGPA ?? 0) - (a.schoolAvgGPA ?? 0);
+      }
+    });
+  }, [results, search, filterCategory, filterType, sortKey]);
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <div className="flex flex-wrap gap-2">
-          {FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.key}
-              onClick={() => setFilter(opt.key)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                filter === opt.key
-                  ? 'bg-teal-500 text-white'
-                  : 'bg-navy-800 text-navy-300 hover:text-white'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-navy-400">Sort:</span>
-          <select
-            value={sortKey}
-            onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="bg-navy-800 border border-navy-600 rounded-lg px-2 py-1 text-xs text-white
-                       focus:outline-none focus:ring-1 focus:ring-teal-500"
-            aria-label="Sort results by"
-          >
-            {SORT_OPTIONS.map((opt) => (
-              <option key={opt.key} value={opt.key}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {sorted.length === 0 ? (
-        <p className="text-navy-400 text-sm py-8 text-center">
-          No schools match the current filter.
-        </p>
+      <FilterBar
+        search={search} onSearchChange={setSearch}
+        filterCategory={filterCategory} onFilterCategoryChange={setFilterCategory}
+        filterType={filterType} onFilterTypeChange={setFilterType}
+        sortKey={sortKey} onSortKeyChange={setSortKey}
+        totalCount={results.length} filteredCount={processed.length}
+      />
+      {processed.length === 0 ? (
+        <p className="text-navy-400 text-sm py-8 text-center">No schools match the current filters.</p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {sorted.map((odds) => (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 mt-4">
+          {processed.map((odds) => (
             <SchoolCard key={odds.schoolId} odds={odds} userGpa={userGpa} userMcat={userMcat} />
           ))}
         </div>

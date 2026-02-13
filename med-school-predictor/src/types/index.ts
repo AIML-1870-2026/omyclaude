@@ -1,80 +1,48 @@
 export interface GridCell {
-  acceptees: number;
+  acceptees?: number;
   applicants: number;
-  acceptanceRate: number;
+  acceptanceRate?: number;
+  matriculated?: number;
+  matriculationRate?: number;
 }
 
 export interface BaselineData {
   source: string;
   sourceUrl: string;
   copyright: string;
-  lastUpdated: string;
   description: string;
   mcatRanges: string[];
   gpaRanges: string[];
   grid: Record<string, Record<string, GridCell | null>>;
-  totals: Record<string, GridCell>;
+  totals?: Record<string, GridCell>;
 }
 
-export interface SchoolLocation {
-  city: string;
-  state: string;
-  region: string;
-  additionalCampuses?: string[];
-}
+export type DegreeType = 'MD' | 'DO';
+export type DegreeFilter = 'both' | 'MD' | 'DO';
 
-export interface School {
+export interface SchoolSimple {
   id: string;
   name: string;
   shortName: string;
-  fullName: string;
-  type: string;
+  state: string;
+  type: DegreeType;
   ownership: string;
-  location: SchoolLocation;
-  founded?: number;
-  admissions: {
-    applicationCycles?: string;
-    totalApplicants: number | null;
-    interviewed?: number | null;
-    interviewRate?: number | null;
-    classSize: number | null;
-    acceptanceRate: number | null;
-    acceptedToInterviewedRatio?: number | null;
-  };
-  academics: {
-    medianMCAT: number | null;
-    averageMCAT: number | null;
-    mcatRange?: Record<string, number | null>;
-    medianGPA: number | null;
-    averageGPA: number | null;
-    gpaRange?: Record<string, number | null>;
-  };
-  demographics: {
-    percentMale?: number;
-    percentFemale?: number;
-    inStatePercent: number | null;
-    outOfStatePercent: number | null;
-    preferenceState: string | null;
-    statePreferenceStrength: 'very_strong' | 'strong' | 'moderate' | 'none';
-  };
-  tuition: {
-    inState: number | null;
-    outOfState: number | null;
-    year?: string;
-  };
-  mission: {
-    focus: string[];
-    description: string;
-  };
-  requirements?: Record<string, unknown>;
-  urls?: Record<string, string>;
+  averageGPA: number | null;
+  averageMCAT: number | null;
+  inStatePercent: number | null;
+  preferenceState: string | null;
+  statePreferenceStrength: 'very_strong' | 'strong' | 'moderate' | 'none';
+  totalApplicants?: number;
+  interviewed?: number;
+  classSize?: number;
+  acceptanceRate?: number;
 }
 
-export interface SchoolsData {
+export interface SchoolsAllData {
   lastUpdated: string;
   dataSources: string[];
   notes: string;
-  schools: School[];
+  schools: SchoolSimple[];
 }
 
 export type QualitativeFactor =
@@ -90,6 +58,7 @@ export interface UserInputs {
   gpa: number;
   mcat: number;
   state: string;
+  degreeFilter: DegreeFilter;
   qualitativeFactors: QualitativeFactor[];
 }
 
@@ -99,7 +68,8 @@ export interface SchoolOdds {
   schoolId: string;
   schoolName: string;
   shortName: string;
-  location: SchoolLocation;
+  schoolState: string;
+  schoolType: DegreeType;
   ownership: string;
   baselineOdds: number;
   statsAdjustment: number;
@@ -107,11 +77,10 @@ export interface SchoolOdds {
   qualitativeBonus: number;
   finalOdds: number;
   category: SchoolCategory;
-  schoolMedianMCAT: number | null;
-  schoolMedianGPA: number | null;
-  tuition: number | null;
+  schoolAvgMCAT: number | null;
+  schoolAvgGPA: number | null;
   inStatePercent: number | null;
-  classSize: number | null;
+  classSize: number | undefined;
   isInState: boolean;
 }
 

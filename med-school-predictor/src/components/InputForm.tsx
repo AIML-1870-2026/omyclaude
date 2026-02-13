@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { UserInputs, QualitativeFactor } from '../types';
+import type { UserInputs, QualitativeFactor, DegreeFilter } from '../types';
 
 const US_STATES = [
   { code: '', label: 'Select state...' },
@@ -66,6 +66,12 @@ const QUALITATIVE_OPTIONS: { key: QualitativeFactor; label: string; desc: string
   { key: 'urm', label: 'Underrepresented in Medicine', desc: 'URM status' },
 ];
 
+const DEGREE_OPTIONS: { key: DegreeFilter; label: string }[] = [
+  { key: 'both', label: 'Both' },
+  { key: 'MD', label: 'MD Only' },
+  { key: 'DO', label: 'DO Only' },
+];
+
 interface InputFormProps {
   onCalculate: (inputs: UserInputs) => void;
 }
@@ -74,6 +80,7 @@ export default function InputForm({ onCalculate }: InputFormProps) {
   const [gpa, setGpa] = useState('3.70');
   const [mcat, setMcat] = useState('510');
   const [state, setState] = useState('');
+  const [degreeFilter, setDegreeFilter] = useState<DegreeFilter>('both');
   const [factors, setFactors] = useState<Set<QualitativeFactor>>(new Set());
 
   const gpaNum = parseFloat(gpa);
@@ -96,6 +103,7 @@ export default function InputForm({ onCalculate }: InputFormProps) {
       gpa: gpaNum,
       mcat: mcatNum,
       state,
+      degreeFilter,
       qualitativeFactors: Array.from(factors),
     });
   }
@@ -104,98 +112,58 @@ export default function InputForm({ onCalculate }: InputFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold text-white mb-4">Academic Stats</h2>
-
         <div className="space-y-4">
           <div>
-            <label htmlFor="gpa" className="block text-sm font-medium text-navy-200 mb-1">
-              GPA
-            </label>
-            <input
-              id="gpa"
-              type="number"
-              step="0.01"
-              min="0"
-              max="4.00"
-              value={gpa}
+            <label htmlFor="gpa" className="block text-sm font-medium text-navy-200 mb-1">GPA</label>
+            <input id="gpa" type="number" step="0.01" min="0" max="4.00" value={gpa}
               onChange={(e) => setGpa(e.target.value)}
-              className="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2.5 text-white
-                         focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
-                         placeholder-navy-400"
-              placeholder="e.g., 3.70"
-              required
-            />
-            {gpaWarning && (
-              <p className="mt-1 text-xs text-amber-400">
-                GPA outside typical 0.00–4.00 range
-              </p>
-            )}
+              className="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent placeholder-navy-400"
+              placeholder="e.g., 3.70" required />
+            {gpaWarning && <p className="mt-1 text-xs text-amber-400">GPA outside typical 0.00-4.00 range</p>}
           </div>
-
           <div>
-            <label htmlFor="mcat" className="block text-sm font-medium text-navy-200 mb-1">
-              MCAT Score
-            </label>
-            <input
-              id="mcat"
-              type="number"
-              min="472"
-              max="528"
-              value={mcat}
+            <label htmlFor="mcat" className="block text-sm font-medium text-navy-200 mb-1">MCAT Score</label>
+            <input id="mcat" type="number" min="472" max="528" value={mcat}
               onChange={(e) => setMcat(e.target.value)}
-              className="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2.5 text-white
-                         focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent
-                         placeholder-navy-400"
-              placeholder="e.g., 510"
-              required
-            />
-            {mcatWarning && (
-              <p className="mt-1 text-xs text-amber-400">
-                MCAT outside typical 472–528 range
-              </p>
-            )}
+              className="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent placeholder-navy-400"
+              placeholder="e.g., 510" required />
+            {mcatWarning && <p className="mt-1 text-xs text-amber-400">MCAT outside typical 472-528 range</p>}
           </div>
         </div>
       </div>
 
       <div>
         <h2 className="text-lg font-semibold text-white mb-4">Residency</h2>
-        <label htmlFor="state" className="block text-sm font-medium text-navy-200 mb-1">
-          State of Legal Residence
-        </label>
-        <select
-          id="state"
-          value={state}
-          onChange={(e) => setState(e.target.value)}
-          className="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2.5 text-white
-                     focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-        >
-          {US_STATES.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.label}
-            </option>
-          ))}
+        <label htmlFor="state" className="block text-sm font-medium text-navy-200 mb-1">State of Legal Residence</label>
+        <select id="state" value={state} onChange={(e) => setState(e.target.value)}
+          className="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent">
+          {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.label}</option>)}
         </select>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold text-white mb-3">Degree Interest</h2>
+        <div className="flex rounded-lg overflow-hidden border border-navy-600">
+          {DEGREE_OPTIONS.map((opt) => (
+            <button key={opt.key} type="button" onClick={() => setDegreeFilter(opt.key)}
+              className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                degreeFilter === opt.key ? 'bg-teal-500 text-white' : 'bg-navy-800 text-navy-300 hover:text-white'
+              }`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>
         <h2 className="text-lg font-semibold text-white mb-4">Qualitative Factors</h2>
         <div className="space-y-3">
           {QUALITATIVE_OPTIONS.map((opt) => (
-            <label
-              key={opt.key}
-              className="flex items-start gap-3 cursor-pointer group"
-            >
-              <input
-                type="checkbox"
-                checked={factors.has(opt.key)}
-                onChange={() => toggleFactor(opt.key)}
-                className="mt-0.5 h-4 w-4 rounded border-navy-500 bg-navy-800 text-teal-500
-                           focus:ring-teal-500 focus:ring-offset-0"
-              />
+            <label key={opt.key} className="flex items-start gap-3 cursor-pointer group">
+              <input type="checkbox" checked={factors.has(opt.key)} onChange={() => toggleFactor(opt.key)}
+                className="mt-0.5 h-4 w-4 rounded border-navy-500 bg-navy-800 text-teal-500 focus:ring-teal-500 focus:ring-offset-0" />
               <div>
-                <span className="text-sm text-white group-hover:text-teal-400 transition-colors">
-                  {opt.label}
-                </span>
+                <span className="text-sm text-white group-hover:text-teal-400 transition-colors">{opt.label}</span>
                 <span className="block text-xs text-navy-400">{opt.desc}</span>
               </div>
             </label>
@@ -203,12 +171,8 @@ export default function InputForm({ onCalculate }: InputFormProps) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        className="w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 px-4
-                   rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400
-                   focus:ring-offset-2 focus:ring-offset-navy-900"
-      >
+      <button type="submit"
+        className="w-full bg-teal-500 hover:bg-teal-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-navy-900">
         Calculate My Chances
       </button>
     </form>

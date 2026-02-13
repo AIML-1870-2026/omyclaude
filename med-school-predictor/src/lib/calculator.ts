@@ -1,17 +1,20 @@
-import baselineData from '../../data/baseline.json';
-import schoolsData from '../../data/schools.json';
+import baselineMdData from '../../data/baseline.json';
+import baselineDoData from '../../data/baseline_do.json';
+import schoolsAllData from '../../data/schools_all.json';
 import type {
   BaselineData,
-  SchoolsData,
+  SchoolsAllData,
   UserInputs,
   SchoolOdds,
   BaselineResult,
   QualitativeFactor,
   SchoolCategory,
+  DegreeType,
 } from '../types';
 
-const baseline = baselineData as BaselineData;
-const schools = (schoolsData as SchoolsData).schools;
+const baselineMd = baselineMdData as BaselineData;
+const baselineDo = baselineDoData as BaselineData;
+const allSchools = (schoolsAllData as SchoolsAllData).schools;
 
 function getGpaRange(gpa: number): string {
   if (gpa >= 3.80) return '> 3.79';
@@ -40,32 +43,36 @@ function getMcatRange(mcat: number): string {
   return '< 486';
 }
 
-export function getBaselineOdds(gpa: number, mcat: number): BaselineResult {
-  const gpaRange = getGpaRange(gpa);
-  const mcatRange = getMcatRange(mcat);
-
-  const gpaRow = baseline.grid[gpaRange];
-  if (!gpaRow) return { acceptanceRate: null, gpaRange, mcatRange };
-
+function lookupRate(data: BaselineData, gpaRange: string, mcatRange: string): number | null {
+  const gpaRow = data.grid[gpaRange];
+  if (!gpaRow) return null;
   const cell = gpaRow[mcatRange];
-  if (!cell) return { acceptanceRate: null, gpaRange, mcatRange };
-
-  return {
-    acceptanceRate: cell.acceptanceRate,
-    gpaRange,
-    mcatRange,
-  };
+  if (!cell) return null;
+  return cell.acceptanceRate ?? cell.matriculationRate ?? null;
 }
 
-export function getBaselineGrid(): {
+export function getBaselineOdds(
+  gpa: number,
+  mcat: number,
+  degreeType: DegreeType,
+): BaselineResult {
+  const gpaRange = getGpaRange(gpa);
+  const mcatRange = getMcatRange(mcat);
+  const data = degreeType === 'MD' ? baselineMd : baselineDo;
+  const acceptanceRate = lookupRate(data, gpaRange, mcatRange);
+  return { acceptanceRate, gpaRange, mcatRange };
+}
+
+export function getBaselineGrid(degreeType: DegreeType): {
   grid: BaselineData['grid'];
   gpaRanges: string[];
   mcatRanges: string[];
 } {
+  const data = degreeType === 'MD' ? baselineMd : baselineDo;
   return {
-    grid: baseline.grid,
-    gpaRanges: baseline.gpaRanges,
-    mcatRanges: baseline.mcatRanges,
+    grid: data.grid,
+    gpaRanges: data.gpaRanges,
+    mcatRanges: data.mcatRanges,
   };
 }
 
@@ -94,10 +101,8 @@ function categorize(odds: number): SchoolCategory {
 }
 
 export function calculateSchoolOdds(inputs: UserInputs): SchoolOdds[] {
-  const baselineResult = getBaselineOdds(inputs.gpa, inputs.mcat);
-  const baselineOdds = baselineResult.acceptanceRate;
-
-  if (baselineOdds === null) return [];
+  const mdBaseline = getBaselineOdds(inputs.gpa, inputs.mcat, 'MD');
+  const doBaseline = getBaselineOdds(inputs.gpa, inputs.mcat, 'DO');
 
   let qualitativeBonus = 0;
   for (const factor of inputs.qualitativeFactors) {
@@ -105,33 +110,35 @@ export function calculateSchoolOdds(inputs: UserInputs): SchoolOdds[] {
   }
   qualitativeBonus = Math.min(qualitativeBonus, 15);
 
-  return schools
-    .filter((school) => {
-      const mcat = school.academics.medianMCAT ?? school.academics.averageMCAT;
-      const gpa = school.academics.medianGPA ?? school.academics.averageGPA;
-      return mcat !== null || gpa !== null;
-    })
+  const filteredSchools = allSchools.filter((s) => {
+    if (inputs.degreeFilter === 'both') return true;
+    return s.type === inputs.degreeFilter;
+  });
+
+  return filteredSchools
+    .filter((school) => school.averageMCAT !== null || school.averageGPA !== null)
     .map((school) => {
-      const schoolMCAT = school.academics.medianMCAT ?? school.academics.averageMCAT;
-      const schoolGPA = school.academics.medianGPA ?? school.academics.averageGPA;
+      const baselineResult = school.type === 'MD' ? mdBaseline : doBaseline;
+      const baselineOdds = baselineResult.acceptanceRate;
+
+      if (baselineOdds === null) return null;
 
       let statsAdjustment = 0;
-      if (schoolMCAT !== null) {
-        statsAdjustment += (inputs.mcat - schoolMCAT) * 2.5;
+      if (school.averageMCAT !== null) {
+        statsAdjustment += (inputs.mcat - school.averageMCAT) * 2.5;
       }
-      if (schoolGPA !== null) {
-        statsAdjustment += (inputs.gpa - schoolGPA) * 50;
+      if (school.averageGPA !== null) {
+        statsAdjustment += (inputs.gpa - school.averageGPA) * 50;
       }
       statsAdjustment = Math.max(-30, Math.min(30, statsAdjustment));
 
-      const isInState =
-        inputs.state !== '' && school.demographics.preferenceState === inputs.state;
-      const strength = school.demographics.statePreferenceStrength;
+      const isInState = inputs.state !== '' && school.preferenceState === inputs.state;
+      const strength = school.statePreferenceStrength;
       const multiplierConfig = IN_STATE_MULTIPLIERS[strength];
       let inStateMultiplier: number;
       if (isInState) {
         inStateMultiplier = multiplierConfig.inState;
-      } else if (inputs.state !== '' && school.demographics.preferenceState !== null) {
+      } else if (inputs.state !== '' && school.preferenceState !== null) {
         inStateMultiplier = multiplierConfig.oos;
       } else {
         inStateMultiplier = 1.0;
@@ -142,13 +149,12 @@ export function calculateSchoolOdds(inputs: UserInputs): SchoolOdds[] {
       const withQualitative = withResidency + qualitativeBonus;
       const finalOdds = Math.max(1, Math.min(95, withQualitative));
 
-      const tuition = isInState ? school.tuition.inState : school.tuition.outOfState;
-
       return {
         schoolId: school.id,
         schoolName: school.name,
         shortName: school.shortName,
-        location: school.location,
+        schoolState: school.state,
+        schoolType: school.type,
         ownership: school.ownership,
         baselineOdds,
         statsAdjustment: Math.round(statsAdjustment * 10) / 10,
@@ -156,13 +162,13 @@ export function calculateSchoolOdds(inputs: UserInputs): SchoolOdds[] {
         qualitativeBonus,
         finalOdds: Math.round(finalOdds * 10) / 10,
         category: categorize(finalOdds),
-        schoolMedianMCAT: schoolMCAT,
-        schoolMedianGPA: schoolGPA,
-        tuition,
-        inStatePercent: school.demographics.inStatePercent,
-        classSize: school.admissions.classSize,
+        schoolAvgMCAT: school.averageMCAT,
+        schoolAvgGPA: school.averageGPA,
+        inStatePercent: school.inStatePercent,
+        classSize: school.classSize,
         isInState,
       };
     })
+    .filter((r): r is SchoolOdds => r !== null)
     .sort((a, b) => b.finalOdds - a.finalOdds);
 }
