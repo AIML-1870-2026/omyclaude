@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Neuron | UNMC Admissions AI</title>
+    <style>
+        :root {
+            --unmc-red: #D00000;
+            --unmc-dark: #0a0a14;
+            --unmc-gray: #1a1a2e;
+            --unmc-panel: rgba(26, 26, 46, 0.85);
+            --unmc-white: #ffffff;
+            --unmc-gold: #FFD700;
+            --accent-green: #00ff88;
+            --accent-red: #ff4466;
+            --accent-yellow: #ffcc00;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--unmc-dark);
+            color: var(--unmc-white);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--unmc-red) 0%, #8B0000 100%);
+            border-bottom: 3px solid var(--unmc-gold);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--unmc-panel);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .panel-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--unmc-gold);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Left Column */
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Heatmap Container */
+        .heatmap-container {
+            position: relative;
+            aspect-ratio: 1;
+            max-height: 500px;
+        }
+
+        #heatmap {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+
+        .axis-label {
+            position: absolute;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .axis-label.y-axis {
+            left: -40px;
+            top: 50%;
+            transform: rotate(-90deg) translateX(50%);
+            white-space: nowrap;
+        }
+
+        .axis-label.x-axis {
+            bottom: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .axis-values {
+            position: absolute;
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* User Marker */
+        .user-marker {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 3px solid var(--unmc-white);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            box-shadow: 0 0 15px var(--unmc-white), 0 0 30px var(--unmc-gold);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            50% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.7; }
+        }
+
+        /* Sensitivity Panel */
+        .sensitivity-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .sensitivity-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sensitivity-label {
+            width: 80px;
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.8);
+        }
+
+        .sensitivity-track {
+            flex: 1;
+            height: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sensitivity-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+
+        .sensitivity-value {
+            width: 45px;
+            text-align: right;
+            font-size: 0.75rem;
+            font-family: 'Courier New', monospace;
+            color: var(--unmc-gold);
+        }
+
+        /* Training Panel */
+        .training-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .training-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .train-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .train-btn.primary {
+            background: var(--unmc-red);
+            color: white;
+        }
+
+        .train-btn.primary:hover {
+            background: #ff1111;
+            box-shadow: 0 0 20px rgba(208, 0, 0, 0.5);
+        }
+
+        .train-btn.secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .train-btn.secondary:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .training-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--unmc-gold);
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Right Column - Control Panel */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: sticky;
+            top: 20px;
+        }
+
+        /* Sliders */
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .slider-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider-name {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .slider-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--unmc-gold);
+            font-family: 'Courier New', monospace;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--unmc-red);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--unmc-red);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 20px var(--unmc-red);
+        }
+
+        /* Nebraska Toggle */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-container.active {
+            border-color: var(--unmc-red);
+            background: rgba(208, 0, 0, 0.1);
+        }
+
+        .toggle-label {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toggle-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .toggle-subtitle {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: var(--unmc-red);
+        }
+
+        .toggle-knob {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active .toggle-knob {
+            left: 33px;
+        }
+
+        /* Probability Display */
+        .probability-display {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 100%);
+            border-radius: 16px;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .prob-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 10px;
+        }
+
+        .prob-value {
+            font-size: 3rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            transition: color 0.3s ease;
+        }
+
+        .prob-status {
+            font-size: 0.9rem;
+            margin-top: 10px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .prob-status.likely {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--accent-green);
+        }
+
+        .prob-status.borderline {
+            background: rgba(255, 204, 0, 0.2);
+            color: var(--accent-yellow);
+        }
+
+        .prob-status.unlikely {
+            background: rgba(255, 68, 102, 0.2);
+            color: var(--accent-red);
+        }
+
+        /* Math Overlay */
+        .math-overlay {
+            background: rgba(0,0,0,0.4);
+            border-radius: 12px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+        }
+
+        .math-equation {
+            color: var(--unmc-gold);
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+
+        .math-breakdown {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .math-term {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .math-total {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            color: var(--unmc-white);
+            font-weight: 600;
+        }
+
+        /* Presets */
+        .presets-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: var(--unmc-gold);
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            padding: 10px;
+            font-size: 0.75rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.accept {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        .legend-dot.reject {
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+        }
+
+        /* FPS Counter */
+        .fps-counter {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            font-size: 0.7rem;
+            font-family: 'Courier New', monospace;
+            color: rgba(255,255,255,0.4);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+
+            .control-panel {
+                position: static;
+            }
+        }
+
+        /* Sparkle Effect */
+        .sparkle {
+            position: absolute;
+            pointer-events: none;
+            animation: sparkle 0.6s ease-out forwards;
+        }
+
+        @keyframes sparkle {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>DECISION NEURON</h1>
+        <p>UNMC Admissions AI Simulator | Perceptron Learning Visualization</p>
+    </header>
+
+    <main class="main-container">
+        <div class="left-column">
+            <!-- Heatmap Panel -->
+            <div class="panel">
+                <div class="panel-title">Decision Boundary Heatmap</div>
+                <div class="heatmap-container">
+                    <canvas id="heatmap"></canvas>
+                    <div class="user-marker" id="user-marker"></div>
+                    <span class="axis-label y-axis">GPA (2.0 - 4.0)</span>
+                    <span class="axis-label x-axis">MCAT (472 - 528)</span>
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-dot accept"></div>
+                        <span>High Probability</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot reject"></div>
+                        <span>Low Probability</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensitivity Panel -->
+            <div class="panel">
+                <div class="panel-title">Sensitivity Analysis</div>
+                <div class="sensitivity-container" id="sensitivity-chart">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <!-- Training Panel -->
+            <div class="panel">
+                <div class="panel-title">Training Ground</div>
+                <div class="training-container">
+                    <div class="training-controls">
+                        <button class="train-btn primary" id="train-epoch">Train Epoch</button>
+                        <button class="train-btn secondary" id="train-10">Train x10</button>
+                        <button class="train-btn secondary" id="reset-weights">Reset Weights</button>
+                        <button class="train-btn secondary" id="toggle-data">Show Data</button>
+                    </div>
+                    <div class="training-stats">
+                        <div class="stat-box">
+                            <div class="stat-label">Epoch</div>
+                            <div class="stat-value" id="epoch-count">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Accuracy</div>
+                            <div class="stat-value" id="accuracy">50%</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Loss</div>
+                            <div class="stat-value" id="loss">0.50</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <!-- Your Profile -->
+            <div class="panel">
+                <div class="panel-title">Your Profile</div>
+                <div class="slider-group">
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span class="slider-name">GPA</span>
+                            <span class="slider-value" id="gpa-value">3.75</span>
+                        </div>
+                        <input type="range" id="gpa-slider" min="200" max="400" value="375" step="1">
+                    </div>
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span class="slider-name">MCAT Score</span>
+                            <span class="slider-value" id="mcat-value">515</span>
+                        </div>
+                        <input type="range" id="mcat-slider" min="472" max="528" value="515" step="1">
+                    </div>
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span class="slider-name">Research Hours</span>
+                            <span class="slider-value" id="research-value">500</span>
+                        </div>
+                        <input type="range" id="research-slider" min="0" max="2000" value="500" step="50">
+                    </div>
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span class="slider-name">Clinical Hours</span>
+                            <span class="slider-value" id="clinical-value">1000</span>
+                        </div>
+                        <input type="range" id="clinical-slider" min="0" max="3000" value="1000" step="50">
+                    </div>
+                    <div class="slider-item">
+                        <div class="slider-header">
+                            <span class="slider-name">Service Hours</span>
+                            <span class="slider-value" id="service-value">200</span>
+                        </div>
+                        <input type="range" id="service-slider" min="0" max="1000" value="200" step="25">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nebraska Toggle -->
+            <div class="panel">
+                <div class="toggle-container" id="nebraska-toggle">
+                    <div class="toggle-label">
+                        <span class="toggle-title">Nebraska Resident</span>
+                        <span class="toggle-subtitle">84% In-State Preference</span>
+                    </div>
+                    <div class="toggle-switch" id="toggle-switch">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Probability Display -->
+            <div class="panel probability-display">
+                <div class="prob-label">Interview Probability</div>
+                <div class="prob-value" id="prob-value">78.4%</div>
+                <div class="prob-status likely" id="prob-status">LIKELY</div>
+            </div>
+
+            <!-- Math Overlay -->
+            <div class="panel math-overlay">
+                <div class="math-equation">z = &Sigma;(w<sub>i</sub>x<sub>i</sub>) + b</div>
+                <div class="math-breakdown" id="math-breakdown">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+
+            <!-- Presets -->
+            <div class="panel">
+                <div class="panel-title">Presets</div>
+                <div class="presets-grid">
+                    <button class="preset-btn" data-preset="strong">Strong Applicant</button>
+                    <button class="preset-btn" data-preset="borderline">Borderline</button>
+                    <button class="preset-btn" data-preset="research">Research Focus</button>
+                    <button class="preset-btn" data-preset="clinical">Clinical Focus</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="fps-counter" id="fps">60 FPS</div>
+
+    <script>
+        // ============================================
+        // PERCEPTRON MODEL
+        // ============================================
+        const NEURON = {
+            weights: {
+                gpa: 4.0,
+                mcat: 3.5,
+                research: 1.5,
+                clinical: 2.0,
+                service: 1.0
+            },
+            bias: -6.0,
+            nebraskaBoost: 2.5,
+            learningRate: 0.05
+        };
+
+        const INITIAL_WEIGHTS = JSON.parse(JSON.stringify(NEURON));
+
+        // Normalization ranges
+        const RANGES = {
+            gpa: { min: 2.0, max: 4.0 },
+            mcat: { min: 472, max: 528 },
+            research: { min: 0, max: 2000 },
+            clinical: { min: 0, max: 3000 },
+            service: { min: 0, max: 1000 }
+        };
+
+        // Normalize input to 0-1
+        function normalize(value, key) {
+            const range = RANGES[key];
+            return (value - range.min) / (range.max - range.min);
+        }
+
+        // Sigmoid activation
+        function sigmoid(z) {
+            return 1 / (1 + Math.exp(-z));
+        }
+
+        // Forward pass
+        function predict(inputs, isNebraska = false) {
+            let z = NEURON.bias;
+            if (isNebraska) z += NEURON.nebraskaBoost;
+
+            z += normalize(inputs.gpa, 'gpa') * NEURON.weights.gpa;
+            z += normalize(inputs.mcat, 'mcat') * NEURON.weights.mcat;
+            z += normalize(inputs.research, 'research') * NEURON.weights.research;
+            z += normalize(inputs.clinical, 'clinical') * NEURON.weights.clinical;
+            z += normalize(inputs.service, 'service') * NEURON.weights.service;
+
+            return { probability: sigmoid(z), z: z };
+        }
+
+        // ============================================
+        // STATE
+        // ============================================
+        const state = {
+            gpa: 3.75,
+            mcat: 515,
+            research: 500,
+            clinical: 1000,
+            service: 200,
+            isNebraska: true,
+            showData: false,
+            epoch: 0
+        };
+
+        // ============================================
+        // TRAINING DATA (Mock AAMC-based)
+        // ============================================
+        const TRAINING_DATA = [
+            // Strong Nebraska accepts
+            { gpa: 3.95, mcat: 522, research: 1200, clinical: 1500, service: 400, isNebraska: true, accepted: 1 },
+            { gpa: 3.88, mcat: 519, research: 800, clinical: 2000, service: 300, isNebraska: true, accepted: 1 },
+            { gpa: 3.82, mcat: 517, research: 600, clinical: 1800, service: 250, isNebraska: true, accepted: 1 },
+            { gpa: 3.78, mcat: 515, research: 500, clinical: 1200, service: 200, isNebraska: true, accepted: 1 },
+            { gpa: 3.75, mcat: 514, research: 400, clinical: 1000, service: 180, isNebraska: true, accepted: 1 },
+            { gpa: 3.70, mcat: 512, research: 300, clinical: 900, service: 150, isNebraska: true, accepted: 1 },
+
+            // Borderline Nebraska (in-state advantage saves them)
+            { gpa: 3.65, mcat: 510, research: 200, clinical: 800, service: 120, isNebraska: true, accepted: 1 },
+            { gpa: 3.60, mcat: 508, research: 150, clinical: 700, service: 100, isNebraska: true, accepted: 1 },
+            { gpa: 3.55, mcat: 506, research: 100, clinical: 600, service: 80, isNebraska: true, accepted: 0 },
+
+            // Strong out-of-state (need higher stats)
+            { gpa: 3.92, mcat: 521, research: 1000, clinical: 1400, service: 350, isNebraska: false, accepted: 1 },
+            { gpa: 3.88, mcat: 519, research: 900, clinical: 1300, service: 300, isNebraska: false, accepted: 1 },
+            { gpa: 3.85, mcat: 517, research: 700, clinical: 1100, service: 250, isNebraska: false, accepted: 1 },
+
+            // Borderline out-of-state (rejected without in-state boost)
+            { gpa: 3.70, mcat: 512, research: 400, clinical: 800, service: 150, isNebraska: false, accepted: 0 },
+            { gpa: 3.65, mcat: 510, research: 300, clinical: 700, service: 120, isNebraska: false, accepted: 0 },
+            { gpa: 3.60, mcat: 508, research: 200, clinical: 600, service: 100, isNebraska: false, accepted: 0 },
+
+            // Clear rejects
+            { gpa: 3.40, mcat: 502, research: 50, clinical: 400, service: 50, isNebraska: true, accepted: 0 },
+            { gpa: 3.30, mcat: 498, research: 0, clinical: 300, service: 30, isNebraska: true, accepted: 0 },
+            { gpa: 3.20, mcat: 495, research: 0, clinical: 200, service: 20, isNebraska: false, accepted: 0 },
+            { gpa: 3.10, mcat: 490, research: 0, clinical: 100, service: 0, isNebraska: false, accepted: 0 },
+
+            // More varied data points
+            { gpa: 3.80, mcat: 516, research: 700, clinical: 500, service: 400, isNebraska: true, accepted: 1 },
+            { gpa: 3.72, mcat: 513, research: 1500, clinical: 400, service: 100, isNebraska: true, accepted: 1 },
+            { gpa: 3.68, mcat: 511, research: 200, clinical: 2500, service: 500, isNebraska: true, accepted: 1 },
+            { gpa: 3.50, mcat: 505, research: 100, clinical: 500, service: 150, isNebraska: true, accepted: 0 },
+            { gpa: 3.45, mcat: 503, research: 50, clinical: 400, service: 100, isNebraska: false, accepted: 0 },
+            { gpa: 3.90, mcat: 520, research: 500, clinical: 800, service: 200, isNebraska: false, accepted: 1 },
+            { gpa: 3.75, mcat: 514, research: 600, clinical: 900, service: 180, isNebraska: false, accepted: 0 },
+            { gpa: 3.82, mcat: 516, research: 400, clinical: 1100, service: 220, isNebraska: false, accepted: 1 },
+        ];
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const canvas = document.getElementById('heatmap');
+        const ctx = canvas.getContext('2d');
+        const userMarker = document.getElementById('user-marker');
+
+        // Sliders
+        const sliders = {
+            gpa: document.getElementById('gpa-slider'),
+            mcat: document.getElementById('mcat-slider'),
+            research: document.getElementById('research-slider'),
+            clinical: document.getElementById('clinical-slider'),
+            service: document.getElementById('service-slider')
+        };
+
+        const valueDisplays = {
+            gpa: document.getElementById('gpa-value'),
+            mcat: document.getElementById('mcat-value'),
+            research: document.getElementById('research-value'),
+            clinical: document.getElementById('clinical-value'),
+            service: document.getElementById('service-value')
+        };
+
+        // ============================================
+        // HEATMAP RENDERING
+        // ============================================
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const size = Math.min(container.clientWidth, 500);
+            canvas.width = size;
+            canvas.height = size;
+            renderHeatmap();
+        }
+
+        function probabilityToColor(p) {
+            // Red (low) -> Yellow (mid) -> Green (high)
+            if (p < 0.5) {
+                const t = p * 2;
+                const r = 255;
+                const g = Math.floor(t * 200);
+                const b = Math.floor((1 - t) * 100);
+                return `rgb(${r},${g},${b})`;
+            } else {
+                const t = (p - 0.5) * 2;
+                const r = Math.floor((1 - t) * 255);
+                const g = Math.floor(100 + t * 155);
+                const b = Math.floor(t * 136);
+                return `rgb(${r},${g},${b})`;
+            }
+        }
+
+        function renderHeatmap() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const imageData = ctx.createImageData(width, height);
+
+            for (let py = 0; py < height; py++) {
+                for (let px = 0; px < width; px++) {
+                    // Map pixel to GPA/MCAT
+                    const gpa = 2.0 + ((height - py) / height) * 2.0;
+                    const mcat = 472 + (px / width) * 56;
+
+                    // Predict with current other inputs
+                    const inputs = {
+                        gpa: gpa,
+                        mcat: mcat,
+                        research: state.research,
+                        clinical: state.clinical,
+                        service: state.service
+                    };
+
+                    const { probability } = predict(inputs, state.isNebraska);
+
+                    // Get color
+                    const color = probabilityToColor(probability);
+                    const match = color.match(/rgb\((\d+),(\d+),(\d+)\)/);
+
+                    const idx = (py * width + px) * 4;
+                    imageData.data[idx] = parseInt(match[1]);
+                    imageData.data[idx + 1] = parseInt(match[2]);
+                    imageData.data[idx + 2] = parseInt(match[3]);
+                    imageData.data[idx + 3] = 255;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            // Draw decision boundary (p = 0.5 contour)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+
+            let started = false;
+            for (let px = 0; px < width; px++) {
+                const mcat = 472 + (px / width) * 56;
+
+                // Binary search for GPA where p = 0.5
+                let lowGpa = 2.0, highGpa = 4.0;
+                for (let i = 0; i < 20; i++) {
+                    const midGpa = (lowGpa + highGpa) / 2;
+                    const inputs = {
+                        gpa: midGpa,
+                        mcat: mcat,
+                        research: state.research,
+                        clinical: state.clinical,
+                        service: state.service
+                    };
+                    const { probability } = predict(inputs, state.isNebraska);
+
+                    if (probability > 0.5) {
+                        highGpa = midGpa;
+                    } else {
+                        lowGpa = midGpa;
+                    }
+                }
+
+                const boundaryGpa = (lowGpa + highGpa) / 2;
+                const py = height - ((boundaryGpa - 2.0) / 2.0) * height;
+
+                if (py >= 0 && py <= height) {
+                    if (!started) {
+                        ctx.moveTo(px, py);
+                        started = true;
+                    } else {
+                        ctx.lineTo(px, py);
+                    }
+                }
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw training data if enabled
+            if (state.showData) {
+                TRAINING_DATA.forEach(d => {
+                    const px = ((d.mcat - 472) / 56) * width;
+                    const py = height - ((d.gpa - 2.0) / 2.0) * height;
+
+                    ctx.beginPath();
+                    ctx.arc(px, py, 6, 0, Math.PI * 2);
+
+                    if (d.accepted) {
+                        ctx.fillStyle = 'rgba(0, 255, 136, 0.8)';
+                        ctx.strokeStyle = '#00ff88';
+                    } else {
+                        ctx.fillStyle = 'rgba(255, 68, 102, 0.8)';
+                        ctx.strokeStyle = '#ff4466';
+                    }
+
+                    ctx.fill();
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Mark out-of-state with hollow center
+                    if (!d.isNebraska) {
+                        ctx.beginPath();
+                        ctx.arc(px, py, 3, 0, Math.PI * 2);
+                        ctx.fillStyle = '#0a0a14';
+                        ctx.fill();
+                    }
+                });
+            }
+
+            // Update user marker position
+            updateUserMarker();
+        }
+
+        function updateUserMarker() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const container = canvas.parentElement;
+
+            const px = ((state.mcat - 472) / 56) * width;
+            const py = height - ((state.gpa - 2.0) / 2.0) * height;
+
+            // Account for canvas offset within container
+            const canvasRect = canvas.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+
+            userMarker.style.left = (px + (canvasRect.left - containerRect.left)) + 'px';
+            userMarker.style.top = (py + (canvasRect.top - containerRect.top)) + 'px';
+        }
+
+        // ============================================
+        // SENSITIVITY ANALYSIS
+        // ============================================
+        function calculateSensitivity() {
+            const inputs = {
+                gpa: state.gpa,
+                mcat: state.mcat,
+                research: state.research,
+                clinical: state.clinical,
+                service: state.service
+            };
+
+            const sensitivities = {};
+            const delta = 0.05; // 5% change
+
+            for (const key of Object.keys(NEURON.weights)) {
+                const range = RANGES[key];
+                const change = (range.max - range.min) * delta;
+
+                const baseInputs = { ...inputs };
+                const tweakedInputs = { ...inputs, [key]: Math.min(inputs[key] + change, range.max) };
+
+                const baseProb = predict(baseInputs, state.isNebraska).probability;
+                const tweakedProb = predict(tweakedInputs, state.isNebraska).probability;
+
+                sensitivities[key] = Math.abs(tweakedProb - baseProb) * 100;
+            }
+
+            // Normalize to percentages
+            const total = Object.values(sensitivities).reduce((a, b) => a + b, 0);
+            if (total > 0) {
+                for (const key of Object.keys(sensitivities)) {
+                    sensitivities[key] = (sensitivities[key] / total) * 100;
+                }
+            }
+
+            return sensitivities;
+        }
+
+        function renderSensitivity() {
+            const container = document.getElementById('sensitivity-chart');
+            const sensitivities = calculateSensitivity();
+
+            const labels = {
+                gpa: 'GPA',
+                mcat: 'MCAT',
+                research: 'Research',
+                clinical: 'Clinical',
+                service: 'Service'
+            };
+
+            const colors = {
+                gpa: '#D00000',
+                mcat: '#FFD700',
+                research: '#00ff88',
+                clinical: '#00d4ff',
+                service: '#ff66ff'
+            };
+
+            container.innerHTML = Object.keys(sensitivities)
+                .sort((a, b) => sensitivities[b] - sensitivities[a])
+                .map(key => `
+                    <div class="sensitivity-bar">
+                        <span class="sensitivity-label">${labels[key]}</span>
+                        <div class="sensitivity-track">
+                            <div class="sensitivity-fill" style="width: ${sensitivities[key]}%; background: ${colors[key]};"></div>
+                        </div>
+                        <span class="sensitivity-value">${sensitivities[key].toFixed(1)}%</span>
+                    </div>
+                `).join('');
+        }
+
+        // ============================================
+        // MATH BREAKDOWN
+        // ============================================
+        function updateMathBreakdown() {
+            const container = document.getElementById('math-breakdown');
+
+            const inputs = {
+                gpa: state.gpa,
+                mcat: state.mcat,
+                research: state.research,
+                clinical: state.clinical,
+                service: state.service
+            };
+
+            const terms = [];
+            let z = NEURON.bias;
+
+            terms.push({ label: 'bias', value: NEURON.bias });
+
+            if (state.isNebraska) {
+                z += NEURON.nebraskaBoost;
+                terms.push({ label: 'NE boost', value: NEURON.nebraskaBoost });
+            }
+
+            for (const key of Object.keys(NEURON.weights)) {
+                const norm = normalize(inputs[key], key);
+                const contrib = norm * NEURON.weights[key];
+                z += contrib;
+                terms.push({ label: key, value: contrib });
+            }
+
+            container.innerHTML = terms.map(t => `
+                <div class="math-term">
+                    <span>${t.label}</span>
+                    <span>${t.value >= 0 ? '+' : ''}${t.value.toFixed(3)}</span>
+                </div>
+            `).join('') + `
+                <div class="math-term math-total">
+                    <span>z (total)</span>
+                    <span>${z.toFixed(3)}</span>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // PROBABILITY DISPLAY
+        // ============================================
+        function updateProbability() {
+            const inputs = {
+                gpa: state.gpa,
+                mcat: state.mcat,
+                research: state.research,
+                clinical: state.clinical,
+                service: state.service
+            };
+
+            const { probability } = predict(inputs, state.isNebraska);
+            const percent = (probability * 100).toFixed(1);
+
+            const probValue = document.getElementById('prob-value');
+            const probStatus = document.getElementById('prob-status');
+
+            probValue.textContent = percent + '%';
+
+            if (probability >= 0.7) {
+                probValue.style.color = 'var(--accent-green)';
+                probStatus.textContent = 'LIKELY';
+                probStatus.className = 'prob-status likely';
+            } else if (probability >= 0.4) {
+                probValue.style.color = 'var(--accent-yellow)';
+                probStatus.textContent = 'BORDERLINE';
+                probStatus.className = 'prob-status borderline';
+            } else {
+                probValue.style.color = 'var(--accent-red)';
+                probStatus.textContent = 'UNLIKELY';
+                probStatus.className = 'prob-status unlikely';
+            }
+        }
+
+        // ============================================
+        // TRAINING
+        // ============================================
+        function trainEpoch() {
+            let totalError = 0;
+            let correct = 0;
+
+            // Shuffle training data
+            const shuffled = [...TRAINING_DATA].sort(() => Math.random() - 0.5);
+
+            for (const applicant of shuffled) {
+                const inputs = {
+                    gpa: applicant.gpa,
+                    mcat: applicant.mcat,
+                    research: applicant.research,
+                    clinical: applicant.clinical,
+                    service: applicant.service
+                };
+
+                const { probability } = predict(inputs, applicant.isNebraska);
+                const error = applicant.accepted - probability;
+                totalError += Math.abs(error);
+
+                // Check if prediction is correct
+                if ((probability >= 0.5 && applicant.accepted) || (probability < 0.5 && !applicant.accepted)) {
+                    correct++;
+                }
+
+                // Gradient descent update
+                const gradient = probability * (1 - probability); // Sigmoid derivative
+
+                for (const key of Object.keys(NEURON.weights)) {
+                    const norm = normalize(inputs[key], key);
+                    NEURON.weights[key] += NEURON.learningRate * error * gradient * norm;
+                }
+
+                NEURON.bias += NEURON.learningRate * error * gradient;
+                if (applicant.isNebraska) {
+                    NEURON.nebraskaBoost += NEURON.learningRate * error * gradient * 0.5;
+                }
+            }
+
+            state.epoch++;
+
+            // Update stats
+            document.getElementById('epoch-count').textContent = state.epoch;
+            document.getElementById('accuracy').textContent = ((correct / TRAINING_DATA.length) * 100).toFixed(0) + '%';
+            document.getElementById('loss').textContent = (totalError / TRAINING_DATA.length).toFixed(3);
+
+            // Redraw everything
+            updateAll();
+        }
+
+        function resetWeights() {
+            Object.assign(NEURON, JSON.parse(JSON.stringify(INITIAL_WEIGHTS)));
+            state.epoch = 0;
+            document.getElementById('epoch-count').textContent = '0';
+            document.getElementById('accuracy').textContent = '50%';
+            document.getElementById('loss').textContent = '0.50';
+            updateAll();
+        }
+
+        // ============================================
+        // PRESETS
+        // ============================================
+        const PRESETS = {
+            strong: { gpa: 3.90, mcat: 520, research: 1000, clinical: 1500, service: 300 },
+            borderline: { gpa: 3.60, mcat: 508, research: 200, clinical: 700, service: 100 },
+            research: { gpa: 3.75, mcat: 514, research: 1800, clinical: 400, service: 150 },
+            clinical: { gpa: 3.70, mcat: 512, research: 200, clinical: 2500, service: 400 }
+        };
+
+        function applyPreset(preset) {
+            const values = PRESETS[preset];
+            if (!values) return;
+
+            state.gpa = values.gpa;
+            state.mcat = values.mcat;
+            state.research = values.research;
+            state.clinical = values.clinical;
+            state.service = values.service;
+
+            // Update sliders
+            sliders.gpa.value = values.gpa * 100;
+            sliders.mcat.value = values.mcat;
+            sliders.research.value = values.research;
+            sliders.clinical.value = values.clinical;
+            sliders.service.value = values.service;
+
+            // Update displays
+            valueDisplays.gpa.textContent = values.gpa.toFixed(2);
+            valueDisplays.mcat.textContent = values.mcat;
+            valueDisplays.research.textContent = values.research;
+            valueDisplays.clinical.textContent = values.clinical;
+            valueDisplays.service.textContent = values.service;
+
+            updateAll();
+        }
+
+        // ============================================
+        // UPDATE ALL
+        // ============================================
+        function updateAll() {
+            renderHeatmap();
+            renderSensitivity();
+            updateMathBreakdown();
+            updateProbability();
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        function setupEventListeners() {
+            // Slider events
+            sliders.gpa.addEventListener('input', (e) => {
+                state.gpa = e.target.value / 100;
+                valueDisplays.gpa.textContent = state.gpa.toFixed(2);
+                updateAll();
+            });
+
+            sliders.mcat.addEventListener('input', (e) => {
+                state.mcat = parseInt(e.target.value);
+                valueDisplays.mcat.textContent = state.mcat;
+                updateAll();
+            });
+
+            sliders.research.addEventListener('input', (e) => {
+                state.research = parseInt(e.target.value);
+                valueDisplays.research.textContent = state.research;
+                updateAll();
+            });
+
+            sliders.clinical.addEventListener('input', (e) => {
+                state.clinical = parseInt(e.target.value);
+                valueDisplays.clinical.textContent = state.clinical;
+                updateAll();
+            });
+
+            sliders.service.addEventListener('input', (e) => {
+                state.service = parseInt(e.target.value);
+                valueDisplays.service.textContent = state.service;
+                updateAll();
+            });
+
+            // Nebraska toggle
+            const toggleContainer = document.getElementById('nebraska-toggle');
+            const toggleSwitch = document.getElementById('toggle-switch');
+
+            toggleContainer.addEventListener('click', () => {
+                state.isNebraska = !state.isNebraska;
+                toggleContainer.classList.toggle('active', state.isNebraska);
+                toggleSwitch.classList.toggle('active', state.isNebraska);
+                updateAll();
+            });
+
+            // Initialize toggle state
+            toggleContainer.classList.add('active');
+            toggleSwitch.classList.add('active');
+
+            // Training buttons
+            document.getElementById('train-epoch').addEventListener('click', trainEpoch);
+            document.getElementById('train-10').addEventListener('click', () => {
+                for (let i = 0; i < 10; i++) trainEpoch();
+            });
+            document.getElementById('reset-weights').addEventListener('click', resetWeights);
+            document.getElementById('toggle-data').addEventListener('click', () => {
+                state.showData = !state.showData;
+                document.getElementById('toggle-data').textContent = state.showData ? 'Hide Data' : 'Show Data';
+                renderHeatmap();
+            });
+
+            // Presets
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    applyPreset(btn.dataset.preset);
+                });
+            });
+
+            // Resize
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        // ============================================
+        // FPS COUNTER
+        // ============================================
+        let frameCount = 0;
+        let lastFpsTime = performance.now();
+
+        function updateFPS() {
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFpsTime >= 1000) {
+                document.getElementById('fps').textContent = frameCount + ' FPS';
+                frameCount = 0;
+                lastFpsTime = now;
+            }
+            requestAnimationFrame(updateFPS);
+        }
+
+        // ============================================
+        // INIT
+        // ============================================
+        function init() {
+            resizeCanvas();
+            setupEventListeners();
+            updateAll();
+            updateFPS();
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

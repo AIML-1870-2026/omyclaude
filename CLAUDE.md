@@ -23,6 +23,7 @@ Current Projects:
 - Physarum-Engine/ - Slime Mold Transport Network
 - Boids/ - 3D Flocking Simulation (GPU Compute)
 - Turing-Patterns/ - GPU Reaction-Diffusion (Gray-Scott)
+- Decision-Neuron/ - UNMC Admissions AI Simulator (Perceptron)
 
 ---
 
@@ -165,6 +166,70 @@ Frame N+1:
 | Coral | 0.0545 | 0.062 | Fingerprint mazes |
 | U-Skate | 0.062 | 0.061 | Moving worms |
 | Black Hole | 0.039 | 0.058 | Imploding rings |
+
+---
+
+## Decision-Neuron/ - Code Reference
+
+**File:** `Decision-Neuron/index.html` (single-file application)
+**Live:** https://aiml-1870-2026.github.io/omyclaude/Decision-Neuron/
+
+### Perceptron Model
+```
+z = Σ(wᵢxᵢ) + b
+P(interview) = σ(z) = 1/(1 + e⁻ᶻ)
+```
+
+| Input | Range | Weight | Description |
+|-------|-------|--------|-------------|
+| GPA | 2.0 - 4.0 | w₁ = 4.0 | Academic rigor |
+| MCAT | 472 - 528 | w₂ = 3.5 | Standardized test |
+| Research | 0 - 2000 hrs | w₃ = 1.5 | Lab experience |
+| Clinical | 0 - 3000 hrs | w₄ = 2.0 | Patient care |
+| Service | 0 - 1000 hrs | w₅ = 1.0 | Leadership |
+| Nebraska | boolean | +2.5 bias | 84% in-state preference |
+
+### Code Architecture in index.html
+
+#### Global State
+- `NEURON{}` - Weights, bias, learning rate
+- `state{}` - User inputs (GPA, MCAT, etc.)
+- `TRAINING_DATA[]` - Mock applicant dataset (28 points)
+
+#### Key Functions
+| Function | Purpose |
+|----------|---------|
+| `normalize(value, key)` | Map raw input to 0-1 range |
+| `sigmoid(z)` | Activation: 1/(1+e⁻ᶻ) |
+| `predict(inputs, isNebraska)` | Forward pass → probability |
+| `trainEpoch()` | One pass of gradient descent |
+| `renderHeatmap()` | Draw GPA×MCAT probability grid |
+| `calculateSensitivity()` | Weight contribution analysis |
+
+#### Visualization Components
+| Component | Implementation |
+|-----------|----------------|
+| Heatmap | Canvas 2D pixel-by-pixel rendering |
+| Decision Boundary | Binary search for P=0.5 contour |
+| User Marker | Pulsing CSS animation |
+| Sensitivity Bars | Dynamic width based on weight impact |
+| Training Data | Scatter overlay (green=accept, red=reject) |
+
+#### Training System
+| Feature | Description |
+|---------|-------------|
+| Learning Rule | Gradient descent with sigmoid derivative |
+| Epoch Counter | Tracks training iterations |
+| Accuracy | Percentage of correct predictions |
+| Loss | Mean absolute error |
+
+#### Presets
+| Name | GPA | MCAT | Profile |
+|------|-----|------|---------|
+| Strong | 3.90 | 520 | High stats, balanced experience |
+| Borderline | 3.60 | 508 | Needs in-state advantage |
+| Research Focus | 3.75 | 514 | Heavy lab hours (1800) |
+| Clinical Focus | 3.70 | 512 | Heavy patient care (2500) |
 
 ---
 
