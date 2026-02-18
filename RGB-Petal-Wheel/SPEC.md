@@ -46,3 +46,8 @@ The Bioluminescent Neural-Link Studio is an interactive RGB exploration tool des
 ## 7. Interaction Logic
 - Adjusting sliders updates the Synapse Core color and the Harmony Panel instantly.
 - Hovering over a palette swatch shows the "Contrast Ratio" against the current background (Accessibility).
+
+## 8. Color Blindness Simulator (Accessibility Stretch Goal)
+- **Vision Deficiency Filters:** Toggle modes to simulate how the UI and palettes appear to users with Protanopia (red-blind), Deuteranopia (green-blind), and Tritanopia (blue-blind).
+- **Transformation Logic:** Apply SVG color matrix filters to the entire application container to accurately shift RGB values into the visible spectrum for each deficiency.
+- **Inclusive Design Toggle:** A dedicated "Accessibility Mode" button that overlays the simulated view, allowing the user to verify that their "Neural-Link" signals remain distinguishable for all users.

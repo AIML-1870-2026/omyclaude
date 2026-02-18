@@ -434,6 +434,126 @@ body {
     font-size: 14px;
 }
 
+/* --- SVG Filters (hidden) --- */
+.svg-filters {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+/* --- Color Blindness Filter Classes --- */
+body.filter-protanopia {
+    filter: url(#protanopia-filter);
+}
+
+body.filter-deuteranopia {
+    filter: url(#deuteranopia-filter);
+}
+
+body.filter-tritanopia {
+    filter: url(#tritanopia-filter);
+}
+
+/* --- Accessibility Bar --- */
+.a11y-bar {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(8, 12, 20, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 212, 255, 0.12);
+    border-radius: 10px;
+    padding: 6px 10px;
+}
+
+.a11y-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #00d4ff;
+    background: rgba(0, 212, 255, 0.06);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.a11y-toggle:hover {
+    background: rgba(0, 212, 255, 0.12);
+    border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.15);
+}
+
+.a11y-toggle.active {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: #00d4ff;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.25);
+}
+
+.a11y-icon {
+    font-size: 14px;
+}
+
+.a11y-filters {
+    display: none;
+    gap: 4px;
+}
+
+.a11y-filters.open {
+    display: flex;
+}
+
+.filter-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: rgba(192, 208, 224, 0.6);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    padding: 5px 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.filter-btn:hover {
+    color: #e0e8f0;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.filter-btn.active {
+    color: #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.1);
+}
+
+.a11y-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: rgba(0, 212, 255, 0.5);
+    white-space: nowrap;
+    display: none;
+}
+
+.a11y-filters.open ~ .a11y-label {
+    display: block;
+}
+
 /* --- Responsive --- */
 @media (max-width: 960px) {
     .panel {

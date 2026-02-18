@@ -568,9 +568,53 @@ function init() {
         copyToClipboard(rgbToHex(state.r, state.g, state.b));
     });
 
+    // Accessibility mode
+    initA11y();
+
     // Initial UI
     updateUI();
     animate();
+}
+
+// ─── Color Blindness Simulator ───
+const FILTER_LABELS = {
+    none: 'Normal Vision',
+    protanopia: 'Protanopia (Red-Blind)',
+    deuteranopia: 'Deuteranopia (Green-Blind)',
+    tritanopia: 'Tritanopia (Blue-Blind)'
+};
+
+function initA11y() {
+    const toggle = document.getElementById('a11y-toggle');
+    const filtersPanel = document.getElementById('a11y-filters');
+    const label = document.getElementById('a11y-label');
+    const filterBtns = filtersPanel.querySelectorAll('.filter-btn');
+
+    toggle.addEventListener('click', () => {
+        const isOpen = filtersPanel.classList.toggle('open');
+        toggle.classList.toggle('active', isOpen);
+    });
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const filter = btn.dataset.filter;
+
+            // Update active button
+            filterBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Remove all filter classes from body
+            document.body.classList.remove('filter-protanopia', 'filter-deuteranopia', 'filter-tritanopia');
+
+            // Apply selected filter
+            if (filter !== 'none') {
+                document.body.classList.add(`filter-${filter}`);
+            }
+
+            // Update label
+            label.textContent = FILTER_LABELS[filter];
+        });
+    });
 }
 
 document.addEventListener('DOMContentLoaded', init);

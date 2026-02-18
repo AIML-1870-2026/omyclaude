@@ -129,6 +129,48 @@
         </div>
     </div>
 
+    <!-- Accessibility Mode Toggle -->
+    <div class="a11y-bar" id="a11y-bar">
+        <button class="a11y-toggle" id="a11y-toggle" title="Toggle Accessibility Mode">
+            <span class="a11y-icon">&#9673;</span>
+            <span>A11Y</span>
+        </button>
+        <div class="a11y-filters" id="a11y-filters">
+            <button class="filter-btn active" data-filter="none">NORMAL</button>
+            <button class="filter-btn" data-filter="protanopia">PROTANOPIA</button>
+            <button class="filter-btn" data-filter="deuteranopia">DEUTERANOPIA</button>
+            <button class="filter-btn" data-filter="tritanopia">TRITANOPIA</button>
+        </div>
+        <div class="a11y-label" id="a11y-label">Normal Vision</div>
+    </div>
+
+    <!-- SVG Color Matrix Filters -->
+    <svg class="svg-filters" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <filter id="protanopia-filter">
+                <feColorMatrix type="matrix" values="
+                    0.567, 0.433, 0.000, 0, 0
+                    0.558, 0.442, 0.000, 0, 0
+                    0.000, 0.242, 0.758, 0, 0
+                    0,     0,     0,     1, 0"/>
+            </filter>
+            <filter id="deuteranopia-filter">
+                <feColorMatrix type="matrix" values="
+                    0.625, 0.375, 0.000, 0, 0
+                    0.700, 0.300, 0.000, 0, 0
+                    0.000, 0.300, 0.700, 0, 0
+                    0,     0,     0,     1, 0"/>
+            </filter>
+            <filter id="tritanopia-filter">
+                <feColorMatrix type="matrix" values="
+                    0.950, 0.050, 0.000, 0, 0
+                    0.000, 0.433, 0.567, 0, 0
+                    0.000, 0.475, 0.525, 0, 0
+                    0,     0,     0,     1, 0"/>
+            </filter>
+        </defs>
+    </svg>
+
     <!-- Toast Notification -->
     <div class="toast" id="toast">
         <span class="toast-icon">&#9889;</span>
