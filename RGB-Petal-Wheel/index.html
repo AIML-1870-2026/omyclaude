@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bioluminescent Neural-Link Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Left Panel: RGB Controls & HUD -->
+    <div class="panel panel-left">
+        <div class="panel-header">
+            <div class="status-dot"></div>
+            <h1>NEURAL-LINK STUDIO</h1>
+        </div>
+
+        <div class="section">
+            <div class="section-label">SYNAPSE CHANNELS</div>
+
+            <div class="slider-group" data-channel="r">
+                <div class="slider-header">
+                    <span class="channel-label channel-r">R</span>
+                    <span class="channel-value" id="r-value">128</span>
+                </div>
+                <input type="range" id="slider-r" class="channel-slider slider-r" min="0" max="255" value="128">
+                <div class="slider-bar-bg"><div class="slider-bar-fill slider-fill-r" id="bar-r"></div></div>
+            </div>
+
+            <div class="slider-group" data-channel="g">
+                <div class="slider-header">
+                    <span class="channel-label channel-g">G</span>
+                    <span class="channel-value" id="g-value">64</span>
+                </div>
+                <input type="range" id="slider-g" class="channel-slider slider-g" min="0" max="255" value="64">
+                <div class="slider-bar-bg"><div class="slider-bar-fill slider-fill-g" id="bar-g"></div></div>
+            </div>
+
+            <div class="slider-group" data-channel="b">
+                <div class="slider-header">
+                    <span class="channel-label channel-b">B</span>
+                    <span class="channel-value" id="b-value">200</span>
+                </div>
+                <input type="range" id="slider-b" class="channel-slider slider-b" min="0" max="255" value="200">
+                <div class="slider-bar-bg"><div class="slider-bar-fill slider-fill-b" id="bar-b"></div></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">SIGNAL READOUT</div>
+            <div class="hud-readouts">
+                <div class="readout">
+                    <span class="readout-label">HEX</span>
+                    <span class="readout-value" id="hex-value">#8040C8</span>
+                </div>
+                <div class="readout">
+                    <span class="readout-label">RGB</span>
+                    <span class="readout-value" id="rgb-value">128, 64, 200</span>
+                </div>
+                <div class="readout">
+                    <span class="readout-label">HSL</span>
+                    <span class="readout-value" id="hsl-value">268°, 52%, 52%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">SIGNAL ANALYSIS</div>
+            <div class="signal-analysis">
+                <div class="signal-row">
+                    <span class="signal-label">Dominant Hue</span>
+                    <span class="signal-value" id="dominant-hue">--</span>
+                </div>
+                <div class="signal-row">
+                    <span class="signal-label">Luminance Booster</span>
+                    <span class="signal-value" id="lum-booster">--</span>
+                </div>
+                <div class="signal-row">
+                    <span class="signal-label">Saturation</span>
+                    <span class="signal-value" id="sat-level">--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="color-preview-block">
+            <div class="preview-swatch" id="main-swatch"></div>
+            <button class="copy-btn" id="copy-main" title="Copy Hex">COPY HEX</button>
+        </div>
+    </div>
+
+    <!-- Center: Synapse Core Canvas -->
+    <canvas id="synapse-canvas"></canvas>
+
+    <!-- Right Panel: Harmony Palettes -->
+    <div class="panel panel-right">
+        <div class="panel-header">
+            <div class="status-dot"></div>
+            <h1>HARMONY MAP</h1>
+        </div>
+
+        <div class="section">
+            <div class="section-label">NEURAL MAP</div>
+            <div class="neural-map-container">
+                <canvas id="neural-map" width="200" height="200"></canvas>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">COMPLEMENTARY</div>
+            <div class="harmony-row" id="harmony-complementary"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">ANALOGOUS</div>
+            <div class="harmony-row" id="harmony-analogous"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">TRIADIC</div>
+            <div class="harmony-row" id="harmony-triadic"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-label">SPLIT-COMPLEMENTARY</div>
+            <div class="harmony-row" id="harmony-split"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span class="toast-icon">&#9889;</span>
+        <span>SIGNAL SENT</span>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
