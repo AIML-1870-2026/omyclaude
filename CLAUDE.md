@@ -24,6 +24,7 @@ Current Projects:
 - Boids/ - 3D Flocking Simulation (GPU Compute)
 - Turing-Patterns/ - GPU Reaction-Diffusion (Gray-Scott)
 - Decision-Neuron/ - UNMC Admissions AI Simulator (Perceptron)
+- RGB-Petal-Wheel/ - Bioluminescent Neural-Link Studio
 
 ---
 
@@ -280,6 +281,7 @@ When I say "Show my URLs" or "Where's my stuff?":
 When creating a new project, use this layout:
 ```
 ProjectName/
+  SPEC.md             ← Project specification / requirements
   index.html          ← Main HTML (minimal, links to css/js)
   css/
     style.css         ← All styles
@@ -287,6 +289,7 @@ ProjectName/
     main.js           ← Core application logic
   assets/             ← Images, fonts, audio, data files
 ```
+- Every project MUST include a `SPEC.md` at its root describing the project's purpose, features, and technical details
 - `index.html` should link to `css/style.css` and `js/main.js`
 - Additional JS modules go in `js/` (e.g., `js/utils.js`, `js/renderer.js`)
 - Additional stylesheets go in `css/` (e.g., `css/components.css`)
