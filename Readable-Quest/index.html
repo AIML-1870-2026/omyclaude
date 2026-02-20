@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Readable Quest - Ultra Edition</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- SVG Filters for Vision Simulation -->
+  <svg xmlns="http://www.w3.org/2000/svg" class="sr-only" aria-hidden="true">
+    <defs>
+      <filter id="protanopia">
+        <feColorMatrix type="matrix" values="
+          0.567, 0.433, 0.000, 0, 0
+          0.558, 0.442, 0.000, 0, 0
+          0.000, 0.242, 0.758, 0, 0
+          0,     0,     0,     1, 0"/>
+      </filter>
+      <filter id="deuteranopia">
+        <feColorMatrix type="matrix" values="
+          0.625, 0.375, 0.000, 0, 0
+          0.700, 0.300, 0.000, 0, 0
+          0.000, 0.300, 0.700, 0, 0
+          0,     0,     0,     1, 0"/>
+      </filter>
+      <filter id="tritanopia">
+        <feColorMatrix type="matrix" values="
+          0.950, 0.050, 0.000, 0, 0
+          0.000, 0.433, 0.567, 0, 0
+          0.000, 0.475, 0.525, 0, 0
+          0,     0,     0,     1, 0"/>
+      </filter>
+      <filter id="monochromacy">
+        <feColorMatrix type="matrix" values="
+          0.2126, 0.7152, 0.0722, 0, 0
+          0.2126, 0.7152, 0.0722, 0, 0
+          0.2126, 0.7152, 0.0722, 0, 0
+          0,      0,      0,      1, 0"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <div class="app" id="app">
+
+    <!-- Sidebar Controls -->
+    <aside class="sidebar" id="sidebar">
+      <header class="sidebar-header">
+        <h1>Readable Quest</h1>
+        <span class="subtitle">Ultra Edition</span>
+      </header>
+
+      <!-- Background Color -->
+      <section class="control-group">
+        <h2>Background Color</h2>
+        <div class="color-preview-row">
+          <div class="color-swatch" id="bg-swatch"></div>
+          <span class="hex-display" id="bg-hex">#FFFFFF</span>
+        </div>
+        <div class="slider-row">
+          <label class="channel r">R</label>
+          <input type="range" min="0" max="255" value="255" class="slider slider-r" id="bg-r-slider">
+          <input type="number" min="0" max="255" value="255" class="num-input" id="bg-r-num">
+        </div>
+        <div class="slider-row">
+          <label class="channel g">G</label>
+          <input type="range" min="0" max="255" value="255" class="slider slider-g" id="bg-g-slider">
+          <input type="number" min="0" max="255" value="255" class="num-input" id="bg-g-num">
+        </div>
+        <div class="slider-row">
+          <label class="channel b">B</label>
+          <input type="range" min="0" max="255" value="0" class="slider slider-b" id="bg-b-slider">
+          <input type="number" min="0" max="255" value="0" class="num-input" id="bg-b-num">
+        </div>
+      </section>
+
+      <!-- Text Color -->
+      <section class="control-group">
+        <h2>Text Color</h2>
+        <div class="color-preview-row">
+          <div class="color-swatch" id="text-swatch"></div>
+          <span class="hex-display" id="text-hex">#000000</span>
+        </div>
+        <div class="slider-row">
+          <label class="channel r">R</label>
+          <input type="range" min="0" max="255" value="0" class="slider slider-r" id="text-r-slider">
+          <input type="number" min="0" max="255" value="0" class="num-input" id="text-r-num">
+        </div>
+        <div class="slider-row">
+          <label class="channel g">G</label>
+          <input type="range" min="0" max="255" value="0" class="slider slider-g" id="text-g-slider">
+          <input type="number" min="0" max="255" value="0" class="num-input" id="text-g-num">
+        </div>
+        <div class="slider-row">
+          <label class="channel b">B</label>
+          <input type="range" min="0" max="255" value="0" class="slider slider-b" id="text-b-slider">
+          <input type="number" min="0" max="255" value="0" class="num-input" id="text-b-num">
+        </div>
+      </section>
+
+      <!-- Font Size -->
+      <section class="control-group">
+        <h2>Font Size</h2>
+        <div class="slider-row">
+          <label class="channel">Aa</label>
+          <input type="range" min="12" max="72" value="16" class="slider slider-font" id="font-slider">
+          <input type="number" min="12" max="72" value="16" class="num-input" id="font-num">
+        </div>
+        <span class="font-hint" id="font-hint">16px &mdash; Normal Text</span>
+      </section>
+
+      <!-- Presets -->
+      <section class="control-group">
+        <h2>Presets</h2>
+        <div class="preset-grid">
+          <button class="preset-btn" data-preset="high-contrast">High Contrast</button>
+          <button class="preset-btn" data-preset="solarized">Solarized</button>
+          <button class="preset-btn" data-preset="dracula">Dracula</button>
+          <button class="preset-btn" data-preset="fail">WCAG Fail</button>
+        </div>
+      </section>
+
+      <!-- Vision Simulation -->
+      <section class="control-group">
+        <h2>Vision Simulation</h2>
+        <div class="vision-radios">
+          <label class="radio-label"><input type="radio" name="vision" value="normal" checked> Normal</label>
+          <label class="radio-label"><input type="radio" name="vision" value="protanopia"> Protanopia</label>
+          <label class="radio-label"><input type="radio" name="vision" value="deuteranopia"> Deuteranopia</label>
+          <label class="radio-label"><input type="radio" name="vision" value="tritanopia"> Tritanopia</label>
+          <label class="radio-label"><input type="radio" name="vision" value="monochromacy"> Monochromacy</label>
+        </div>
+        <p class="sim-note" id="sim-note"></p>
+      </section>
+    </aside>
+
+    <!-- Main Lab Area -->
+    <main class="lab">
+
+      <!-- Metrics Bar -->
+      <div class="metrics-bar">
+        <div class="metric-card">
+          <span class="metric-label">Contrast Ratio</span>
+          <span class="metric-value" id="contrast-ratio">21.00:1</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">L(Background)</span>
+          <span class="metric-value metric-sm" id="lum-bg">1.0000</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">L(Text)</span>
+          <span class="metric-value metric-sm" id="lum-text">0.0000</span>
+        </div>
+      </div>
+
+      <!-- WCAG Badges -->
+      <div class="badge-row">
+        <div class="badge pass" id="badge-aa-normal">
+          <span class="badge-level">AA</span>
+          <span class="badge-type">Normal Text</span>
+          <span class="badge-req">4.5:1</span>
+        </div>
+        <div class="badge pass" id="badge-aaa-normal">
+          <span class="badge-level">AAA</span>
+          <span class="badge-type">Normal Text</span>
+          <span class="badge-req">7.0:1</span>
+        </div>
+        <div class="badge pass" id="badge-aa-large">
+          <span class="badge-level">AA</span>
+          <span class="badge-type">Large Text</span>
+          <span class="badge-req">3.0:1</span>
+        </div>
+      </div>
+
+      <!-- Preview Area -->
+      <div class="preview-container" id="preview-container">
+        <div class="preview-box" id="preview-box">
+          <h2 class="preview-heading">The Quick Brown Fox</h2>
+          <p class="preview-body">
+            Jumps over the lazy dog. This sentence contains every letter of the
+            English alphabet. Accessibility means designing for everyone &mdash;
+            including the 300 million people worldwide with color vision deficiencies.
+          </p>
+          <p class="preview-body">
+            WCAG 2.1 defines minimum contrast ratios to ensure text remains
+            readable across diverse visual abilities and display conditions.
+            <strong>Good contrast saves lives</strong> in critical interfaces.
+          </p>
+          <p class="preview-small">
+            Small print: 12px sample for fine-print readability testing.
+          </p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

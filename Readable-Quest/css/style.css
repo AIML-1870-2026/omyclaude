@@ -1,0 +1,452 @@
+/* ============================================
+   Readable Quest - Ultra Edition
+   Glassmorphism Accessibility Laboratory
+   ============================================ */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --panel-bg: rgba(15, 15, 30, 0.85);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --panel-glass: rgba(255, 255, 255, 0.03);
+  --accent: #6c5ce7;
+  --accent-glow: rgba(108, 92, 231, 0.4);
+  --text-primary: #e8e8f0;
+  --text-muted: #8888aa;
+  --pass: #00e676;
+  --fail: #ff5252;
+  --radius: 12px;
+  --sidebar-width: 340px;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0d0d2b 100%);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Screen-reader only (SVG filters) */
+.sr-only {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* ── App Layout ── */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+
+.sidebar {
+  background: var(--panel-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid var(--panel-border);
+  padding: 24px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar-header {
+  text-align: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.sidebar-header h1 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.5px;
+}
+
+.subtitle {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+}
+
+/* ── Control Groups ── */
+
+.control-group h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* Color preview row */
+.color-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.color-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 2px solid var(--panel-border);
+  flex-shrink: 0;
+}
+
+.hex-display {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  letter-spacing: 1px;
+}
+
+/* Slider rows */
+.slider-row {
+  display: grid;
+  grid-template-columns: 24px 1fr 60px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.channel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.channel.r { color: #ff6b6b; }
+.channel.g { color: #51cf66; }
+.channel.b { color: #5c9aff; }
+
+/* Sliders */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+
+.slider-r::-webkit-slider-thumb { background: #ff6b6b; }
+.slider-g::-webkit-slider-thumb { background: #51cf66; }
+.slider-b::-webkit-slider-thumb { background: #5c9aff; }
+.slider-font::-webkit-slider-thumb { background: var(--accent); }
+
+/* Firefox */
+.slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+
+.slider-r::-moz-range-thumb { background: #ff6b6b; }
+.slider-g::-moz-range-thumb { background: #51cf66; }
+.slider-b::-moz-range-thumb { background: #5c9aff; }
+.slider-font::-moz-range-thumb { background: var(--accent); }
+
+/* Number inputs */
+.num-input {
+  width: 60px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 4px;
+  outline: none;
+}
+
+.num-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* Remove spinner arrows */
+.num-input::-webkit-inner-spin-button,
+.num-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.num-input {
+  -moz-appearance: textfield;
+}
+
+/* Font hint */
+.font-hint {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* ── Presets ── */
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.preset-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset-btn:hover {
+  background: rgba(108, 92, 231, 0.15);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* ── Vision Radios ── */
+
+.vision-radios {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.radio-label {
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.radio-label:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.radio-label input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+.sim-note {
+  font-size: 0.7rem;
+  color: var(--fail);
+  margin-top: 6px;
+  min-height: 1em;
+}
+
+/* ── Disabled state for inputs during simulation ── */
+
+.inputs-locked .slider,
+.inputs-locked .num-input {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.inputs-locked .color-swatch {
+  opacity: 0.4;
+}
+
+/* ── Main Lab Area ── */
+
+.lab {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Metrics Bar ── */
+
+.metrics-bar {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 16px;
+}
+
+.metric-card {
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+}
+
+.metric-value {
+  font-family: 'Courier New', monospace;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.metric-sm {
+  font-size: 1.2rem;
+}
+
+/* ── WCAG Badges ── */
+
+.badge-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 2px solid;
+  font-size: 0.8rem;
+  flex: 1;
+  min-width: 160px;
+  transition: all 0.3s;
+}
+
+.badge.pass {
+  border-color: var(--pass);
+  background: rgba(0, 230, 118, 0.08);
+}
+
+.badge.fail {
+  border-color: var(--fail);
+  background: rgba(255, 82, 82, 0.08);
+}
+
+.badge-level {
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.badge.pass .badge-level { color: var(--pass); }
+.badge.fail .badge-level { color: var(--fail); }
+
+.badge-type {
+  flex: 1;
+  color: var(--text-primary);
+}
+
+.badge-req {
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── Preview Area ── */
+
+.preview-container {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+}
+
+.preview-box {
+  flex: 1;
+  border-radius: var(--radius);
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border: 1px solid var(--panel-border);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.preview-heading {
+  font-size: 1.8em;
+  font-weight: 700;
+}
+
+.preview-body {
+  line-height: 1.7;
+}
+
+.preview-small {
+  font-size: 0.75em;
+  opacity: 0.8;
+  line-height: 1.5;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--panel-border);
+    max-height: 50vh;
+  }
+
+  .lab {
+    padding: 20px;
+  }
+
+  .metrics-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .badge-row {
+    flex-direction: column;
+  }
+}
