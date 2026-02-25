@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blackjack | AIML-1870 Underground Terminal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Particle Field (background layer) -->
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- CRT Scanline Overlay -->
+  <div id="scanlines"></div>
+
+  <div id="terminal-shell">
+
+    <!-- ══ TOP STATUS BAR ══ -->
+    <div id="top-bar">
+      <div class="top-bar-left">
+        <span class="status-dot pulse"></span>
+        <span class="bar-text">SECURE CONNECTION: ENCRYPTED</span>
+        <span class="bar-sep">|</span>
+        <span class="bar-text dim">NODE_ID: BJ-OMEGA-7</span>
+      </div>
+      <div class="top-bar-center">
+        <span class="bar-text dim">AIML-1870 // UNDERGROUND TERMINAL</span>
+      </div>
+      <div class="top-bar-right">
+        <span class="bar-text dim">SYS:</span>
+        <span id="sys-time" class="bar-text">00:00:00</span>
+      </div>
+    </div>
+
+    <!-- ══ WORKSPACE: LEFT | CENTER | RIGHT ══ -->
+    <div id="workspace">
+
+      <!-- ── LEFT PANEL: VITALS ── -->
+      <aside id="left-panel">
+
+        <div class="panel-section">
+          <div class="panel-label">// CARDIAC_MONITOR</div>
+          <div id="heart-rate-box">
+            <div id="bpm-display"><span id="bpm-value">60</span><span class="bpm-unit">BPM</span></div>
+            <svg id="heart-svg" viewBox="0 0 160 50" xmlns="http://www.w3.org/2000/svg" overflow="hidden">
+              <defs>
+                <filter id="ekg-glow">
+                  <feGaussianBlur stdDeviation="1.5" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+              <line x1="0" y1="25" x2="160" y2="25" stroke="rgba(0,255,120,0.15)" stroke-width="1"/>
+              <g id="ekg-group" filter="url(#ekg-glow)">
+                <path id="ekg-path"
+                  d="M-80,25 L-40,25 L-38,6 L-36,44 L-33,25 L0,25 L40,25 L42,6 L44,44 L47,25 L80,25 L120,25 L122,6 L124,44 L127,25 L160,25 L200,25 L202,6 L204,44 L207,25 L240,25"
+                  fill="none" stroke="#00ff78" stroke-width="1.5" stroke-linecap="round"/>
+              </g>
+            </svg>
+            <div id="hr-status" class="hr-status-text">NOMINAL</div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-label">// DNA_HELIX.3D</div>
+          <div class="dna-container">
+            <div class="dna-helix">
+              <div class="dna-ring ring-a"></div>
+              <div class="dna-ring ring-b"></div>
+              <div class="dna-ring ring-c"></div>
+              <div class="dna-core"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-label">// SYSTEM_HEAT</div>
+          <div id="heat-box">
+            <div id="heat-bar-track">
+              <div id="heat-bar-fill"></div>
+            </div>
+            <div id="heat-label">0%</div>
+          </div>
+          <div id="rounds-played-display">
+            <span class="dim">ROUNDS:</span> <span id="rounds-value">0</span>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-label">// RESEARCHER_ID</div>
+          <div class="researcher-card">
+            <div class="rc-field"><span class="dim">IDENT:</span> SCT-2026</div>
+            <div class="rc-field"><span class="dim">DEPT:</span> COMP-BIO</div>
+            <div class="rc-field"><span class="dim">NODE:</span> AIML-1870</div>
+            <div class="rc-field" id="rc-timestamp"><span class="dim">TIME:</span> --:--:--</div>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- ── CENTER: GAME ── -->
+      <main id="center-col">
+
+        <!-- HUD: Bankroll + Analytics -->
+        <div id="hud">
+          <div id="hud-left">
+            <span class="hud-label">BANKROLL</span>
+            <span id="bankroll-display">$1,000</span>
+          </div>
+          <div id="hud-center">
+            <span class="hud-label">BET</span>
+            <span id="bet-display">$0</span>
+          </div>
+          <div id="hud-right">
+            <div id="count-hud" class="hud-analytics hidden">
+              <span class="hud-label">COUNT</span>
+              <span id="count-value">0</span>
+              <span id="count-label">Neutral</span>
+            </div>
+            <div id="hint-hud" class="hud-analytics hidden">
+              <span class="hud-label">HINT</span>
+              <span id="hint-value">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Table -->
+        <div id="table">
+
+          <div id="dealer-zone">
+            <div class="zone-label">DEALER <span id="dealer-total"></span></div>
+            <div id="dealer-cards" class="card-row"></div>
+          </div>
+
+          <div id="message-overlay" class="hidden">
+            <div id="message-text"></div>
+            <div id="message-sub"></div>
+          </div>
+
+          <div id="player-zone">
+            <div id="player-hands"></div>
+            <div class="zone-label">PLAYER</div>
+          </div>
+
+        </div>
+
+        <!-- Controls -->
+        <div id="controls">
+          <div id="betting-area">
+            <div id="chip-row">
+              <button class="chip chip-5"   data-value="5">$5</button>
+              <button class="chip chip-10"  data-value="10">$10</button>
+              <button class="chip chip-25"  data-value="25">$25</button>
+              <button class="chip chip-50"  data-value="50">$50</button>
+              <button class="chip chip-100" data-value="100">$100</button>
+              <button id="clear-btn" class="action-btn btn-clear">Clear</button>
+            </div>
+          </div>
+          <div id="action-row">
+            <button id="deal-btn"       class="action-btn btn-deal"            >DEAL</button>
+            <button id="hit-btn"        class="action-btn btn-hit     hidden"  >HIT</button>
+            <button id="stand-btn"      class="action-btn btn-stand   hidden"  >STAND</button>
+            <button id="double-btn"     class="action-btn btn-double  hidden"  >DOUBLE</button>
+            <button id="split-btn"      class="action-btn btn-split   hidden"  >SPLIT</button>
+            <button id="insurance-btn"  class="action-btn btn-insurance hidden">INSURANCE</button>
+            <button id="no-insure-btn"  class="action-btn btn-noinsure hidden" >DECLINE</button>
+            <button id="new-game-btn"   class="action-btn btn-deal    hidden"  >NEW GAME</button>
+          </div>
+          <div id="analytics-row">
+            <button id="toggle-count" class="toggle-btn">Show Count</button>
+            <button id="toggle-hint"  class="toggle-btn">Show Hint</button>
+          </div>
+        </div>
+
+      </main>
+
+      <!-- ── RIGHT PANEL: TERMINAL LOG ── -->
+      <aside id="right-panel">
+
+        <div class="panel-section" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+          <div class="panel-label">// TERMINAL.LOG</div>
+          <div id="terminal-log">
+            <div class="log-entry">
+              <span class="log-tag sys">[SYSTEM]</span>
+              <span class="log-msg">BOOT_SEQUENCE_COMPLETE</span>
+            </div>
+            <div class="log-entry">
+              <span class="log-tag sys">[SYSTEM]</span>
+              <span class="log-msg">LOADING 6-DECK SHOE...</span>
+            </div>
+            <div class="log-entry">
+              <span class="log-tag sys">[SYSTEM]</span>
+              <span class="log-msg">FISHER-YATES SHUFFLE OK</span>
+            </div>
+            <div class="log-entry">
+              <span class="log-tag sys">[SYSTEM]</span>
+              <span class="log-msg">AWAITING BET INPUT...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="panel-label">// PROB_ENGINE</div>
+          <div id="prob-box">
+            <div class="prob-row">
+              <span class="dim">BUST RISK</span>
+              <div class="prob-bar-track"><div id="bust-bar" class="prob-bar-fill bust-fill" style="width:0%"></div></div>
+              <span id="bust-pct">0%</span>
+            </div>
+            <div class="prob-row">
+              <span class="dim">CARDS LEFT</span>
+              <div class="prob-bar-track"><div id="shoe-bar" class="prob-bar-fill shoe-fill" style="width:100%"></div></div>
+              <span id="shoe-pct">100%</span>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+    </div><!-- /workspace -->
+
+    <!-- ══ BOTTOM STATUS BAR ══ -->
+    <div id="bottom-bar">
+      <div class="bottom-left">
+        <span class="bar-text dim">SESSION P&L:</span>
+        <span id="profit-display" class="bar-text">$0</span>
+      </div>
+      <div class="bottom-center">
+        <span class="bar-text dim">SHOE INTEGRITY:</span>
+        <span id="shoe-integrity" class="bar-text">100%</span>
+        <span class="bar-sep">|</span>
+        <span class="bar-text dim">COUNT:</span>
+        <span id="bottom-count" class="bar-text">±0</span>
+      </div>
+      <div class="bottom-right">
+        <span class="bar-text dim">STRATEGY ENGINE:</span>
+        <span class="bar-text status-ok">ONLINE</span>
+      </div>
+    </div>
+
+  </div><!-- /terminal-shell -->
+
+  <script src="js/deck.js"></script>
+  <script src="js/hand.js"></script>
+  <script src="js/strategy.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
