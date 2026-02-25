@@ -32,6 +32,7 @@ class UI {
   _query() {
     const $ = id => document.getElementById(id);
     this.el = {
+      muteBtn:       $('mute-btn'),
       bankroll:      $('bankroll-display'),
       bet:           $('bet-display'),
       dealerCards:   $('dealer-cards'),
@@ -88,12 +89,20 @@ class UI {
 
     this.el.chips.forEach(btn => {
       btn.addEventListener('click', () => {
+        SoundFX.click();
         if (g.placeBet(parseInt(btn.dataset.value, 10))) {
           this._updateBet();
           this._updateButtons();
           this._log('log', `BET_ADD +$${btn.dataset.value} (TOTAL: $${g.currentBet})`);
         }
       });
+    });
+
+    this.el.muteBtn?.addEventListener('click', () => {
+      SoundFX.setEnabled(!SoundFX.isEnabled());
+      const muted = !SoundFX.isEnabled();
+      this.el.muteBtn.textContent = muted ? 'SFX Off' : 'SFX On';
+      this.el.muteBtn.classList.toggle('active', !muted);
     });
 
     this.el.clearBtn.addEventListener('click', () => {
@@ -180,6 +189,7 @@ class UI {
     const card = g.hit();
     if (!card) { this._updateButtons(); return; }
 
+    SoundFX.deal();
     this._appendCardToHand(prevIdx, card);
     this._updateHandTotal(prevIdx);
     this._updateCountHud();
@@ -283,7 +293,9 @@ class UI {
   }
 
   _onNewGame() {
+    const wasLow = this.game.deck.remaining < 52;
     this.game.newGame();
+    if (wasLow) SoundFX.shuffle();
     this._clearTable();
     this._updateBankroll();
     this._updateBet();
@@ -306,6 +318,7 @@ class UI {
     await this._pause(300);
 
     g.revealHoleCard();
+    SoundFX.flip();
     this._flipDealerHoleCard();
     this._updateDealerTotal();
     this._updateCountHud();
@@ -315,6 +328,7 @@ class UI {
 
     let card;
     while ((card = g.dealerHit()) !== null) {
+      SoundFX.deal();
       const cardEl = this._makeCardEl(card);
       this.el.dealerCards.appendChild(cardEl);
       this._updateDealerTotal();
@@ -350,6 +364,7 @@ class UI {
     ];
 
     for (const { target, card } of sequence) {
+      SoundFX.deal();
       target.appendChild(this._makeCardEl(card));
       await this._pause(this._DELAY);
     }
@@ -364,21 +379,7 @@ class UI {
   _makeCardEl(card) {
     const el = document.createElement('div');
     el.className = 'card' + (card.faceDown ? ' face-down' : '');
-    el.innerHTML = `
-      <div class="card-inner">
-        <div class="card-front ${card.isRed ? 'red' : 'black'}">
-          <div class="card-corner tl">
-            <span class="rank">${card.rank}</span>
-            <span class="suit">${card.suit}</span>
-          </div>
-          <div class="card-center">${card.suit}</div>
-          <div class="card-corner br">
-            <span class="rank">${card.rank}</span>
-            <span class="suit">${card.suit}</span>
-          </div>
-        </div>
-        <div class="card-back"><div class="card-back-design"></div></div>
-      </div>`;
+    el.innerHTML = CardRenderer.render(card);
     return el;
   }
 
@@ -467,7 +468,15 @@ class UI {
     this._updateBankroll();
     this._updateDealerTotal();
     this._updateProfitBar();
-    this._setHeartRate(60); // calm down after resolution
+    this._setHeartRate(60);
+
+    // Result sounds
+    const outcome = g.results[0]?.outcome;
+    if      (outcome === 'BLACKJACK') SoundFX.blackjack();
+    else if (outcome === 'WIN')       SoundFX.win();
+    else if (outcome === 'BUST')      SoundFX.bust();
+    else if (outcome === 'LOSE')      SoundFX.bust();
+    else if (outcome === 'PUSH')      SoundFX.push();
 
     // Increment round counter + heat
     this._roundsPlayed++;

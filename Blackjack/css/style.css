@@ -411,22 +411,59 @@ aside {
 .card-front {
   background: #fff;
   box-shadow: 0 3px 12px rgba(0,0,0,0.5), 0 0 16px rgba(0,255,120,0.12);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   padding: 4px;
   user-select: none;
 }
-
-.card-front.red   .rank, .card-front.red   .suit { color: #dc2626; }
-.card-front.black .rank, .card-front.black .suit { color: #111; }
 
 .card-corner        { display: flex; flex-direction: column; align-items: center; line-height: 1; }
 .card-corner.br     { align-self: flex-end; transform: rotate(180deg); }
 .card-corner .rank  { font-size: 14px; font-weight: 700; font-family: 'Georgia', serif; }
 .card-corner .suit  { font-size: 10px; }
 
-.card-center { font-size: 26px; text-align: center; flex: 1; display: flex; align-items: center; justify-content: center; }
+/* ── Pip area ── */
+.card-pips {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pip {
+  position: absolute;
+  font-size: 13px;
+  line-height: 1;
+  user-select: none;
+}
+.pip.small { font-size: 10.5px; }
+
+/* Ace — large center pip */
+.ace-pip {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 27px;
+  line-height: 1;
+}
+
+/* Face cards (J / Q / K) */
+.face-art {
+  position: absolute;
+  inset: 1px;
+  border: 1.5px solid var(--acc, #1e3a8a);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.face-art-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.face-rank { font-size: 20px; font-weight: 900; font-family: 'Georgia', serif; line-height: 1; }
+.face-suit { font-size: 13px; line-height: 1; }
 
 .card-back {
   background: #1e3a8a;
