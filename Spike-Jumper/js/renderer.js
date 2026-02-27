@@ -185,12 +185,12 @@ class Renderer {
     }
   }
 
-  _drawHazards(chunks, W, H, groundY) {
+  _drawHazards(chunks, _W, H, groundY) {
     const ctx = this.ctx;
 
     for (const h of chunks.allHazards) {
       if (h instanceof ViralCluster) {
-        this._drawViral(h, groundY);
+        this._drawViral(h);
       } else if (h instanceof CholesterolPlaque) {
         this._drawPlaque(h);
       } else if (h instanceof FreeRadical) {
@@ -205,7 +205,7 @@ class Renderer {
     }
   }
 
-  _drawViral(h, groundY) {
+  _drawViral(h) {
     const ctx = this.ctx;
     const cx  = h.x + h.w / 2;
     const cy  = h.y + h.h / 2;
@@ -368,6 +368,28 @@ class Renderer {
     }
 
     ctx.restore();
+  }
+
+  _drawRBCLayer(W, H) {
+    const ctx = this.ctx;
+    const off = this._offsets[3];
+    ctx.globalAlpha = 0.55;
+    for (const rbc of this._rbcs) {
+      const rx = ((rbc.x - off % 1200) + 1200) % 1200 * (W / 800) - W * 0.1;
+      const ry = rbc.y * H;
+      const s  = rbc.size;
+      // Biconcave outer disc
+      ctx.beginPath();
+      ctx.ellipse(rx, ry, s, s * 0.55, 0, 0, Math.PI * 2);
+      ctx.fillStyle = PALETTE.RBC_FILL;
+      ctx.fill();
+      // Inner depression
+      ctx.beginPath();
+      ctx.ellipse(rx, ry, s * 0.5, s * 0.22, 0, 0, Math.PI * 2);
+      ctx.fillStyle = PALETTE.RBC_CENTER;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
   }
 
   _drawHUD(ctx, W, H, state, score, hiScore, muteActive) {

@@ -39,10 +39,11 @@ class PhysicsEngine {
     if (player.vy > PHYSICS.MAX_FALL_SPEED) player.vy = PHYSICS.MAX_FALL_SPEED;
     player.y += player.vy;
 
-    // Ground collision
-    if (player.y >= groundY) {
-      player.y = groundY;
+    // Ground collision — player.y is the center, so bottom edge = y + radius
+    const groundContact = groundY - PHYSICS.PLAYER_RADIUS;
+    if (player.y >= groundContact) {
       const wasAirborne = !player.onGround;
+      player.y = groundContact;
       player.onGround = true;
       if (wasAirborne && player.vy > 2) {
         player.scaleY = PHYSICS.SQUASH_SCALE_Y;

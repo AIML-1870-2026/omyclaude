@@ -3,7 +3,7 @@
 class Macrophage {
   constructor(groundY) {
     this.x        = PHYSICS.PLAYER_X;
-    this.y        = groundY;
+    this.y        = groundY - PHYSICS.PLAYER_RADIUS;
     this.vy       = 0;
     this.onGround = true;
     this.scaleX   = 1;
