@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Syntax Error | AIML-1870</title>
+
+  <!-- JetBrains Mono — the IDE font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+
+  <div id="game-shell">
+
+    <!-- ── HUD ─────────────────────────────────── -->
+    <div id="hud">
+      <span id="attempt-counter">Attempt #1  |  Best: 0%</span>
+      <div id="progress-track">
+        <div id="progress-fill"></div>
+      </div>
+      <button id="mute-btn" title="Toggle sound">&#9835;</button>
+    </div>
+
+    <!-- ── Game Canvas ─────────────────────────── -->
+    <canvas id="game-canvas" width="800" height="480"></canvas>
+
+    <!-- ── Perfect Syntax Toast ───────────────── -->
+    <div id="perfect-toast">✓ Perfect Syntax</div>
+
+    <!-- ── Menu: VS Code Command Palette ──────── -->
+    <div class="overlay" id="menu-overlay">
+      <div id="command-palette">
+
+        <div id="palette-header">AIML-1870 &nbsp;›&nbsp; Syntax Error.exe</div>
+
+        <div id="palette-input-row">
+          <span id="palette-prompt">&gt;</span>
+          <input id="palette-input" type="text"
+                 placeholder="Run: escape_the_spaghetti()" readonly
+                 autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="palette-item selected" id="start-btn" tabindex="0">
+          <span class="item-icon">&#9654;</span>
+          <div class="item-body">
+            <div class="item-label">Start Game</div>
+            <div class="item-desc">Execute level 1: Null Reference Nightmare</div>
+          </div>
+          <span class="item-key">SPACE</span>
+        </div>
+
+        <div class="palette-item">
+          <span class="item-icon">;</span>
+          <div class="item-body">
+            <div class="item-label">Controls</div>
+            <div class="item-desc">SPACE &nbsp;=&nbsp; Jump (Cube) &nbsp;/&nbsp; Thrust (Ship) &nbsp;&nbsp;•&nbsp;&nbsp; ESC &nbsp;=&nbsp; Pause</div>
+          </div>
+        </div>
+
+        <div class="palette-item">
+          <span class="item-icon" style="color:#f44747;">!</span>
+          <div class="item-body">
+            <div class="item-label">Hazards</div>
+            <div class="item-desc">&lt;&gt; Spikes &nbsp;•&nbsp; &#123;&#125; Braces &nbsp;•&nbsp; undefined Pits &nbsp;•&nbsp; Error 404 Bombs</div>
+          </div>
+        </div>
+
+        <div class="palette-item">
+          <span class="item-icon" style="color:#4ec9b0;">%</span>
+          <div class="item-body">
+            <div class="item-label" id="best-pct-display">Best: 0%</div>
+            <div class="item-desc" id="attempt-display">Total attempts: 0</div>
+          </div>
+        </div>
+
+        <div id="palette-footer">
+          <span>AIML-1870-2026 &nbsp;·&nbsp; omyclaude</span>
+          <span>↑↓ navigate &nbsp; SPACE select &nbsp; ESC dismiss</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── BSOD Death Screen ──────────────────── -->
+    <div class="overlay hidden" id="bsod-overlay">
+      <div class="bsod-title">:( A fatal exception has occurred</div>
+      <div class="bsod-body">
+        <p>SYNTAX_ERROR_IN_PRODUCTION</p>
+        <p>&nbsp;</p>
+        <p>At address: &nbsp; 0x0000_DEAD_BEEF</p>
+        <p>Fault bucket: &nbsp;UNCAUGHT_EXCEPTION</p>
+        <p>Error code: &nbsp;&nbsp;0xC000_005F</p>
+        <p>&nbsp;</p>
+        <p>The semicolon has been corrupted.</p>
+        <p>The repository is collecting error data.</p>
+        <p>&nbsp;</p>
+        <p>Restarting from checkpoint 0x0000_0000...</p>
+      </div>
+      <div class="bsod-code">
+        <p>* Stop: 0x0000007E &nbsp;(SYSTEM_THREAD_EXCEPTION_NOT_HANDLED)</p>
+        <p>* nt!KeBugCheckEx+0x00000000`deadbeef</p>
+      </div>
+    </div>
+
+    <!-- ── Win Screen ──────────────────────────── -->
+    <div class="overlay hidden" id="win-overlay">
+      <div class="win-title">// Level Complete</div>
+      <div class="win-subtitle">/* The semicolon escaped the spaghetti */</div>
+      <div class="win-stats">
+        <div>Completion: <span id="win-pct">100%</span></div>
+        <div>Attempts: <span id="win-attempts">1</span></div>
+      </div>
+      <div class="win-cta">SPACE to return to menu</div>
+    </div>
+
+    <!-- ── Pause Overlay ──────────────────────── -->
+    <div class="overlay hidden" id="pause-overlay">
+      <div class="pause-title">// Paused</div>
+      <div style="font-size:12px; color: rgba(255,255,255,0.3); margin-top:8px;">
+        ESC or click to resume
+      </div>
+    </div>
+
+  </div><!-- /#game-shell -->
+
+  <!-- Scripts: dependency order (constants first, main last) -->
+  <script src="js/constants.js"></script>
+  <script src="js/level.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/ghost.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+
+</body>
+</html>

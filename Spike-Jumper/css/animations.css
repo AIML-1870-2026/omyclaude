@@ -1,0 +1,139 @@
+/* css/animations.css — @keyframes for Syntax Error */
+
+/* ===== BSOD FLASH IN ===== */
+@keyframes bsodIn {
+  0%   { opacity: 0; transform: scale(1.03); }
+  15%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+#bsod-overlay:not(.hidden) {
+  animation: bsodIn 0.25s ease forwards;
+}
+
+/* ===== BSOD SCANLINES ===== */
+#bsod-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.05) 2px,
+    rgba(0,0,0,0.05) 4px
+  );
+  pointer-events: none;
+}
+
+/* ===== OVERLAY FADE ===== */
+@keyframes overlayFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.overlay:not(.hidden) {
+  animation: overlayFadeIn 0.3s ease forwards;
+}
+
+/* ===== PROGRESS FILL — PERFECT FLASH ===== */
+@keyframes perfectGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(127,255,200,0.9); }
+  40%  { box-shadow: 0 0 10px 3px rgba(127,255,200,0.5); }
+  100% { box-shadow: 0 0 0 0 rgba(127,255,200,0); }
+}
+
+#progress-fill.perfect-flash {
+  animation: perfectGlow 0.5s ease forwards;
+}
+
+/* ===== PERFECT TOAST FADE ===== */
+@keyframes toastPop {
+  0%   { opacity: 0; transform: translateY(-4px); }
+  20%  { opacity: 1; transform: translateY(0); }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#perfect-toast.show {
+  animation: toastPop 0.8s ease forwards;
+}
+
+/* ===== PALETTE CURSOR BLINK ===== */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+#palette-input:focus::after {
+  animation: blink 1s step-end infinite;
+}
+
+/* ===== WIN TITLE GLOW ===== */
+@keyframes winGlow {
+  0%   { text-shadow: 0 0 10px rgba(78,201,176,0.6); }
+  50%  { text-shadow: 0 0 24px rgba(78,201,176,0.9), 0 0 48px rgba(78,201,176,0.4); }
+  100% { text-shadow: 0 0 10px rgba(78,201,176,0.6); }
+}
+
+.win-title {
+  animation: winGlow 2s ease infinite;
+}
+
+/* ===== BEAT PULSE (applied via JS class toggle) ===== */
+@keyframes beatPulse {
+  0%   { opacity: 0.04; }
+  8%   { opacity: 0.10; }
+  100% { opacity: 0.04; }
+}
+
+.beat-pulse-active {
+  animation: beatPulse 0.3s ease forwards;
+}
+
+/* ===== MUTE BUTTON SHAKE ===== */
+@keyframes muteShake {
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(-8deg); }
+  75%  { transform: rotate(8deg); }
+  100% { transform: rotate(0deg); }
+}
+
+#mute-btn:active {
+  animation: muteShake 0.2s ease;
+}
+
+/* ===== PALETTE ITEM SELECTED INDICATOR ===== */
+@keyframes selectedPulse {
+  0%   { border-color: #ff8c00; }
+  50%  { border-color: #ffb347; }
+  100% { border-color: #ff8c00; }
+}
+
+.palette-item.selected {
+  animation: selectedPulse 1.5s ease infinite;
+}
+
+/* ===== TERMINAL SCROLL SHIMMER ===== */
+@keyframes terminalScroll {
+  from { background-position: 0 0; }
+  to   { background-position: 0 -200px; }
+}
+
+/* ===== DEATH SHAKE (whole shell) ===== */
+@keyframes shellShake {
+  0%   { transform: translate(0, 0); }
+  10%  { transform: translate(-6px, -4px); }
+  20%  { transform: translate(6px, 4px); }
+  30%  { transform: translate(-5px, 3px); }
+  40%  { transform: translate(5px, -3px); }
+  50%  { transform: translate(-4px, 2px); }
+  60%  { transform: translate(4px, -2px); }
+  70%  { transform: translate(-3px, 1px); }
+  80%  { transform: translate(3px, -1px); }
+  100% { transform: translate(0, 0); }
+}
+
+#game-shell.shake {
+  animation: shellShake 0.3s ease forwards;
+}
