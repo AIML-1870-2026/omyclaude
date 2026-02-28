@@ -18,13 +18,13 @@ const CONFIG = Object.freeze({
   SHIP_MAX_SPEED:  380,   // px/s vertical clamp
 
   // Scrolling
-  SCROLL_SPEED:    280,   // px/s (base world scroll speed)
-  FAST_SPEED:      420,   // px/s (after speed portal)
+  SCROLL_SPEED:    220,   // px/s (base world scroll speed)
+  FAST_SPEED:      320,   // px/s (after speed portal)
   PLAYER_X:        160,   // fixed screen x-position for player
 
   // Hitbox
   HITBOX_SIZE:      34,   // px (square)
-  HITBOX_MARGIN:     3,   // px shrink per side (forgiveness)
+  HITBOX_MARGIN:     7,   // px shrink per side (forgiveness)
 
   // Jump trail
   TRAIL_COUNT:       6,   // number of trailing semicolons

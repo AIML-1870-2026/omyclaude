@@ -63,9 +63,9 @@ const LEVEL_1_RAW = [
   // Beat 3: first spike — simple single hop
   { type: 'spike', x: 9 },
 
-  // Beat 5: two-spike cluster — rhythm timing required
+  // Beat 5: two spikes with a gap between them
   { type: 'spike', x: 15 },
-  { type: 'spike', x: 16 },
+  { type: 'spike', x: 17 },
 
   // Beat 7: jump pad — auto-launches over the gap ahead
   { type: 'pad', x: 20 },
@@ -78,29 +78,28 @@ const LEVEL_1_RAW = [
   // "Null pit + gravity ring introduced"
   // ════════════════════════════════════════════
 
-  // Beat 10-12: three spikes in steady rhythm
+  // Beat 10-12: three spikes with generous spacing
   { type: 'spike', x: 29 },
-  { type: 'spike', x: 32 },
-  { type: 'spike', x: 35 },
+  { type: 'spike', x: 33 },
+  { type: 'spike', x: 37 },
 
   // Beat 13: first null pit — must be airborne
-  { type: 'null', x: 39, w: 3 },
+  { type: 'null', x: 41, w: 2 },
 
-  // Beat 14: spike on far lip of null — punishes late landing
-  { type: 'spike', x: 42 },
+  // Beat 14: spike after null — more landing room now
+  { type: 'spike', x: 44 },
 
   // Beat 15: gravity ring (floating, press SPACE inside to flip)
-  { type: 'ring', x: 46, y: 2 },
+  { type: 'ring', x: 48, y: 2 },
 
-  // Beat 16: ceiling spikes — only dangerous after gravity flip
-  { type: 'spike', x: 50, y: 8, meta: { flipped: true } },
-  { type: 'spike', x: 51, y: 8, meta: { flipped: true } },
+  // Beat 16: one ceiling spike — only dangerous after gravity flip
+  { type: 'spike', x: 52, y: 8, meta: { flipped: true } },
 
   // Beat 17: second ring to flip back to normal gravity
-  { type: 'ring', x: 53, y: 5 },
+  { type: 'ring', x: 55, y: 5 },
 
   // Beat 18: ground spike after ring section
-  { type: 'spike', x: 55 },
+  { type: 'spike', x: 58 },
 
   // ════════════════════════════════════════════
   // ACT III — Ship Section (tiles 56–80)
@@ -136,19 +135,18 @@ const LEVEL_1_RAW = [
   // Beat 29: speed portal — world accelerates
   { type: 'portal', x: 93, meta: { speed: 'fast' } },
 
-  // Beat 30-32: at FAST_SPEED — tighter spike rhythm
+  // Beat 30-32: at FAST_SPEED — spaced out spikes
   { type: 'spike', x: 96 },
-  { type: 'spike', x: 98 },
-  { type: 'spike', x: 100 },
+  { type: 'spike', x: 99 },
+  { type: 'spike', x: 102 },
 
-  // Beat 33: elevated bomb + null combo (must land on bomb, then leap null)
-  { type: 'bomb', x: 103, y: 1, w: 2, h: 1 },
-  { type: 'null', x: 106, w: 2 },
+  // Beat 33: elevated bomb + null combo
+  { type: 'bomb', x: 106, y: 1, w: 2, h: 1 },
+  { type: 'null', x: 109, w: 2 },
 
-  // Beat 34: triple-spike gauntlet
-  { type: 'spike', x: 109 },
-  { type: 'spike', x: 110 },
-  { type: 'spike', x: 111 },
+  // Beat 34: double spike (was triple)
+  { type: 'spike', x: 112 },
+  { type: 'spike', x: 114 },
 
   // ════════════════════════════════════════════
   // ACT V — Final Ascent (tiles 112–138)
@@ -165,8 +163,7 @@ const LEVEL_1_RAW = [
   // Beat 39: ceiling spike forest (navigate while gravity-flipped)
   // y=7 → worldY=40, base at y=40, tip at y=80 — hangs just off the ceiling
   { type: 'spike', x: 124, y: 7, meta: { flipped: true } },
-  { type: 'spike', x: 126, y: 7, meta: { flipped: true } },
-  { type: 'spike', x: 128, y: 7, meta: { flipped: true } },
+  { type: 'spike', x: 127, y: 7, meta: { flipped: true } },
 
   // Beat 40: ring to flip back to normal
   { type: 'ring', x: 130, y: 4 },
