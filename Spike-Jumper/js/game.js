@@ -272,7 +272,7 @@ class GameEngine {
             h: 8,
           };
           if (Physics.overlaps(pAABB, padAABB) && p.vy >= 0) {
-            p.vy      = -820 * (p.gravityDir === 1 ? 1 : -1);
+            p.vy      = -680 * (p.gravityDir === 1 ? 1 : -1);
             p.grounded = false;
             AudioEngine.sfxPad();
           }

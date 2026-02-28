@@ -60,46 +60,36 @@ const LEVEL_1_RAW = [
   // "First encounter with spikes and a jump pad"
   // ════════════════════════════════════════════
 
-  // Beat 3: first spike — simple single hop
-  { type: 'spike', x: 9 },
+  // Big open runway to learn the feel before first spike
+  // Beat 4: first spike — simple single hop
+  { type: 'spike', x: 12 },
 
-  // Beat 5: two spikes with a gap between them
-  { type: 'spike', x: 15 },
-  { type: 'spike', x: 17 },
+  // Beat 6: jump pad — shows player how auto-launch works
+  { type: 'pad', x: 18 },
 
-  // Beat 7: jump pad — auto-launches over the gap ahead
-  { type: 'pad', x: 20 },
-
-  // Beat 8: reward — open landing, then a brace wall (must jump)
-  { type: 'brace', x: 24, y: 0, w: 1, h: 3 },
+  // Beat 8: second spike after pad
+  { type: 'spike', x: 23 },
 
   // ════════════════════════════════════════════
   // ACT II — Rhythm Groove (tiles 26–55)
   // "Null pit + gravity ring introduced"
   // ════════════════════════════════════════════
 
-  // Beat 10-12: three spikes with generous spacing
-  { type: 'spike', x: 29 },
-  { type: 'spike', x: 33 },
-  { type: 'spike', x: 37 },
+  // Beat 10-12: two spikes with big gaps
+  { type: 'spike', x: 30 },
+  { type: 'spike', x: 36 },
 
-  // Beat 13: first null pit — must be airborne
-  { type: 'null', x: 41, w: 2 },
+  // Beat 13: first null pit — narrow, easy to jump
+  { type: 'null', x: 42, w: 2 },
 
-  // Beat 14: spike after null — more landing room now
-  { type: 'spike', x: 44 },
+  // Beat 15: gravity ring — shows mechanic with no danger nearby
+  { type: 'ring', x: 50, y: 2 },
 
-  // Beat 15: gravity ring (floating, press SPACE inside to flip)
-  { type: 'ring', x: 48, y: 2 },
+  // Beat 16: one ceiling spike — only dangerous if you flipped
+  { type: 'spike', x: 54, y: 8, meta: { flipped: true } },
 
-  // Beat 16: one ceiling spike — only dangerous after gravity flip
-  { type: 'spike', x: 52, y: 8, meta: { flipped: true } },
-
-  // Beat 17: second ring to flip back to normal gravity
-  { type: 'ring', x: 55, y: 5 },
-
-  // Beat 18: ground spike after ring section
-  { type: 'spike', x: 58 },
+  // Beat 17: ring to flip back down safely
+  { type: 'ring', x: 57, y: 5 },
 
   // ════════════════════════════════════════════
   // ACT III — Ship Section (tiles 56–80)

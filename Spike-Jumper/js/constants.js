@@ -9,22 +9,22 @@ const CONFIG = Object.freeze({
   FLOOR_HEIGHT:    120,   // px from GROUND_Y to canvas bottom
 
   // Physics — Cube mode
-  GRAVITY:        2800,   // px/s² (downward acceleration)
-  JUMP_VELOCITY:  -680,   // px/s (instant upward velocity on jump)
+  GRAVITY:        1900,   // px/s² (downward acceleration)
+  JUMP_VELOCITY:  -620,   // px/s (instant upward velocity on jump)
 
   // Physics — Ship mode
-  SHIP_THRUST:    -900,   // px/s² (upward acceleration while SPACE held)
-  SHIP_GRAVITY:   1200,   // px/s² (downward when not thrusting)
-  SHIP_MAX_SPEED:  380,   // px/s vertical clamp
+  SHIP_THRUST:    -700,   // px/s² (upward acceleration while SPACE held)
+  SHIP_GRAVITY:    900,   // px/s² (downward when not thrusting)
+  SHIP_MAX_SPEED:  300,   // px/s vertical clamp
 
   // Scrolling
-  SCROLL_SPEED:    220,   // px/s (base world scroll speed)
-  FAST_SPEED:      320,   // px/s (after speed portal)
+  SCROLL_SPEED:    180,   // px/s (base world scroll speed)
+  FAST_SPEED:      260,   // px/s (after speed portal)
   PLAYER_X:        160,   // fixed screen x-position for player
 
   // Hitbox
   HITBOX_SIZE:      34,   // px (square)
-  HITBOX_MARGIN:     7,   // px shrink per side (forgiveness)
+  HITBOX_MARGIN:     9,   // px shrink per side (forgiveness)
 
   // Jump trail
   TRAIL_COUNT:       6,   // number of trailing semicolons
