@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>High Agency Investment Group - Calendar</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background-color: #0f0f0f;
+      color: #e0e0e0;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Color scheme by event type */
+    :root {
+      --founding: #f59e0b;
+      --meeting: #3b82f6;
+      --workshop: #10b981;
+      --speaker: #8b5cf6;
+      --social: #f97316;
+      --deadline: #ef4444;
+      --review: #14b8a6;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      padding: 2rem 1rem;
+      border-bottom: 2px solid #333;
+      text-align: center;
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #f59e0b, #8b5cf6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+      letter-spacing: 2px;
+    }
+
+    .tagline {
+      font-size: 0.95rem;
+      color: #888;
+      font-style: italic;
+    }
+
+    /* Controls */
+    .controls {
+      max-width: 1200px;
+      margin: 1.5rem auto;
+      padding: 0 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .view-toggle {
+      display: flex;
+      gap: 0;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .view-toggle button {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      background: transparent;
+      color: #888;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .view-toggle button.active {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    .view-toggle button:hover:not(.active) {
+      color: #e0e0e0;
+    }
+
+    .controls-right {
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+    }
+
+    .today-btn, .filter-legend {
+      padding: 0.6rem 1.2rem;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .today-btn:hover {
+      background: #3b82f6;
+      border-color: #3b82f6;
+    }
+
+    .filter-toggle {
+      cursor: pointer;
+      padding: 0.6rem 1.2rem;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .filter-toggle:hover {
+      background: #333;
+    }
+
+    /* Legend */
+    .legend {
+      max-width: 1200px;
+      margin: 1rem auto;
+      padding: 1rem;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      font-size: 0.85rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .legend-item:hover {
+      background: #1a1a1a;
+    }
+
+    .legend-item.disabled {
+      opacity: 0.3;
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .legend-item[data-type="founding"] .legend-dot { background: var(--founding); }
+    .legend-item[data-type="meeting"] .legend-dot { background: var(--meeting); }
+    .legend-item[data-type="workshop"] .legend-dot { background: var(--workshop); }
+    .legend-item[data-type="speaker"] .legend-dot { background: var(--speaker); }
+    .legend-item[data-type="social"] .legend-dot { background: var(--social); }
+    .legend-item[data-type="deadline"] .legend-dot { background: var(--deadline); }
+    .legend-item[data-type="review"] .legend-dot { background: var(--review); }
+
+    /* Main container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem 2rem;
+      min-height: 60vh;
+    }
+
+    /* Calendar View */
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding: 0 1rem;
+    }
+
+    .month-year {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .nav-button {
+      background: #3b82f6;
+      border: none;
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-button:hover {
+      background: #2563eb;
+    }
+
+    .nav-button:disabled {
+      background: #555;
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .day-header {
+      text-align: center;
+      font-weight: 700;
+      color: #888;
+      padding: 0.8rem 0;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+    }
+
+    .day-cell {
+      aspect-ratio: 1;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 0.6rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 80px;
+    }
+
+    .day-cell.other-month {
+      background: #0a0a0a;
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    .day-cell.today {
+      border: 2px solid #3b82f6;
+      background: #1a2a3a;
+    }
+
+    .day-cell:hover:not(.other-month) {
+      background: #262626;
+      border-color: #444;
+    }
+
+    .day-number {
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #e0e0e0;
+    }
+
+    .day-indicators {
+      display: flex;
+      gap: 0.3rem;
+      flex-wrap: wrap;
+      align-content: flex-end;
+      min-height: 20px;
+    }
+
+    .event-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+
+    .event-dot:hover {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* Timeline View */
+    .timeline {
+      position: relative;
+      padding: 2rem 0;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 20px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, #333 0%, transparent 100%);
+    }
+
+    .timeline-phase {
+      margin-bottom: 3rem;
+    }
+
+    .phase-header {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1.5rem;
+      padding-left: 60px;
+      position: relative;
+    }
+
+    .phase-header::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
+      height: 28px;
+      background: #3b82f6;
+      border-radius: 50%;
+      border: 3px solid #0f0f0f;
+    }
+
+    .timeline-event {
+      margin-left: 60px;
+      margin-bottom: 1.5rem;
+      padding: 1.2rem;
+      background: #1a1a1a;
+      border-left: 3px solid #333;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .timeline-event::before {
+      content: '';
+      position: absolute;
+      left: -11px;
+      top: 1.5rem;
+      width: 16px;
+      height: 16px;
+      background: #0f0f0f;
+      border-radius: 50%;
+      border: 2px solid #333;
+    }
+
+    .timeline-event:hover {
+      background: #252525;
+      border-left-color: #444;
+      transform: translateX(4px);
+    }
+
+    .timeline-event.founding { border-left-color: var(--founding); }
+    .timeline-event.meeting { border-left-color: var(--meeting); }
+    .timeline-event.workshop { border-left-color: var(--workshop); }
+    .timeline-event.speaker { border-left-color: var(--speaker); }
+    .timeline-event.social { border-left-color: var(--social); }
+    .timeline-event.deadline { border-left-color: var(--deadline); }
+    .timeline-event.review { border-left-color: var(--review); }
+
+    .timeline-date {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 0.4rem;
+    }
+
+    .timeline-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.4rem;
+    }
+
+    .event-badge {
+      display: inline-block;
+      padding: 0.3rem 0.8rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-top: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .event-badge.founding { background: var(--founding); color: #000; }
+    .event-badge.meeting { background: var(--meeting); color: #fff; }
+    .event-badge.workshop { background: var(--workshop); color: #fff; }
+    .event-badge.speaker { background: var(--speaker); color: #fff; }
+    .event-badge.social { background: var(--social); color: #fff; }
+    .event-badge.deadline { background: var(--deadline); color: #fff; }
+    .event-badge.review { background: var(--review); color: #fff; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+
+    .modal {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      animation: slideUp 0.3s ease-out;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.5rem;
+      cursor: pointer;
+      transition: color 0.2s;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    .modal-date {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.9rem;
+      color: #888;
+      margin-bottom: 1rem;
+    }
+
+    .modal-description {
+      color: #c0c0c0;
+      margin-bottom: 1rem;
+      line-height: 1.7;
+    }
+
+    .modal-location {
+      padding: 0.8rem;
+      background: #0f0f0f;
+      border-left: 3px solid #3b82f6;
+      border-radius: 4px;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.8rem;
+      margin-top: 1.5rem;
+    }
+
+    .modal-action-btn {
+      flex: 1;
+      padding: 0.8rem;
+      border: 1px solid #333;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .modal-action-btn:hover {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: #fff;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .controls-right {
+        flex-direction: column;
+      }
+
+      .today-btn, .filter-toggle {
+        width: 100%;
+      }
+
+      .day-cell {
+        min-height: 60px;
+        font-size: 0.9rem;
+      }
+
+      .day-number {
+        font-size: 0.8rem;
+      }
+
+      .month-year {
+        font-size: 1.4rem;
+      }
+
+      .legend {
+        font-size: 0.75rem;
+        gap: 0.5rem;
+      }
+
+      .legend-item {
+        padding: 0.3rem 0.6rem;
+      }
+
+      .timeline {
+        padding-left: 0;
+      }
+
+      .timeline::before {
+        left: 12px;
+      }
+
+      .timeline-event {
+        margin-left: 40px;
+        padding: 0.9rem;
+      }
+
+      .timeline-event::before {
+        left: -8px;
+        width: 12px;
+        height: 12px;
+      }
+
+      .phase-header {
+        padding-left: 40px;
+        font-size: 1.1rem;
+      }
+
+      .phase-header::before {
+        left: -2px;
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+        color: black;
+      }
+
+      .controls, .legend, .modal-overlay {
+        display: none;
+      }
+
+      .calendar-grid {
+        page-break-inside: avoid;
+      }
+
+      .day-cell {
+        border: 1px solid #ccc;
+        background: white;
+        color: black;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <div class="logo">HAIG</div>
+      <div class="tagline">Learn. Invest. Build.</div>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="view-toggle">
+      <button class="view-btn active" data-view="calendar">Calendar</button>
+      <button class="view-btn" data-view="timeline">Timeline</button>
+    </div>
+    <div class="controls-right">
+      <button class="today-btn">Today</button>
+      <button class="filter-toggle">Show Filters</button>
+    </div>
+  </div>
+
+  <div class="legend" id="legend" style="display: none;">
+    <div class="legend-item" data-type="founding">
+      <div class="legend-dot"></div>
+      <span>Founding</span>
+    </div>
+    <div class="legend-item" data-type="meeting">
+      <div class="legend-dot"></div>
+      <span>Meeting</span>
+    </div>
+    <div class="legend-item" data-type="workshop">
+      <div class="legend-dot"></div>
+      <span>Workshop</span>
+    </div>
+    <div class="legend-item" data-type="speaker">
+      <div class="legend-dot"></div>
+      <span>Speaker</span>
+    </div>
+    <div class="legend-item" data-type="social">
+      <div class="legend-dot"></div>
+      <span>Social</span>
+    </div>
+    <div class="legend-item" data-type="deadline">
+      <div class="legend-dot"></div>
+      <span>Deadline</span>
+    </div>
+    <div class="legend-item" data-type="review">
+      <div class="legend-dot"></div>
+      <span>Review</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Calendar View -->
+    <div class="view active" id="calendar-view">
+      <div class="calendar-header">
+        <button class="nav-button" id="prev-month">←</button>
+        <div class="month-year" id="current-month">March 2026</div>
+        <button class="nav-button" id="next-month">→</button>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </div>
+
+    <!-- Timeline View -->
+    <div class="view" id="timeline-view">
+      <div class="timeline" id="timeline"></div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="modal-title"></div>
+          <div class="modal-date" id="modal-date"></div>
+        </div>
+        <button class="modal-close" id="modal-close">×</button>
+      </div>
+      <span class="event-badge" id="modal-badge"></span>
+      <div class="modal-description" id="modal-description"></div>
+      <div class="modal-location" id="modal-location"></div>
+      <div class="modal-actions">
+        <button class="modal-action-btn" id="add-to-cal">Add to Google Cal</button>
+        <button class="modal-action-btn" id="copy-details">Copy Details</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Event data
+    const events = [
+      // Phase 1: Foundation (March – May 2026)
+      { date: '2026-03-28', title: 'Founding Meeting', type: 'founding', description: 'Sign partnership agreement. Elect Authorized Trader. Set initial capital contribution expectations. Establish communication channels (GroupMe/Discord).', location: 'UNO - Peter Kiewit Institute' },
+      { date: '2026-04-01', title: 'Fiscal Year Begins', type: 'deadline', description: 'Official start of FY1. Capital accounts open.', location: 'Virtual' },
+      { date: '2026-04-05', title: 'Kickoff Meeting: Club Vision & Bylaws Review', type: 'meeting', description: 'Walk through the partnership agreement together. Q&A on voting, contributions, dissociation rules. Set meeting cadence.', location: 'UNO - CEC' },
+      { date: '2026-04-19', title: 'Workshop: Brokerage Accounts 101', type: 'workshop', description: 'How to open a brokerage account (Schwab, Fidelity, etc.). Difference between taxable, Roth IRA, traditional IRA. Live demo of placing a trade.', location: 'UNO - Peter Kiewit Institute' },
+      { date: '2026-05-03', title: 'Meeting: Index Funds & ETFs Deep Dive', type: 'meeting', description: 'What are index funds? SPY, VOO, VTI, SCHD comparisons. Dollar-cost averaging strategy. First investment pitch practice round (informal).', location: 'UNO - CEC' },
+      { date: '2026-05-17', title: 'Speaker: Local Financial Advisor or CFA', type: 'speaker', description: 'Invite a local Omaha financial professional to speak on portfolio construction and risk management. Q&A session.', location: 'UNO - College of Business' },
+      { date: '2026-05-31', title: 'Deadline: Initial Capital Contributions Due', type: 'deadline', description: 'All founding members submit initial capital contributions. Treasurer records capital accounts.', location: 'Virtual' },
+
+      // Phase 2: Building Momentum (June – August 2026)
+      { date: '2026-06-07', title: 'Meeting: Reading Financial Statements', type: 'meeting', description: 'How to read a 10-K, income statement, balance sheet, cash flow. Practice with a real company (e.g., Apple or Berkshire Hathaway).', location: 'UNO - CEC' },
+      { date: '2026-06-21', title: 'Workshop: Stock Screeners & Research Tools', type: 'workshop', description: 'Hands-on with Finviz, TradingView, SEC EDGAR. How to filter for value, growth, dividend stocks.', location: 'UNO - Peter Kiewit Institute' },
+      { date: '2026-07-12', title: 'First Investment Pitch Night', type: 'meeting', description: 'Members present stock/ETF pitches (5-10 min each). Structured format: thesis, financials, risks, price target. Vote on top picks for allocation.', location: 'UNO - CEC' },
+      { date: '2026-07-26', title: 'Speaker: Entrepreneurship & Investing', type: 'speaker', description: 'Invite a local entrepreneur or UNO professor to discuss building wealth through business ownership and market investing.', location: 'UNO - College of Business' },
+      { date: '2026-08-09', title: 'Mid-Summer Portfolio Review', type: 'review', description: 'Review current holdings and performance. Discuss rebalancing. Open floor for new pitches or exits.', location: 'UNO - CEC' },
+      { date: '2026-08-23', title: 'Social: Investing Movie Night', type: 'social', description: 'Watch The Big Short or Margin Call together. Discussion afterward on lessons and market psychology.', location: 'TBD' },
+
+      // Phase 3: Fall Semester Expansion (September – November 2026)
+      { date: '2026-09-06', title: 'Fall Kickoff & New Member Orientation', type: 'meeting', description: 'Recruit new members at UNO. Present club mission, partnership agreement overview, how to join.', location: 'UNO - Student Center' },
+      { date: '2026-09-13', title: 'Workshop: Compound Interest & Time Value of Money', type: 'workshop', description: 'The math behind financial freedom. Compound interest calculators, retirement projections, why starting early matters.', location: 'UNO - Peter Kiewit Institute' },
+      { date: '2026-09-27', title: 'Investment Pitch Night #2', type: 'meeting', description: 'Second round of formal pitches. Vote on new allocations. Review summer investments.', location: 'UNO - CEC' },
+      { date: '2026-10-11', title: 'Speaker: Real Estate Investing', type: 'speaker', description: 'Invite a local real estate investor to discuss REITs, rental properties, and real estate as a portfolio diversifier.', location: 'UNO - College of Business' },
+      { date: '2026-10-25', title: 'Workshop: Risk Management & Diversification', type: 'workshop', description: 'Position sizing, asset allocation models, correlation. How the club\'s diverse member backgrounds create better investment decisions.', location: 'UNO - Peter Kiewit Institute' },
+      { date: '2026-11-08', title: 'Meeting: Tax Implications of Investing', type: 'meeting', description: 'Capital gains (short vs. long term), tax-loss harvesting, K-1 forms for partnerships. Each partner\'s tax reporting responsibilities.', location: 'UNO - CEC' },
+      { date: '2026-11-15', title: 'Social: Warren Buffett Omaha Tour', type: 'social', description: 'Visit Berkshire Hathaway HQ area, Nebraska Furniture Mart. Discuss Buffett\'s investment philosophy. Omaha is the hometown — leverage it.', location: 'Downtown Omaha' },
+
+      // Phase 4: Year-End & Review (December 2026 – March 2027)
+      { date: '2026-12-06', title: 'End-of-Year Portfolio Review', type: 'review', description: 'Full portfolio performance review. Compare against S&P 500 benchmark. Discuss wins, losses, lessons learned.', location: 'UNO - CEC' },
+      { date: '2026-12-13', title: 'Workshop: Goal Setting & Personal Finance Plans', type: 'workshop', description: 'Each member sets personal financial goals for 2027. Budgeting, emergency funds, debt payoff strategies.', location: 'UNO - Peter Kiewit Institute' },
+      { date: '2027-01-17', title: 'Spring Kickoff & Recruitment Drive', type: 'meeting', description: 'New semester, new members. Re-introduce club mission. Partnership agreement signing for new partners.', location: 'UNO - Student Center' },
+      { date: '2027-01-31', title: 'Investment Pitch Night #3', type: 'meeting', description: 'Fresh pitches for the new year. Sector rotation discussion. Vote on Q1 allocations.', location: 'UNO - CEC' },
+      { date: '2027-02-14', title: 'Speaker: Careers in Finance', type: 'speaker', description: 'Invite a UNO finance professor or Omaha-based analyst to discuss career paths: IB, asset management, fintech, financial planning.', location: 'UNO - College of Business' },
+      { date: '2027-02-28', title: 'Workshop: Options & Derivatives Intro', type: 'workshop', description: 'Basics of options (calls, puts, covered calls). When/why they make sense. Risk warnings. Not for club capital — educational only.', location: 'UNO - Peter Kiewit Institute' },
+      { date: '2027-03-14', title: 'Annual General Meeting & FY1 Wrap-Up', type: 'review', description: 'Full-year performance report. Vote on leadership for FY2. Amend partnership agreement if needed. Set FY2 goals and contribution levels.', location: 'UNO - CEC' },
+      { date: '2027-03-31', title: 'Fiscal Year End', type: 'deadline', description: 'Close FY1 books. Treasurer finalizes capital account statements for all partners.', location: 'Virtual' }
+    ];
+
+    // State
+    let currentMonth = new Date(2026, 2); // March 2026
+    const minDate = new Date(2026, 2, 1);
+    const maxDate = new Date(2027, 3, 30);
+    let activeFilters = new Set(events.map(e => e.type));
+    let currentEvent = null;
+
+    // Utility functions
+    function isDateInRange(date) {
+      return date >= minDate && date <= maxDate;
+    }
+
+    function getEventsForDate(date) {
+      const dateStr = date.toISOString().split('T')[0];
+      return events.filter(e => e.date === dateStr && activeFilters.has(e.type));
+    }
+
+    function formatDate(dateStr) {
+      const date = new Date(dateStr + 'T00:00:00');
+      return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function getDaysInMonth(date) {
+      return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    }
+
+    function getFirstDayOfMonth(date) {
+      return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    }
+
+    // Calendar rendering
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      grid.innerHTML = '';
+
+      // Day headers
+      const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      dayHeaders.forEach(day => {
+        const header = document.createElement('div');
+        header.className = 'day-header';
+        header.textContent = day;
+        grid.appendChild(header);
+      });
+
+      const daysInMonth = getDaysInMonth(currentMonth);
+      const firstDay = getFirstDayOfMonth(currentMonth);
+      const today = new Date();
+
+      // Empty cells for days before month starts
+      for (let i = 0; i < firstDay; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell other-month';
+        grid.appendChild(cell);
+      }
+
+      // Days of the month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+        const cell = document.createElement('div');
+        cell.className = 'day-cell';
+
+        if (date.toDateString() === today.toDateString()) {
+          cell.classList.add('today');
+        }
+
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = day;
+        cell.appendChild(dayNumber);
+
+        const indicators = document.createElement('div');
+        indicators.className = 'day-indicators';
+
+        const dayEvents = getEventsForDate(date);
+        dayEvents.forEach(event => {
+          const dot = document.createElement('div');
+          dot.className = `event-dot`;
+          dot.style.background = `var(--${event.type})`;
+          indicators.appendChild(dot);
+        });
+
+        cell.appendChild(indicators);
+
+        if (dayEvents.length > 0) {
+          cell.addEventListener('click', () => openModal(dayEvents[0]));
+        }
+
+        grid.appendChild(cell);
+      }
+
+      // Update month/year display
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                         'July', 'August', 'September', 'October', 'November', 'December'];
+      document.getElementById('current-month').textContent = 
+        `${monthNames[currentMonth.getMonth()]} ${currentMonth.getFullYear()}`;
+    }
+
+    // Timeline rendering
+    function renderTimeline() {
+      const timeline = document.getElementById('timeline');
+      timeline.innerHTML = '';
+
+      const phases = [
+        { name: 'Foundation', months: [3, 4, 5] },
+        { name: 'Building Momentum', months: [6, 7, 8] },
+        { name: 'Fall Expansion', months: [9, 10, 11] },
+        { name: 'Year-End & Review', months: [12, 1, 2, 3] }
+      ];
+
+      phases.forEach(phase => {
+        const phaseDiv = document.createElement('div');
+        phaseDiv.className = 'timeline-phase';
+
+        const header = document.createElement('div');
+        header.className = 'phase-header';
+        header.textContent = phase.name;
+        phaseDiv.appendChild(header);
+
+        phase.months.forEach(month => {
+          const phaseEvents = events.filter(e => {
+            const eventMonth = new Date(e.date).getMonth() + 1;
+            return eventMonth === month && activeFilters.has(e.type);
+          }).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+          phaseEvents.forEach(event => {
+            const eventDiv = document.createElement('div');
+            eventDiv.className = `timeline-event ${event.type}`;
+            eventDiv.addEventListener('click', () => openModal(event));
+
+            const date = document.createElement('div');
+            date.className = 'timeline-date';
+            date.textContent = formatDate(event.date);
+            eventDiv.appendChild(date);
+
+            const title = document.createElement('div');
+            title.className = 'timeline-title';
+            title.textContent = event.title;
+            eventDiv.appendChild(title);
+
+            const badge = document.createElement('span');
+            badge.className = `event-badge ${event.type}`;
+            badge.textContent = event.type;
+            eventDiv.appendChild(badge);
+
+            phaseDiv.appendChild(eventDiv);
+          });
+        });
+
+        timeline.appendChild(phaseDiv);
+      });
+    }
+
+    // Modal functions
+    function openModal(event) {
+      currentEvent = event;
+      document.getElementById('modal-title').textContent = event.title;
+      document.getElementById('modal-date').textContent = formatDate(event.date);
+      document.getElementById('modal-description').textContent = event.description;
+      document.getElementById('modal-location').textContent = `📍 ${event.location}`;
+      
+      const badge = document.getElementById('modal-badge');
+      badge.textContent = event.type;
+      badge.className = `event-badge ${event.type}`;
+
+      document.getElementById('modal-overlay').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('active');
+      currentEvent = null;
+    }
+
+    // Event listeners
+    document.getElementById('prev-month').addEventListener('click', () => {
+      const newDate = new Date(currentMonth);
+      newDate.setMonth(newDate.getMonth() - 1);
+      if (isDateInRange(newDate)) {
+        currentMonth = newDate;
+        renderCalendar();
+      }
+      updateNavButtons();
+    });
+
+    document.getElementById('next-month').addEventListener('click', () => {
+      const newDate = new Date(currentMonth);
+      newDate.setMonth(newDate.getMonth() + 1);
+      if (isDateInRange(newDate)) {
+        currentMonth = newDate;
+        renderCalendar();
+      }
+      updateNavButtons();
+    });
+
+    function updateNavButtons() {
+      const prevBtn = document.getElementById('prev-month');
+      const nextBtn = document.getElementById('next-month');
+      
+      const prevMonth = new Date(currentMonth);
+      prevMonth.setMonth(prevMonth.getMonth() - 1);
+      prevBtn.disabled = !isDateInRange(prevMonth);
+
+      const nextMonth = new Date(currentMonth);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      nextBtn.disabled = !isDateInRange(nextMonth);
+    }
+
+    document.querySelector('.today-btn').addEventListener('click', () => {
+      currentMonth = new Date();
+      if (!isDateInRange(currentMonth)) {
+        currentMonth = new Date(2026, 2); // Fall back to March 2026
+      }
+      renderCalendar();
+      updateNavButtons();
+    });
+
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('modal-overlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('modal-overlay')) {
+        closeModal();
+      }
+    });
+
+    // View toggle
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`${view}-view`).classList.add('active');
+
+        if (view === 'timeline') {
+          renderTimeline();
+        } else {
+          renderCalendar();
+        }
+      });
+    });
+
+    // Filter toggle
+    document.querySelector('.filter-toggle').addEventListener('click', () => {
+      const legend = document.getElementById('legend');
+      legend.style.display = legend.style.display === 'none' ? 'flex' : 'none';
+    });
+
+    document.querySelectorAll('.legend-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const type = item.dataset.type;
+        if (activeFilters.has(type)) {
+          activeFilters.delete(type);
+          item.classList.add('disabled');
+        } else {
+          activeFilters.add(type);
+          item.classList.remove('disabled');
+        }
+        renderCalendar();
+        renderTimeline();
+      });
+    });
+
+    // Google Calendar link
+    document.getElementById('add-to-cal').addEventListener('click', () => {
+      if (!currentEvent) return;
+
+      const event = currentEvent;
+      const date = new Date(event.date + 'T00:00:00');
+      const endDate = new Date(date);
+      endDate.setDate(endDate.getDate() + 1);
+
+      const title = encodeURIComponent(event.title);
+      const description = encodeURIComponent(event.description + '\n\nLocation: ' + event.location);
+      const startTime = date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      const endTime = endDate.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+      const googleCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${endTime}&details=${description}`;
+      window.open(googleCalUrl, '_blank');
+    });
+
+    // Copy details
+    document.getElementById('copy-details').addEventListener('click', () => {
+      if (!currentEvent) return;
+
+      const event = currentEvent;
+      const text = `${event.title}\n${formatDate(event.date)}\n📍 ${event.location}\n\n${event.description}`;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copy-details');
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => {
+          btn.textContent = original;
+        }, 2000);
+      });
+    });
+
+    // Initial render
+    renderCalendar();
+    updateNavButtons();
+  </script>
+</body>
+</html>
