@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEO Tracker — Near-Earth Object Close Approach Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── RESET ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: #020408;
+      color: #e2e8f0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── SCROLLBAR ──────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0a1628; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.25); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.5); }
+
+    /* ── STARFIELD ──────────────────────────────────────────────── */
+    #starfield { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+    /* ── APP WRAPPER ────────────────────────────────────────────── */
+    #app { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── HEADER ─────────────────────────────────────────────────── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.875rem 2rem;
+      background: rgba(2,4,8,0.92);
+      border-bottom: 1px solid rgba(0,212,255,0.12);
+      backdrop-filter: blur(24px);
+      position: sticky; top: 0; z-index: 200;
+    }
+    .header-brand { display: flex; align-items: center; gap: 0.875rem; }
+    .brand-icon {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #7c3aed 0%, #00d4ff 100%);
+      box-shadow: 0 0 18px rgba(0,212,255,0.45);
+      display: flex; align-items: center; justify-content: center; font-size: 17px;
+      flex-shrink: 0;
+    }
+    .brand-title {
+      font-size: 1.1rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+      background: linear-gradient(90deg, #00d4ff 0%, #7c3aed 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .brand-sub { font-size: 0.65rem; color: #3d4e63; letter-spacing: 0.1em; text-transform: uppercase; font-family: 'IBM Plex Mono', monospace; }
+    .header-right { display: flex; align-items: center; gap: 1.25rem; }
+    .live-badge {
+      display: flex; align-items: center; gap: 0.35rem;
+      background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.25);
+      border-radius: 100px; padding: 0.2rem 0.65rem;
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; letter-spacing: 0.12em; color: #00cc66;
+    }
+    .live-dot { width: 5px; height: 5px; background: #00ff88; border-radius: 50%; animation: blink 2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.65)} }
+    #utc-clock { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: #3d4e63; letter-spacing: 0.05em; }
+
+    /* ── TAB NAV ─────────────────────────────────────────────────── */
+    .tab-nav {
+      display: flex; align-items: stretch; gap: 0; padding: 0 2rem;
+      background: rgba(5,10,24,0.96); border-bottom: 1px solid rgba(0,212,255,0.08);
+      overflow-x: auto; flex-shrink: 0;
+    }
+    .tab-btn {
+      display: flex; align-items: center; gap: 0.45rem;
+      padding: 0.9rem 1.4rem; border: none; background: transparent;
+      color: #3d4e63; font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+      cursor: pointer; position: relative; transition: color 0.2s; white-space: nowrap;
+    }
+    .tab-btn::after {
+      content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+      height: 2px; background: #00d4ff; transform: scaleX(0); transition: transform 0.25s ease;
+    }
+    .tab-btn:hover { color: #64748b; }
+    .tab-btn.active { color: #00d4ff; }
+    .tab-btn.active::after { transform: scaleX(1); }
+    .tab-icon { font-size: 0.95rem; }
+
+    /* ── MAIN / PANELS ───────────────────────────────────────────── */
+    main { flex: 1; padding: 1.75rem 2rem; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeUp 0.3s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── STAT CARDS ──────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr));
+      gap: 1rem; margin-bottom: 1.75rem;
+    }
+    .stat-card {
+      background: rgba(10,22,40,0.82); border: 1px solid rgba(0,212,255,0.09);
+      border-radius: 12px; padding: 1.35rem 1.5rem; position: relative; overflow: hidden;
+      backdrop-filter: blur(12px); transition: border-color .2s, transform .2s;
+    }
+    .stat-card:hover { border-color: rgba(0,212,255,0.28); transform: translateY(-2px); }
+    .stat-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: var(--cc, #00d4ff);
+    }
+    .stat-label { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #3d4e63; margin-bottom: 0.7rem; }
+    .stat-value { font-family: 'IBM Plex Mono', monospace; font-size: 1.9rem; font-weight: 600; line-height: 1; color: var(--cc, #00d4ff); margin-bottom: 0.2rem; }
+    .stat-unit { font-size: 0.7rem; color: #3d4e63; font-family: 'IBM Plex Mono', monospace; }
+    .stat-icon { position: absolute; top: 1.1rem; right: 1.2rem; font-size: 1.4rem; opacity: 0.35; }
+
+    /* ── SECTION TITLE ───────────────────────────────────────────── */
+    .section-title {
+      font-size: 0.68rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+      color: #3d4e63; margin-bottom: 0.9rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: rgba(0,212,255,0.08); }
+
+    /* ── GLASS CARD ──────────────────────────────────────────────── */
+    .glass-card {
+      background: rgba(10,22,40,0.82); border: 1px solid rgba(0,212,255,0.09);
+      border-radius: 12px; padding: 1.5rem; backdrop-filter: blur(12px);
+    }
+
+    /* ── OVERVIEW GRID ───────────────────────────────────────────── */
+    .overview-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+
+    /* ── TIMELINE ────────────────────────────────────────────────── */
+    .timeline { display: flex; flex-direction: column; gap: 0.4rem; }
+    .timeline-item {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 0.65rem 0.9rem; background: rgba(0,212,255,0.025);
+      border: 1px solid rgba(0,212,255,0.06); border-radius: 8px;
+      transition: background .18s; cursor: default;
+    }
+    .timeline-item:hover { background: rgba(0,212,255,0.055); }
+    .timeline-date { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: #3d4e63; width: 84px; flex-shrink: 0; }
+    .timeline-name { flex: 1; font-size: 0.82rem; color: #8899aa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .timeline-right { display: flex; align-items: center; gap: 0.65rem; flex-shrink: 0; }
+    .timeline-dist { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; font-weight: 600; }
+
+    /* ── NOTABLE CARDS ───────────────────────────────────────────── */
+    .notable-stack { display: flex; flex-direction: column; gap: 0.9rem; }
+    .notable-card {
+      background: rgba(5,10,24,0.8); border: 1px solid rgba(0,212,255,0.07);
+      border-radius: 10px; padding: 0.9rem 1rem;
+      transition: border-color .2s;
+    }
+    .notable-card:hover { border-color: rgba(0,212,255,0.18); }
+    .notable-label { font-size: 0.6rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: #3d4e63; margin-bottom: 0.4rem; }
+    .notable-name { font-size: 0.8rem; color: #8899aa; margin-bottom: 0.6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notable-value { font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; font-weight: 600; color: #00d4ff; }
+    .notable-sub { font-size: 0.68rem; color: #3d4e63; margin-top: 0.25rem; font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── BADGES ──────────────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; padding: 0.18rem 0.45rem;
+      border-radius: 4px; font-size: 0.6rem; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+    }
+    .badge-danger  { background: rgba(255,34,68,.12);  color: #ff4466; border: 1px solid rgba(255,34,68,.3);  }
+    .badge-warn    { background: rgba(255,170,0,.12);  color: #ffaa00; border: 1px solid rgba(255,170,0,.3);  }
+    .badge-safe    { background: rgba(0,255,136,.07);  color: #00cc66; border: 1px solid rgba(0,255,136,.18); }
+    .badge-info    { background: rgba(0,212,255,.08);  color: #00d4ff; border: 1px solid rgba(0,212,255,.2);  }
+    .badge-orange  { background: rgba(255,102,0,.12);  color: #ff6600; border: 1px solid rgba(255,102,0,.3);  }
+
+    /* ── FILTER BAR ──────────────────────────────────────────────── */
+    .filter-bar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .search-input {
+      flex: 1; min-width: 180px;
+      background: rgba(10,22,40,0.85); border: 1px solid rgba(0,212,255,0.14);
+      border-radius: 8px; padding: 0.55rem 0.9rem; color: #e2e8f0;
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; outline: none;
+      transition: border-color .2s;
+    }
+    .search-input:focus { border-color: rgba(0,212,255,0.38); }
+    .search-input::placeholder { color: #3d4e63; }
+    .filter-select {
+      background: rgba(10,22,40,0.85); border: 1px solid rgba(0,212,255,0.14);
+      border-radius: 8px; padding: 0.55rem 0.9rem; color: #8899aa;
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; outline: none; cursor: pointer;
+    }
+    .check-label { display: flex; align-items: center; gap: 0.45rem; font-size: 0.75rem; color: #3d4e63; cursor: pointer; user-select: none; }
+    .check-label input[type=checkbox] { accent-color: #00d4ff; }
+    .filter-count { margin-left: auto; font-size: 0.7rem; color: #3d4e63; font-family: 'IBM Plex Mono', monospace; }
+
+    /* ── TABLE ───────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid rgba(0,212,255,0.09); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead tr { background: rgba(0,212,255,0.04); border-bottom: 1px solid rgba(0,212,255,0.12); }
+    th {
+      padding: 0.8rem 1rem; text-align: left;
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase;
+      color: #3d4e63; white-space: nowrap; cursor: pointer; user-select: none;
+      transition: color .15s;
+    }
+    th:hover, th.sorted { color: #00d4ff; }
+    tbody tr { border-bottom: 1px solid rgba(0,212,255,0.04); transition: background .14s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(0,212,255,0.035); }
+    td {
+      padding: 0.78rem 1rem; color: #8899aa;
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.77rem; white-space: nowrap;
+    }
+    td.name-col { color: #c8d8e8; font-family: 'IBM Plex Sans', sans-serif; font-weight: 500; font-size: 0.83rem; }
+    .sort-arrow { margin-left: 3px; opacity: .4; font-size: 0.75em; }
+    .sort-arrow.on { opacity: 1; }
+
+    /* ── CHARTS ──────────────────────────────────────────────────── */
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap: 1.25rem; margin-bottom: 1.25rem; }
+    .chart-card {
+      background: rgba(10,22,40,0.82); border: 1px solid rgba(0,212,255,0.09);
+      border-radius: 12px; padding: 1.35rem; backdrop-filter: blur(12px);
+    }
+    .chart-title { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #3d4e63; margin-bottom: 1rem; }
+    .chart-box { position: relative; height: 230px; }
+
+    /* ── SIZE COMPARE ────────────────────────────────────────────── */
+    .size-compare { display: flex; align-items: flex-end; gap: 0; padding: 0 0.5rem; overflow-x: auto; min-height: 200px; }
+    .size-item { display: flex; flex-direction: column; align-items: center; gap: 0.45rem; flex: 1; min-width: 55px; }
+    .size-bar-wrap { display: flex; align-items: flex-end; justify-content: center; height: 160px; width: 100%; }
+    .size-bar { width: 32px; border-radius: 4px 4px 0 0; position: relative; }
+    .size-lbl { font-size: 0.6rem; color: #3d4e63; text-align: center; line-height: 1.3; padding: 0 2px; }
+    .size-val { font-size: 0.6rem; font-family: 'IBM Plex Mono', monospace; text-align: center; }
+    .size-compare-legend { display: flex; gap: 1.25rem; margin-top: 1rem; padding: 0 0.5rem; font-size: 0.68rem; color: #3d4e63; }
+    .legend-dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+    /* ── SENTRY ──────────────────────────────────────────────────── */
+    .sentry-hero {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.5rem; padding: 1.1rem 1.5rem;
+      background: rgba(255,34,68,0.04); border: 1px solid rgba(255,34,68,0.14); border-radius: 12px;
+    }
+    .sentry-hero-left { display: flex; align-items: center; gap: 1rem; }
+    .sentry-count { font-family: 'IBM Plex Mono', monospace; font-size: 1.75rem; font-weight: 600; color: #ff4466; }
+    .sentry-count-lbl { font-size: 0.68rem; color: #3d4e63; letter-spacing: 0.1em; text-transform: uppercase; }
+    .ps-safe { color: #00cc66; }
+    .ps-caution { color: #ffaa00; }
+    .ps-alert { color: #ff4466; }
+
+    /* ── GLOBE ───────────────────────────────────────────────────── */
+    .globe-layout { display: grid; grid-template-columns: 1fr 280px; gap: 1.5rem; align-items: start; }
+    #globe-container { width: 100%; height: 580px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(0,212,255,0.1); background: #020408; }
+    .globe-side { display: flex; flex-direction: column; gap: 1rem; }
+    .legend-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.77rem; color: #64748b; }
+    .legend-pip { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    #asteroid-detail { display: none; }
+    #asteroid-detail.show { display: block; }
+    .detail-title { font-size: 0.85rem; font-weight: 600; color: #e2e8f0; margin-bottom: 0.9rem; }
+    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid rgba(0,212,255,0.04); font-size: 0.72rem; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-key { color: #3d4e63; }
+    .detail-val { font-family: 'IBM Plex Mono', monospace; color: #00d4ff; }
+
+    /* ── LOADING / ERROR ─────────────────────────────────────────── */
+    .loading-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4rem; gap: 0.9rem; color: #3d4e63; }
+    .spinner { width: 36px; height: 36px; border: 2px solid rgba(0,212,255,0.1); border-top-color: #00d4ff; border-radius: 50%; animation: spin .75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-txt { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; letter-spacing: 0.1em; }
+    .error-box { background: rgba(255,34,68,0.05); border: 1px solid rgba(255,34,68,0.18); border-radius: 12px; padding: 1.5rem; text-align: center; font-size: 0.82rem; color: #ff4466; }
+
+    /* ── FOOTER ──────────────────────────────────────────────────── */
+    footer {
+      padding: 1.1rem 2rem; border-top: 1px solid rgba(0,212,255,0.07);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.65rem; color: #1e2a38; font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────────── */
+    @media (max-width: 860px) {
+      main { padding: 1rem; }
+      header { padding: 0.75rem 1rem; }
+      .tab-nav { padding: 0 1rem; }
+      .overview-grid { grid-template-columns: 1fr; }
+      .globe-layout { grid-template-columns: 1fr; }
+      #utc-clock { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="starfield"></canvas>
+
+<div id="app">
+  <!-- HEADER -->
+  <header>
+    <div class="header-brand">
+      <div class="brand-icon">☄️</div>
+      <div>
+        <div class="brand-title">NEO Tracker</div>
+        <div class="brand-sub">Near-Earth Object Close Approach Dashboard</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="live-dot"></div>LIVE DATA</div>
+      <div id="utc-clock">UTC --:--:--</div>
+    </div>
+  </header>
+
+  <!-- TAB NAV -->
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="overview"><span class="tab-icon">📊</span>Overview</button>
+    <button class="tab-btn" data-tab="approaches"><span class="tab-icon">🔭</span>Close Approaches</button>
+    <button class="tab-btn" data-tab="analytics"><span class="tab-icon">📈</span>Analytics</button>
+    <button class="tab-btn" data-tab="sentry"><span class="tab-icon">⚠️</span>Sentry Watch</button>
+    <button class="tab-btn" data-tab="globe"><span class="tab-icon">🌍</span>3D Globe</button>
+  </nav>
+
+  <!-- CONTENT -->
+  <main>
+    <div class="tab-panel active" id="panel-overview">
+      <div id="overview-content"><div class="loading-box"><div class="spinner"></div><div class="loading-txt">ACQUIRING SIGNAL...</div></div></div>
+    </div>
+    <div class="tab-panel" id="panel-approaches">
+      <div id="approaches-content"><div class="loading-box"><div class="spinner"></div><div class="loading-txt">LOADING APPROACH DATA...</div></div></div>
+    </div>
+    <div class="tab-panel" id="panel-analytics">
+      <div id="analytics-content"><div class="loading-box"><div class="spinner"></div><div class="loading-txt">CRUNCHING NUMBERS...</div></div></div>
+    </div>
+    <div class="tab-panel" id="panel-sentry">
+      <div id="sentry-content"><div class="loading-box"><div class="spinner"></div><div class="loading-txt">SCANNING THREAT DATABASE...</div></div></div>
+    </div>
+    <div class="tab-panel" id="panel-globe">
+      <div id="globe-content"><div class="loading-box"><div class="spinner"></div><div class="loading-txt">INITIALIZING GLOBE...</div></div></div>
+    </div>
+  </main>
+
+  <footer>
+    <span>Data: NASA NeoWs · JPL SBDB · JPL Sentry</span>
+    <span>AIML 1870 · NEO Tracker</span>
+    <span>Not for operational use</span>
+  </footer>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+const NASA_KEY   = 'DEMO_KEY';
+const NEOWS_BASE  = 'https://api.nasa.gov/neo/rest/v1/feed';
+const SBDB_BASE   = 'https://ssd-api.jpl.nasa.gov/cad.api';
+const SENTRY_BASE = 'https://ssd-api.jpl.nasa.gov/sentry.api';
+
+const AU_KM  = 149597870.7;   // 1 AU in km
+const LD_AU  = 0.00256955529; // 1 Lunar Distance in AU
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+const S = {
+  neos:         [],   // flattened NeoWs objects
+  sbdb:         [],   // SBDB parsed objects
+  sentry:       [],   // Sentry parsed objects
+  sentryCount:  0,
+  chartsBuilt:  false,
+  globeBuilt:   false,
+  sort: { field: 'dist_ld', dir: 'asc' },
+  filter: { q: '', pha: false, maxLD: 9999 },
+  charts: {},
+};
+
+// ═══════════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════════
+const pad2 = n => String(n).padStart(2,'0');
+
+function dateStr(d) { return d.toISOString().split('T')[0]; }
+function daysAgo(n)  { const d = new Date(); d.setDate(d.getDate()-n); return dateStr(d); }
+function daysFwd(n)  { const d = new Date(); d.setDate(d.getDate()+n); return dateStr(d); }
+
+function fmt(n, dec=2) {
+  if (n == null || isNaN(n)) return '—';
+  return Number(n).toLocaleString('en-US', { maximumFractionDigits: dec, minimumFractionDigits: dec });
+}
+function fmtCompact(n) {
+  if (n == null || isNaN(n)) return '—';
+  if (n >= 1e9) return (n/1e9).toFixed(2)+'B';
+  if (n >= 1e6) return (n/1e6).toFixed(2)+'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1)+'K';
+  return n.toFixed(0);
+}
+
+function auToLd(au)  { return au / LD_AU; }
+function hToDiam(h)  { return 1.329 / Math.sqrt(0.15) * Math.pow(10, -h/5); } // km, albedo=0.15
+
+function parseSbdbDate(cd) {
+  if (!cd) return '—';
+  const M = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  const [dp] = cd.split(' ');
+  const [yr, mon, day] = dp.split('-');
+  return `${yr}-${M[mon]||mon}-${day}`;
+}
+
+function sizeLabel(km) {
+  if (km < 0.004)  return 'Car-sized';
+  if (km < 0.012)  return 'Bus-sized';
+  if (km < 0.1)    return 'Stadium-sized';
+  if (km < 0.5)    return 'City-block-sized';
+  if (km < 2)      return 'Mountain-sized';
+  if (km < 10)     return 'City-sized';
+  return 'Region-sized';
+}
+
+function threatOf(ld) {
+  if (ld < 1)  return { label:'CRITICAL', cls:'badge-danger',  color:'#ff2244' };
+  if (ld < 5)  return { label:'HIGH',     cls:'badge-danger',  color:'#ff6600' };
+  if (ld < 20) return { label:'MODERATE', cls:'badge-warn',    color:'#ffaa00' };
+  return              { label:'LOW',      cls:'badge-safe',    color:'#00cc66' };
+}
+
+function psClass(ps) {
+  const v = parseFloat(ps);
+  if (isNaN(v))  return '';
+  if (v >= 0)    return 'ps-alert';
+  if (v >= -2)   return 'ps-caution';
+  return 'ps-safe';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  STARFIELD
+// ═══════════════════════════════════════════════════════════════
+(function() {
+  const cv = document.getElementById('starfield');
+  const cx = cv.getContext('2d');
+  let W, H, stars = [];
+
+  function resize() {
+    W = cv.width = innerWidth; H = cv.height = innerHeight;
+    stars = Array.from({length:220}, () => ({
+      x: Math.random()*W, y: Math.random()*H,
+      r: Math.random()*1.4, base: Math.random()*0.8,
+      spd: 0.0003 + Math.random()*0.0004, ph: Math.random()*Math.PI*2
+    }));
+  }
+  function draw(t) {
+    cx.clearRect(0,0,W,H);
+    stars.forEach(s => {
+      const a = s.base * (0.4 + 0.6*Math.sin(t*s.spd+s.ph));
+      cx.beginPath(); cx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      cx.fillStyle = `rgba(148,163,184,${a})`; cx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  resize(); addEventListener('resize', resize); requestAnimationFrame(draw);
+})();
+
+// ═══════════════════════════════════════════════════════════════
+//  UTC CLOCK
+// ═══════════════════════════════════════════════════════════════
+(function() {
+  const el = document.getElementById('utc-clock');
+  function tick() {
+    const n = new Date();
+    el.textContent = `UTC ${pad2(n.getUTCHours())}:${pad2(n.getUTCMinutes())}:${pad2(n.getUTCSeconds())}`;
+  }
+  tick(); setInterval(tick, 1000);
+})();
+
+// ═══════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════
+function initTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+      const tab = btn.dataset.tab;
+      if (tab === 'approaches') renderApproaches();
+      if (tab === 'analytics' && !S.chartsBuilt) renderAnalytics();
+      if (tab === 'sentry')   renderSentry();
+      if (tab === 'globe' && !S.globeBuilt) renderGlobe();
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  API: NeoWs
+// ═══════════════════════════════════════════════════════════════
+async function fetchNeoWs() {
+  const url = `${NEOWS_BASE}?start_date=${daysAgo(6)}&end_date=${dateStr(new Date())}&api_key=${NASA_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`NeoWs HTTP ${res.status}`);
+  const json = await res.json();
+  const flat = [];
+  for (const [date, objs] of Object.entries(json.near_earth_objects)) {
+    for (const o of objs) {
+      const ca = o.close_approach_data[0];
+      const dMin = o.estimated_diameter.kilometers.estimated_diameter_min;
+      const dMax = o.estimated_diameter.kilometers.estimated_diameter_max;
+      flat.push({
+        id:          o.id,
+        name:        o.name.replace(/^[(\s]+|[)\s]+$/g,''),
+        date,
+        is_hazardous: o.is_potentially_hazardous_asteroid,
+        h:           o.absolute_magnitude_h,
+        diam_min:    dMin,
+        diam_max:    dMax,
+        diam_avg:    (dMin+dMax)/2,
+        vel_kph:     parseFloat(ca.relative_velocity.kilometers_per_hour),
+        dist_ld:     parseFloat(ca.miss_distance.lunar),
+        dist_km:     parseFloat(ca.miss_distance.kilometers),
+        dist_au:     parseFloat(ca.miss_distance.astronomical),
+        nasa_url:    o.nasa_jpl_url,
+        is_sentry:   o.is_sentry_object,
+      });
+    }
+  }
+  return flat.sort((a,b) => a.dist_ld - b.dist_ld);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  API: SBDB CAD
+// ═══════════════════════════════════════════════════════════════
+async function fetchSBDB() {
+  const url = `${SBDB_BASE}?date-min=${daysAgo(30)}&date-max=${daysFwd(30)}&dist-max=0.2&sort=dist&limit=200`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`SBDB HTTP ${res.status}`);
+  const json = await res.json();
+  const fields = json.fields;
+  const idx = {};
+  fields.forEach((f,i) => idx[f]=i);
+  return (json.data||[]).map(row => {
+    const au = parseFloat(row[idx['dist']]);
+    const vr = parseFloat(row[idx['v_rel']]);
+    const h  = parseFloat(row[idx['h']]);
+    return {
+      id:       row[idx['des']],
+      name:     row[idx['des']],
+      date:     parseSbdbDate(row[idx['cd']]),
+      dist_au:  au,
+      dist_ld:  auToLd(au),
+      dist_km:  au * AU_KM,
+      vel_kph:  isNaN(vr) ? 0 : vr * 3600,
+      h:        h,
+      diam_avg: isNaN(h) ? 0.05 : hToDiam(h),
+      diam_min: isNaN(h) ? 0.04 : hToDiam(h)*0.8,
+      diam_max: isNaN(h) ? 0.06 : hToDiam(h)*1.2,
+      is_hazardous: false,
+      is_sentry:    false,
+    };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  API: Sentry
+// ═══════════════════════════════════════════════════════════════
+async function fetchSentry() {
+  const res = await fetch(SENTRY_BASE);
+  if (!res.ok) throw new Error(`Sentry HTTP ${res.status}`);
+  return res.json();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER: OVERVIEW
+// ═══════════════════════════════════════════════════════════════
+function renderOverview() {
+  const el = document.getElementById('overview-content');
+  const data = S.neos;
+  if (!data.length) {
+    el.innerHTML = '<div class="error-box">No NEO data available. Check connection.</div>';
+    return;
+  }
+
+  const pha      = data.filter(d => d.is_hazardous);
+  const closest  = data.reduce((a,b) => a.dist_ld < b.dist_ld ? a : b);
+  const fastest  = data.reduce((a,b) => a.vel_kph > b.vel_kph ? a : b);
+  const largest  = data.reduce((a,b) => a.diam_avg > b.diam_avg ? a : b);
+  const ct = threatOf(closest.dist_ld);
+
+  el.innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card" style="--cc:#00d4ff">
+        <div class="stat-icon">☄️</div>
+        <div class="stat-label">This Week's NEOs</div>
+        <div class="stat-value">${data.length}</div>
+        <div class="stat-unit">objects tracked</div>
+      </div>
+      <div class="stat-card" style="--cc:#ff4466">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-label">Potentially Hazardous</div>
+        <div class="stat-value">${pha.length}</div>
+        <div class="stat-unit">PHAs this period</div>
+      </div>
+      <div class="stat-card" style="--cc:${ct.color}">
+        <div class="stat-icon">📏</div>
+        <div class="stat-label">Closest Approach</div>
+        <div class="stat-value">${fmt(closest.dist_ld,2)}</div>
+        <div class="stat-unit">lunar distances (LD)</div>
+      </div>
+      <div class="stat-card" style="--cc:#7c3aed">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-label">Fastest Object</div>
+        <div class="stat-value">${fmtCompact(fastest.vel_kph)}</div>
+        <div class="stat-unit">km / h</div>
+      </div>
+    </div>
+
+    <div class="overview-grid">
+      <div>
+        <div class="section-title">This Week's Approaches</div>
+        <div class="glass-card" style="padding:1rem;">
+          <div class="timeline">${buildTimeline(data.slice(0,18))}</div>
+        </div>
+      </div>
+      <div>
+        <div class="section-title">Notable Objects</div>
+        <div class="notable-stack">
+          <div class="notable-card">
+            <div class="notable-label">🎯 Closest Pass</div>
+            <div class="notable-name">${closest.name}</div>
+            <div class="notable-value">${fmt(closest.dist_ld,3)} <span style="font-size:.7rem;color:#3d4e63">LD</span></div>
+            <div class="notable-sub">${fmtCompact(closest.dist_km)} km · ${closest.date}</div>
+          </div>
+          <div class="notable-card">
+            <div class="notable-label">⚡ Fastest Object</div>
+            <div class="notable-name">${fastest.name}</div>
+            <div class="notable-value">${fmtCompact(fastest.vel_kph)} <span style="font-size:.7rem;color:#3d4e63">km/h</span></div>
+            <div class="notable-sub">${fmt(fastest.vel_kph/3.6,0)} m/s</div>
+          </div>
+          <div class="notable-card">
+            <div class="notable-label">📐 Largest Object</div>
+            <div class="notable-name">${largest.name}</div>
+            <div class="notable-value">${fmt(largest.diam_avg*1000,0)} <span style="font-size:.7rem;color:#3d4e63">m</span></div>
+            <div class="notable-sub">${sizeLabel(largest.diam_avg)}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildTimeline(data) {
+  return data.map(d => {
+    const t = threatOf(d.dist_ld);
+    return `
+      <div class="timeline-item">
+        <div class="timeline-date">${d.date}</div>
+        <div class="timeline-name">${d.name}</div>
+        <div class="timeline-right">
+          <div class="timeline-dist" style="color:${t.color}">${fmt(d.dist_ld,2)} LD</div>
+          <span class="badge ${d.is_hazardous ? 'badge-danger' : 'badge-safe'}">${d.is_hazardous ? 'PHA' : 'safe'}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER: APPROACHES
+// ═══════════════════════════════════════════════════════════════
+function renderApproaches() {
+  const el = document.getElementById('approaches-content');
+  if (!S.neos.length) { el.innerHTML = '<div class="error-box">No approach data.</div>'; return; }
+
+  let rows = S.neos.filter(d => {
+    if (S.filter.pha && !d.is_hazardous) return false;
+    if (d.dist_ld > S.filter.maxLD) return false;
+    if (S.filter.q && !d.name.toLowerCase().includes(S.filter.q)) return false;
+    return true;
+  });
+
+  const {field, dir} = S.sort;
+  rows.sort((a,b) => {
+    const va = a[field] ?? ''; const vb = b[field] ?? '';
+    const c = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+    return dir === 'asc' ? c : -c;
+  });
+
+  function th(f, lbl) {
+    const active = S.sort.field === f;
+    const arrow = active ? (S.sort.dir === 'asc' ? '↑' : '↓') : '↕';
+    return `<th data-f="${f}" class="${active?'sorted':''}">${lbl} <span class="sort-arrow ${active?'on':''}">${arrow}</span></th>`;
+  }
+
+  el.innerHTML = `
+    <div class="filter-bar">
+      <input class="search-input" id="si" placeholder="Search object name…" value="${S.filter.q}" />
+      <select class="filter-select" id="di">
+        <option value="9999" ${S.filter.maxLD===9999?'selected':''}>All distances</option>
+        <option value="5"    ${S.filter.maxLD===5   ?'selected':''}>Within 5 LD</option>
+        <option value="20"   ${S.filter.maxLD===20  ?'selected':''}>Within 20 LD</option>
+        <option value="50"   ${S.filter.maxLD===50  ?'selected':''}>Within 50 LD</option>
+      </select>
+      <label class="check-label"><input type="checkbox" id="pi" ${S.filter.pha?'checked':''}> PHAs only</label>
+      <span class="filter-count">${rows.length} objects</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          ${th('name','Object Name')}
+          ${th('date','Date')}
+          ${th('dist_ld','Miss Dist (LD)')}
+          ${th('dist_km','Miss Dist (km)')}
+          ${th('diam_avg','Diameter (m)')}
+          ${th('vel_kph','Velocity (km/h)')}
+          <th>Risk</th>
+          <th>Hazardous</th>
+        </tr></thead>
+        <tbody>${rows.map(approachRow).join('')}</tbody>
+      </table>
+    </div>`;
+
+  document.getElementById('si').addEventListener('input',  e => { S.filter.q   = e.target.value.toLowerCase(); renderApproaches(); });
+  document.getElementById('di').addEventListener('change', e => { S.filter.maxLD = Number(e.target.value);      renderApproaches(); });
+  document.getElementById('pi').addEventListener('change', e => { S.filter.pha   = e.target.checked;           renderApproaches(); });
+  document.querySelectorAll('th[data-f]').forEach(th => {
+    th.addEventListener('click', () => {
+      const f = th.dataset.f;
+      S.sort.dir = S.sort.field === f ? (S.sort.dir === 'asc' ? 'desc' : 'asc') : 'asc';
+      S.sort.field = f;
+      renderApproaches();
+    });
+  });
+}
+
+function approachRow(d) {
+  const t = threatOf(d.dist_ld);
+  return `
+    <tr>
+      <td class="name-col">${d.name}</td>
+      <td>${d.date}</td>
+      <td style="color:${t.color};font-weight:600">${fmt(d.dist_ld,3)}</td>
+      <td>${fmtCompact(d.dist_km)}</td>
+      <td>${fmt(d.diam_avg*1000,0)}</td>
+      <td>${fmtCompact(d.vel_kph)}</td>
+      <td><span class="badge ${t.cls}">${t.label}</span></td>
+      <td><span class="badge ${d.is_hazardous?'badge-danger':'badge-safe'}">${d.is_hazardous?'⚠ YES':'✓ NO'}</span></td>
+    </tr>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER: ANALYTICS
+// ═══════════════════════════════════════════════════════════════
+function renderAnalytics() {
+  S.chartsBuilt = true;
+  const el = document.getElementById('analytics-content');
+  el.innerHTML = `
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">📏 Miss Distance Distribution (LD)</div>
+        <div class="chart-box"><canvas id="c-dist"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📐 Estimated Diameter Distribution</div>
+        <div class="chart-box"><canvas id="c-size"></canvas></div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">⚡ Velocity Distribution (km/h)</div>
+        <div class="chart-box"><canvas id="c-vel"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">⚠️ Potentially Hazardous vs Safe</div>
+        <div class="chart-box"><canvas id="c-pha"></canvas></div>
+      </div>
+    </div>
+    <div class="glass-card" style="margin-top:1.25rem;">
+      <div class="chart-title" style="margin-bottom:1.25rem;">🏗️ Size Comparison — Asteroids vs Familiar Objects</div>
+      <div class="size-compare" id="size-compare"></div>
+      <div class="size-compare-legend">
+        <span><span class="legend-dot" style="background:rgba(0,212,255,.4);border:1px solid #00d4ff55"></span>Reference object</span>
+        <span><span class="legend-dot" style="background:rgba(124,58,237,.4);border:1px solid #7c3aed55"></span>Near-Earth asteroid</span>
+      </div>
+    </div>`;
+
+  const data = S.neos;
+  const base = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(8,18,36,.95)', borderColor: 'rgba(0,212,255,.25)', borderWidth: 1,
+        titleColor: '#8899aa', bodyColor: '#e2e8f0', padding: 10,
+      }
+    },
+    scales: {
+      x: { grid: { color: 'rgba(0,212,255,.04)' }, ticks: { color: '#3d4e63', font: { family: 'IBM Plex Mono', size: 10 } } },
+      y: { grid: { color: 'rgba(0,212,255,.04)' }, ticks: { color: '#3d4e63', font: { family: 'IBM Plex Mono', size: 10 } } }
+    }
+  };
+
+  // Miss Distance histogram
+  const ldBins  = [0,1,2,5,10,20,50,100,1e9];
+  const ldLabels = ['<1','1-2','2-5','5-10','10-20','20-50','50-100','>100'];
+  const ldCounts = new Array(ldLabels.length).fill(0);
+  data.forEach(d => { for(let i=0;i<ldBins.length-1;i++) { if(d.dist_ld>=ldBins[i]&&d.dist_ld<ldBins[i+1]){ldCounts[i]++;break;} } });
+  const ldColors = ['#ff2244','#ff4422','#ff6600','#ff9900','#ffcc00','#aacc00','#00cc66','#00d4ff'];
+  new Chart(document.getElementById('c-dist'), {
+    type:'bar', data:{ labels:ldLabels, datasets:[{ data:ldCounts, backgroundColor:ldColors.map(c=>c+'99'), borderColor:ldColors, borderWidth:1, borderRadius:4 }] },
+    options: base
+  });
+
+  // Size histogram
+  const szBins  = [0,.01,.05,.1,.5,1,5,1e9];
+  const szLabels = ['<10m','10-50m','50-100m','100-500m','0.5-1km','1-5km','>5km'];
+  const szCounts = new Array(szLabels.length).fill(0);
+  data.forEach(d => { for(let i=0;i<szBins.length-1;i++){if(d.diam_avg>=szBins[i]&&d.diam_avg<szBins[i+1]){szCounts[i]++;break;}} });
+  new Chart(document.getElementById('c-size'), {
+    type:'bar', data:{ labels:szLabels, datasets:[{ data:szCounts, backgroundColor:'rgba(124,58,237,.45)', borderColor:'#7c3aed', borderWidth:1, borderRadius:4 }] },
+    options: base
+  });
+
+  // Velocity histogram
+  const vBins   = [0,1e4,2e4,4e4,6e4,8e4,1e5,1e9];
+  const vLabels  = ['<10K','10-20K','20-40K','40-60K','60-80K','80-100K','>100K'];
+  const vCounts  = new Array(vLabels.length).fill(0);
+  data.forEach(d => { for(let i=0;i<vBins.length-1;i++){if(d.vel_kph>=vBins[i]&&d.vel_kph<vBins[i+1]){vCounts[i]++;break;}} });
+  new Chart(document.getElementById('c-vel'), {
+    type:'bar', data:{ labels:vLabels, datasets:[{ data:vCounts, backgroundColor:'rgba(0,212,255,.3)', borderColor:'#00d4ff', borderWidth:1, borderRadius:4 }] },
+    options: base
+  });
+
+  // PHA donut
+  const phaCount = data.filter(d=>d.is_hazardous).length;
+  new Chart(document.getElementById('c-pha'), {
+    type:'doughnut',
+    data: { labels:['Potentially Hazardous','Non-Hazardous'],
+      datasets:[{ data:[phaCount, data.length-phaCount],
+        backgroundColor:['rgba(255,34,68,.65)','rgba(0,212,255,.25)'],
+        borderColor:['#ff2244','#00d4ff'], borderWidth:2, hoverOffset:6 }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:'65%',
+      plugins: {
+        legend: { display:true, position:'bottom', labels:{ color:'#8899aa', font:{family:'IBM Plex Mono',size:11}, padding:14 } },
+        tooltip: { backgroundColor:'rgba(8,18,36,.95)', borderColor:'rgba(0,212,255,.25)', borderWidth:1, titleColor:'#8899aa', bodyColor:'#e2e8f0', padding:10 }
+      }
+    }
+  });
+
+  // Size comparison
+  const smol = data.reduce((a,b)=>a.diam_avg<b.diam_avg?a:b);
+  const huge = data.reduce((a,b)=>a.diam_avg>b.diam_avg?a:b);
+  const refs = [
+    { name:'Car',          km: 0.004,  neo: false },
+    { name:'School Bus',   km: 0.012,  neo: false },
+    { name:'Boeing 747',   km: 0.071,  neo: false },
+    { name:'Football Field', km:0.105, neo: false },
+    { name:'Eiffel Tower', km: 0.324,  neo: false },
+    { name:'Empire State', km: 0.443,  neo: false },
+    { name:'Smallest NEO\n'+smol.name.substring(0,12), km: smol.diam_avg, neo:true },
+    { name:'Largest NEO\n'+huge.name.substring(0,12),  km: huge.diam_avg, neo:true },
+  ].sort((a,b)=>a.km-b.km);
+
+  const maxKm  = refs[refs.length-1].km;
+  const maxH   = 150;
+  const scEl   = document.getElementById('size-compare');
+  scEl.innerHTML = refs.map(r => {
+    const h   = Math.max(3, (r.km/maxKm)*maxH);
+    const col = r.neo ? '#7c3aed' : '#00d4ff';
+    const sizeStr = r.km >= 1 ? `${fmt(r.km,2)} km` : `${fmt(r.km*1000,0)} m`;
+    return `
+      <div class="size-item">
+        <div class="size-bar-wrap">
+          <div class="size-bar" style="height:${h}px;background:${col}33;border:1px solid ${col}55;"></div>
+        </div>
+        <div class="size-lbl" style="color:${r.neo?'#a78bfa':'#3d4e63'}">${r.name}</div>
+        <div class="size-val" style="color:${r.neo?'#7c3aed':'#3d4e63'}">${sizeStr}</div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER: SENTRY
+// ═══════════════════════════════════════════════════════════════
+function renderSentry() {
+  const el = document.getElementById('sentry-content');
+  if (!S.sentry.length) { el.innerHTML = '<div class="error-box">Sentry data unavailable.</div>'; return; }
+
+  const sorted = [...S.sentry].sort((a,b) => parseFloat(b.ps_max||b.ps_cum||'-99') - parseFloat(a.ps_max||a.ps_cum||'-99'));
+
+  el.innerHTML = `
+    <div class="sentry-hero">
+      <div class="sentry-hero-left">
+        <span style="font-size:2rem">🛡️</span>
+        <div>
+          <div class="sentry-count">${S.sentryCount.toLocaleString()}</div>
+          <div class="sentry-count-lbl">Objects Under Impact Monitoring</div>
+        </div>
+      </div>
+      <div style="text-align:right;font-size:0.7rem;color:#3d4e63;line-height:1.9">
+        <div>Source: JPL Sentry System</div>
+        <div>Showing top ${Math.min(sorted.length,60)} by Palermo Scale</div>
+      </div>
+    </div>
+
+    <div class="glass-card" style="margin-bottom:1.5rem;font-size:.8rem;color:#64748b;line-height:1.75;">
+      The <b style="color:#94a3b8">Sentry System</b> continuously scans the future orbital scenarios for all
+      known near-Earth asteroids. The <b style="color:#94a3b8">Palermo Scale</b> quantifies impact risk relative
+      to background hazard — values ≥ 0 warrant serious attention. The <b style="color:#94a3b8">Torino Scale</b>
+      (0–10) communicates risk to the public. Objects shown have non-zero computed impact probability.
+    </div>
+
+    <div class="section-title">Impact Risk Ranking</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Designation</th>
+          <th>Impact Window</th>
+          <th>Probability</th>
+          <th>Palermo Scale</th>
+          <th>Torino</th>
+          <th>Energy (MT)</th>
+          <th>Diameter</th>
+          <th>H Mag</th>
+        </tr></thead>
+        <tbody>${sorted.slice(0,60).map(sentryRow).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+function sentryRow(d) {
+  const ps   = parseFloat(d.ps_max || d.ps_cum || '-99');
+  const ts   = parseInt(d.ts || 0);
+  const ip   = parseFloat(d.ip || 0);
+  const prob = ip < 0.001 ? ip.toExponential(2) : (ip*100).toFixed(4)+'%';
+  const diam = d.diameter ? `${fmt(parseFloat(d.diameter)*1000,0)} m`
+                           : (d.h ? `~${fmt(hToDiam(parseFloat(d.h))*1000,0)} m` : '—');
+  const energy = d.energy ? fmtCompact(parseFloat(d.energy)) : '—';
+  const tsColor = ts===0 ? '#3d4e63' : ts<=3 ? '#ffaa00' : '#ff4466';
+  return `
+    <tr>
+      <td class="name-col">${d.name || d.des}</td>
+      <td>${d.range || '—'}</td>
+      <td>${prob}</td>
+      <td><span class="${psClass(ps)}" style="font-weight:600">${isNaN(ps)?'—':fmt(ps,2)}</span></td>
+      <td style="color:${tsColor};font-weight:600">${ts}</td>
+      <td>${energy}</td>
+      <td>${diam}</td>
+      <td>${d.h ? fmt(parseFloat(d.h),1) : '—'}</td>
+    </tr>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER: 3D GLOBE
+// ═══════════════════════════════════════════════════════════════
+function renderGlobe() {
+  S.globeBuilt = true;
+  const el = document.getElementById('globe-content');
+  el.innerHTML = `
+    <div class="section-title">Earth Close Approach Visualization</div>
+    <p style="color:#3d4e63;font-size:.77rem;margin-bottom:1.25rem;">
+      Asteroids positioned at log-compressed altitude proportional to miss distance. Moon shown at 1 LD for reference.
+      Click any object for details. Drag to rotate · Scroll to zoom.
+    </p>
+    <div class="globe-layout">
+      <div id="globe-container">
+        <div class="loading-box" id="globe-loading"><div class="spinner"></div><div class="loading-txt">LOADING GLOBE...</div></div>
+      </div>
+      <div class="globe-side">
+        <div class="glass-card">
+          <div style="font-size:.65rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#3d4e63;margin-bottom:.9rem;">Distance Legend</div>
+          <div class="legend-row"><div class="legend-pip" style="background:#ff2244"></div>Critical — &lt;1 LD</div>
+          <div class="legend-row"><div class="legend-pip" style="background:#ff6600"></div>High — 1–5 LD</div>
+          <div class="legend-row"><div class="legend-pip" style="background:#ffaa00"></div>Moderate — 5–20 LD</div>
+          <div class="legend-row"><div class="legend-pip" style="background:#00cc66"></div>Low — &gt;20 LD</div>
+          <div class="legend-row"><div class="legend-pip" style="background:#c0c0c0"></div>🌙 Moon (1 LD ref.)</div>
+          <hr style="border-color:rgba(0,212,255,.08);margin:.9rem 0">
+          <div style="font-size:.68rem;color:#3d4e63;line-height:1.7">
+            1 LD ≈ 384,400 km<br>
+            Altitude is logarithmically scaled<br>
+            for visibility. Size ≈ diameter.
+          </div>
+        </div>
+        <div class="glass-card" id="asteroid-detail">
+          <div class="detail-title" id="detail-name">—</div>
+          <div id="detail-rows"></div>
+        </div>
+      </div>
+    </div>`;
+
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/globe.gl@2.30.0/dist/globe.gl.min.js';
+  script.onload = initGlobe;
+  script.onerror = () => {
+    const c = document.getElementById('globe-container');
+    c.innerHTML = '<div class="error-box" style="margin:2rem">⚠️ Could not load globe.gl — check internet connection.</div>';
+  };
+  document.head.appendChild(script);
+}
+
+function ldToAlt(ld) {
+  return Math.log(ld + 1) / Math.log(52) * 3.2;
+}
+
+function initGlobe() {
+  const container = document.getElementById('globe-container');
+  if (!container || !window.Globe) return;
+  document.getElementById('globe-loading')?.remove();
+
+  const data = S.neos;
+  const points = [];
+
+  // Moon reference
+  points.push({ name:'Moon', lat:23, lng:0, dist_ld:1, altitude:ldToAlt(1), color:'#c8c8c8', radius:.35, isMoon:true });
+
+  // Asteroids — spread using golden-angle distribution
+  data.forEach((d,i) => {
+    const t   = threatOf(d.dist_ld);
+    const lat = Math.asin(-1 + 2*i/data.length) * 180/Math.PI;
+    const lng = ((i * 137.508) % 360) - 180;
+    points.push({
+      name:         d.name,
+      lat, lng,
+      date:         d.date,
+      dist_ld:      d.dist_ld,
+      dist_km:      d.dist_km,
+      vel_kph:      d.vel_kph,
+      diam_avg:     d.diam_avg,
+      is_hazardous: d.is_hazardous,
+      altitude:     ldToAlt(d.dist_ld),
+      color:        t.color,
+      radius:       Math.max(.12, Math.min(.45, d.diam_avg*.25+.12)),
+      isMoon:       false,
+    });
+  });
+
+  const globe = Globe()(container)
+    .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
+    .bumpImageUrl('https://unpkg.com/three-globe/example/img/earth-topology.png')
+    .backgroundColor('rgba(0,0,0,0)')
+    .showAtmosphere(true)
+    .atmosphereColor('#00d4ff')
+    .atmosphereAltitude(0.13)
+    .pointsData(points)
+    .pointLat(d => d.lat)
+    .pointLng(d => d.lng)
+    .pointColor(d => d.color)
+    .pointAltitude(d => d.altitude)
+    .pointRadius(d => d.radius)
+    .pointLabel(d => `
+      <div style="background:rgba(6,14,30,.97);border:1px solid rgba(0,212,255,.3);border-radius:8px;padding:8px 12px;font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2e8f0;pointer-events:none;min-width:160px;">
+        <div style="font-weight:600;color:#00d4ff;margin-bottom:5px">${d.name}</div>
+        ${d.isMoon
+          ? '<div style="color:#8899aa">Moon — 1.0 LD reference</div>'
+          : `<div style="color:#8899aa">Miss: <b style="color:#ffaa00">${fmt(d.dist_ld,3)} LD</b></div>
+             <div style="color:#8899aa">Speed: ${fmtCompact(d.vel_kph)} km/h</div>
+             <div style="color:#8899aa">${d.date}</div>`}
+      </div>`)
+    .onPointClick(d => {
+      const det  = document.getElementById('asteroid-detail');
+      const name = document.getElementById('detail-name');
+      const rows = document.getElementById('detail-rows');
+      det.classList.add('show');
+      name.textContent = d.name;
+      rows.innerHTML = d.isMoon
+        ? `<div class="detail-row"><span class="detail-key">Type</span><span class="detail-val">Reference body</span></div>
+           <div class="detail-row"><span class="detail-key">Distance</span><span class="detail-val">1.000 LD</span></div>
+           <div class="detail-row"><span class="detail-key">In km</span><span class="detail-val">384,400 km</span></div>`
+        : `<div class="detail-row"><span class="detail-key">Date</span><span class="detail-val">${d.date}</span></div>
+           <div class="detail-row"><span class="detail-key">Miss Dist</span><span class="detail-val">${fmt(d.dist_ld,4)} LD</span></div>
+           <div class="detail-row"><span class="detail-key">Distance</span><span class="detail-val">${fmtCompact(d.dist_km)} km</span></div>
+           <div class="detail-row"><span class="detail-key">Velocity</span><span class="detail-val">${fmtCompact(d.vel_kph)} km/h</span></div>
+           <div class="detail-row"><span class="detail-key">Diameter</span><span class="detail-val">~${fmt(d.diam_avg*1000,0)} m</span></div>
+           <div class="detail-row"><span class="detail-key">PHA</span><span class="detail-val" style="color:${d.is_hazardous?'#ff4466':'#00cc66'}">${d.is_hazardous?'YES':'NO'}</span></div>`;
+    });
+
+  globe.controls().autoRotate      = true;
+  globe.controls().autoRotateSpeed = 0.28;
+  globe.controls().enableZoom      = true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+async function init() {
+  initTabs();
+
+  const [neoR, sbdbR, sentryR] = await Promise.allSettled([
+    fetchNeoWs(),
+    fetchSBDB(),
+    fetchSentry(),
+  ]);
+
+  if (neoR.status === 'fulfilled' && neoR.value.length) {
+    S.neos = neoR.value;
+  } else {
+    console.warn('NeoWs:', neoR.reason || 'empty');
+    if (sbdbR.status === 'fulfilled') {
+      // Fall back to SBDB as the week's data
+      S.neos = sbdbR.value.filter(d => {
+        const d7 = new Date(); d7.setDate(d7.getDate()-7);
+        return d.date >= d7.toISOString().split('T')[0];
+      });
+    }
+  }
+
+  if (sbdbR.status === 'fulfilled') S.sbdb = sbdbR.value;
+
+  if (sentryR.status === 'fulfilled') {
+    S.sentry      = sentryR.value.data || [];
+    S.sentryCount = parseInt(sentryR.value.count || S.sentry.length);
+  } else {
+    console.warn('Sentry:', sentryR.reason);
+  }
+
+  renderOverview();
+}
+
+init();
+</script>
+</body>
+</html>
