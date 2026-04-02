@@ -4,34 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Drug Safety Explorer | FDA Data</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
-<!-- ─── HEADER ─────────────────────────────────────────────────────────────── -->
+<!-- HEADER -->
 <header class="site-header">
     <div class="container">
         <div class="header-inner">
             <div class="logo">
-                <span class="logo-icon">💊</span>
+                <svg class="logo-mark" width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">
+                    <rect width="34" height="34" rx="8" fill="rgba(255,255,255,0.12)"/>
+                    <rect x="14.5" y="7" width="5" height="20" rx="2.5" fill="white"/>
+                    <rect x="7" y="14.5" width="20" height="5" rx="2.5" fill="white"/>
+                </svg>
                 <div class="logo-text">
-                    <h1>Drug Safety Explorer</h1>
-                    <span>Powered by OpenFDA Public Data</span>
+                    <span class="logo-title">Drug Safety Explorer</span>
+                    <span class="logo-sub">Powered by OpenFDA Public Data</span>
                 </div>
             </div>
-            <div class="fda-badge">
-                <span>Data Source</span>
-                <strong>U.S. Food &amp; Drug Administration</strong>
+            <div class="header-right">
+                <span class="fda-label">Data Source</span>
+                <span class="fda-name">U.S. Food &amp; Drug Administration</span>
             </div>
         </div>
     </div>
 </header>
 
-<!-- ─── DRUG CLASS BAR (Stretch Goal 3) ───────────────────────────────────── -->
-<nav class="drug-class-bar">
+<!-- DRUG CLASS BAR -->
+<nav class="class-bar" aria-label="Drug class filter">
     <div class="container">
-        <span class="class-label">Explore by class:</span>
+        <span class="class-bar-label">Browse by class</span>
         <div class="class-buttons">
             <button class="class-btn" data-class="NSAIDs">NSAIDs</button>
             <button class="class-btn" data-class="Statins">Statins</button>
@@ -43,26 +50,32 @@
     </div>
 </nav>
 
-<!-- ─── SEARCH HERO ────────────────────────────────────────────────────────── -->
-<section class="search-hero">
+<!-- SEARCH -->
+<section class="search-section">
     <div class="container">
-        <p class="search-subtitle">Compare two drugs side-by-side using official FDA adverse event and recall data</p>
+        <p class="search-desc">Select two drugs to compare adverse event reports, recalls, and official label data from the FDA.</p>
         <div class="search-row">
-            <div class="drug-search-box">
-                <label class="search-label" for="drugInput1">Drug 1</label>
-                <div class="search-input-wrap">
+            <div class="search-field">
+                <label class="field-label" for="drugInput1">Drug A</label>
+                <div class="input-wrap">
                     <input type="text" id="drugInput1" class="drug-input" placeholder="e.g. Aspirin" list="drugList1" autocomplete="off">
                     <datalist id="drugList1"></datalist>
-                    <span class="search-icon">🔍</span>
+                    <svg class="input-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="7" cy="7" r="4.5" stroke="#9ca3af" stroke-width="1.5"/>
+                        <path d="M10.5 10.5L13 13" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
                 </div>
             </div>
-            <div class="vs-badge">VS</div>
-            <div class="drug-search-box">
-                <label class="search-label" for="drugInput2">Drug 2</label>
-                <div class="search-input-wrap">
+            <div class="vs-divider">vs</div>
+            <div class="search-field">
+                <label class="field-label" for="drugInput2">Drug B</label>
+                <div class="input-wrap">
                     <input type="text" id="drugInput2" class="drug-input" placeholder="e.g. Ibuprofen" list="drugList2" autocomplete="off">
                     <datalist id="drugList2"></datalist>
-                    <span class="search-icon">🔍</span>
+                    <svg class="input-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <circle cx="7" cy="7" r="4.5" stroke="#9ca3af" stroke-width="1.5"/>
+                        <path d="M10.5 10.5L13 13" stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
                 </div>
             </div>
             <button class="compare-btn" id="compareBtn">Compare</button>
@@ -70,139 +83,141 @@
     </div>
 </section>
 
-<!-- ─── MAIN ───────────────────────────────────────────────────────────────── -->
-<main class="container">
+<!-- MAIN -->
+<main class="container" id="mainContent">
 
-    <!-- Loading -->
     <div class="loading-state" id="loadingState">
         <div class="spinner"></div>
-        <p>Fetching FDA data…</p>
+        <p>Retrieving FDA data&hellip;</p>
     </div>
 
-    <!-- Drug name headers -->
     <div class="drug-headers hidden" id="drugHeaders">
-        <div class="drug-header drug-header--1">
-            <h2 id="drug1Name">Drug 1</h2>
-            <span class="drug-subtitle">Drug A</span>
+        <div class="drug-header drug-header--a">
+            <span class="drug-label-tag">Drug A</span>
+            <h2 id="drug1Name"></h2>
         </div>
-        <div class="drug-header drug-header--2">
-            <h2 id="drug2Name">Drug 2</h2>
-            <span class="drug-subtitle">Drug B</span>
+        <div class="drug-header drug-header--b">
+            <span class="drug-label-tag">Drug B</span>
+            <h2 id="drug2Name"></h2>
         </div>
     </div>
 
-    <!-- Stats row -->
-    <div class="stats-grid hidden" id="statsGrid">
+    <div class="stats-row hidden" id="statsGrid">
         <div class="stat-card">
-            <div class="stat-header">
-                <span class="stat-title">Adverse Events</span>
-                <button class="info-btn" data-tip="Total adverse event reports for Drug 1 in FDA's FAERS database. Higher numbers often reflect drug popularity, not necessarily greater danger.">ℹ</button>
+            <div class="stat-card-top">
+                <span class="stat-label">FAERS Reports &mdash; Drug A</span>
+                <button class="info-btn" data-tip="Total adverse event reports submitted to FDA's FAERS database for this drug. A higher count often reflects wider usage, not necessarily greater risk.">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="currentColor" stroke-width="1"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="5" cy="3" r=".5" fill="currentColor"/></svg>
+                </button>
             </div>
-            <div class="stat-value" id="d1Events">—</div>
-            <div class="stat-sub">reports filed</div>
+            <div class="stat-number" id="d1Events">—</div>
+            <div class="stat-unit">reports filed</div>
         </div>
         <div class="stat-card">
-            <div class="stat-header">
-                <span class="stat-title">Adverse Events</span>
-                <button class="info-btn" data-tip="Total adverse event reports for Drug 2 in FDA's FAERS database. Higher numbers often reflect drug popularity, not necessarily greater danger.">ℹ</button>
+            <div class="stat-card-top">
+                <span class="stat-label">FAERS Reports &mdash; Drug B</span>
+                <button class="info-btn" data-tip="Total adverse event reports submitted to FDA's FAERS database for this drug. A higher count often reflects wider usage, not necessarily greater risk.">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="currentColor" stroke-width="1"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="5" cy="3" r=".5" fill="currentColor"/></svg>
+                </button>
             </div>
-            <div class="stat-value" id="d2Events">—</div>
-            <div class="stat-sub">reports filed</div>
+            <div class="stat-number" id="d2Events">—</div>
+            <div class="stat-unit">reports filed</div>
         </div>
-        <div class="stat-card stat-card--warn">
-            <div class="stat-header">
-                <span class="stat-title">Recalls Found</span>
-                <button class="info-btn" data-tip="FDA enforcement actions (recalls) found for Drug 1. Class I = serious health risk. Class II = temporary risk. Class III = minor violation.">ℹ</button>
+        <div class="stat-card stat-card--accent">
+            <div class="stat-card-top">
+                <span class="stat-label">Recalls &mdash; Drug A</span>
+                <button class="info-btn" data-tip="Number of FDA enforcement actions found for this drug. Class I indicates a serious health risk. Class II may cause temporary adverse effects. Class III is unlikely to cause health consequences.">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="currentColor" stroke-width="1"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="5" cy="3" r=".5" fill="currentColor"/></svg>
+                </button>
             </div>
-            <div class="stat-value" id="d1Recalls">—</div>
-            <div class="stat-sub">enforcement actions</div>
+            <div class="stat-number" id="d1Recalls">—</div>
+            <div class="stat-unit">enforcement actions</div>
         </div>
-        <div class="stat-card stat-card--warn">
-            <div class="stat-header">
-                <span class="stat-title">Recalls Found</span>
-                <button class="info-btn" data-tip="FDA enforcement actions (recalls) found for Drug 2. Class I = serious health risk. Class II = temporary risk. Class III = minor violation.">ℹ</button>
+        <div class="stat-card stat-card--accent">
+            <div class="stat-card-top">
+                <span class="stat-label">Recalls &mdash; Drug B</span>
+                <button class="info-btn" data-tip="Number of FDA enforcement actions found for this drug. Class I indicates a serious health risk. Class II may cause temporary adverse effects. Class III is unlikely to cause health consequences.">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="currentColor" stroke-width="1"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="5" cy="3" r=".5" fill="currentColor"/></svg>
+                </button>
             </div>
-            <div class="stat-value" id="d2Recalls">—</div>
-            <div class="stat-sub">enforcement actions</div>
+            <div class="stat-number" id="d2Recalls">—</div>
+            <div class="stat-unit">enforcement actions</div>
         </div>
     </div>
 
-    <!-- Disclaimer -->
-    <div class="disclaimer hidden" id="disclaimer">
-        <span>⚠️</span>
-        <p><strong>Educational Use Only.</strong> FAERS reports are voluntarily submitted. A report linking a drug to an adverse event does <em>not</em> prove causation. This tool is not medical advice — always consult a healthcare professional.</p>
+    <div class="notice hidden" id="disclaimer">
+        <div class="notice-bar"></div>
+        <p><strong>Educational Use Only.</strong> FAERS reports are voluntarily submitted. A report associating a drug with an adverse event does not establish causation. This tool does not constitute medical advice. Consult a licensed healthcare professional before making any treatment decisions.</p>
     </div>
 
-    <!-- Tabs + Panels -->
-    <div class="card hidden" id="mainCard">
-        <div class="tabs">
-            <button class="tab-btn active" data-tab="overview">Overview</button>
-            <button class="tab-btn" data-tab="events">Adverse Events</button>
-            <button class="tab-btn" data-tab="recalls">Recalls</button>
-            <button class="tab-btn" data-tab="labels">Label &amp; Warnings</button>
+    <div class="panel-card hidden" id="mainCard">
+        <div class="tabs" role="tablist">
+            <button class="tab-btn active" data-tab="overview" role="tab" aria-selected="true">Overview</button>
+            <button class="tab-btn" data-tab="events" role="tab" aria-selected="false">Adverse Events</button>
+            <button class="tab-btn" data-tab="recalls" role="tab" aria-selected="false">Recalls</button>
+            <button class="tab-btn" data-tab="labels" role="tab" aria-selected="false">Label &amp; Warnings</button>
         </div>
 
-        <!-- Overview -->
-        <div class="tab-panel active" id="tab-overview">
+        <!-- Overview Tab -->
+        <div class="tab-panel active" id="tab-overview" role="tabpanel">
             <div class="two-col">
-                <div class="drug-panel" id="overviewPanel1">
-                    <div class="panel-loading">Loading…</div>
-                </div>
-                <div class="drug-panel" id="overviewPanel2">
-                    <div class="panel-loading">Loading…</div>
-                </div>
+                <div class="drug-col" id="overviewPanel1"><p class="col-loading">Loading&hellip;</p></div>
+                <div class="drug-col" id="overviewPanel2"><p class="col-loading">Loading&hellip;</p></div>
             </div>
         </div>
 
-        <!-- Adverse Events -->
-        <div class="tab-panel" id="tab-events">
-            <div class="tab-intro">
-                Top reported adverse reactions from FAERS
-                <button class="info-btn" data-tip="FAERS (FDA Adverse Event Reporting System) collects voluntary reports from patients and healthcare providers. These are signals — not proven drug side effects. A drug with more reports may simply be more widely used.">ℹ</button>
-            </div>
+        <!-- Adverse Events Tab -->
+        <div class="tab-panel" id="tab-events" role="tabpanel">
+            <p class="tab-desc">Top reported adverse reactions from FDA FAERS
+                <button class="info-btn" data-tip="The FDA Adverse Event Reporting System (FAERS) collects voluntary reports. These represent signals for further investigation, not confirmed causal relationships. Drugs with larger patient populations will naturally have more reports.">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="currentColor" stroke-width="1"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="5" cy="3" r=".5" fill="currentColor"/></svg>
+                </button>
+            </p>
             <div class="two-col">
-                <div class="drug-panel">
-                    <h3 class="panel-name" id="eventsName1">Drug 1</h3>
+                <div class="drug-col">
+                    <h3 class="col-title" id="eventsName1"></h3>
                     <div class="chart-wrap"><canvas id="chart1"></canvas></div>
                 </div>
-                <div class="drug-panel">
-                    <h3 class="panel-name" id="eventsName2">Drug 2</h3>
+                <div class="drug-col">
+                    <h3 class="col-title" id="eventsName2"></h3>
                     <div class="chart-wrap"><canvas id="chart2"></canvas></div>
                 </div>
             </div>
         </div>
 
-        <!-- Recalls -->
-        <div class="tab-panel" id="tab-recalls">
-            <div class="tab-intro">
-                FDA enforcement actions and product recalls
-                <button class="info-btn" data-tip="Class I: Serious adverse health consequences or death possible. Class II: May cause temporary adverse health consequences. Class III: Unlikely to cause adverse health consequences but violates FDA regulations.">ℹ</button>
-            </div>
+        <!-- Recalls Tab -->
+        <div class="tab-panel" id="tab-recalls" role="tabpanel">
+            <p class="tab-desc">FDA enforcement actions and product recalls
+                <button class="info-btn" data-tip="Class I: Serious adverse health consequences or death are possible. Class II: May cause temporary adverse health consequences. Class III: Unlikely to cause health consequences but violates FDA regulations.">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="currentColor" stroke-width="1"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="5" cy="3" r=".5" fill="currentColor"/></svg>
+                </button>
+            </p>
             <div class="two-col">
-                <div class="drug-panel">
-                    <h3 class="panel-name" id="recallsName1">Drug 1</h3>
+                <div class="drug-col">
+                    <h3 class="col-title" id="recallsName1"></h3>
                     <div id="recallsList1"></div>
                 </div>
-                <div class="drug-panel">
-                    <h3 class="panel-name" id="recallsName2">Drug 2</h3>
+                <div class="drug-col">
+                    <h3 class="col-title" id="recallsName2"></h3>
                     <div id="recallsList2"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Labels -->
-        <div class="tab-panel" id="tab-labels">
-            <div class="tab-intro">
-                FDA-approved drug labeling
-                <button class="info-btn" data-tip="Drug labels are FDA-approved documents containing all official prescribing information, including boxed warnings (the most serious), contraindications, and known adverse reactions.">ℹ</button>
-            </div>
+        <!-- Label Tab -->
+        <div class="tab-panel" id="tab-labels" role="tabpanel">
+            <p class="tab-desc">FDA-approved drug labeling information
+                <button class="info-btn" data-tip="Drug labels are FDA-approved documents containing all official prescribing information including warnings, contraindications, and known adverse reactions.">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="currentColor" stroke-width="1"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="5" cy="3" r=".5" fill="currentColor"/></svg>
+                </button>
+            </p>
             <div class="two-col">
-                <div class="drug-panel">
-                    <h3 class="panel-name" id="labelsName1">Drug 1</h3>
+                <div class="drug-col">
+                    <h3 class="col-title" id="labelsName1"></h3>
                     <div id="labelContent1"></div>
                 </div>
-                <div class="drug-panel">
-                    <h3 class="panel-name" id="labelsName2">Drug 2</h3>
+                <div class="drug-col">
+                    <h3 class="col-title" id="labelsName2"></h3>
                     <div id="labelContent2"></div>
                 </div>
             </div>
@@ -211,40 +226,42 @@
 
 </main>
 
-<!-- ─── FOOTER ─────────────────────────────────────────────────────────────── -->
+<!-- FOOTER -->
 <footer class="site-footer">
     <div class="container">
-        <div class="footer-grid">
+        <div class="footer-cols">
             <div>
-                <strong>Data Attribution:</strong> This application uses publicly available data from the U.S. Food and Drug Administration's OpenFDA API (<a href="https://open.fda.gov" target="_blank" rel="noopener">open.fda.gov</a>). The FDA does not endorse this application.
+                <strong>Data Attribution</strong>
+                <p>This application uses publicly available data from the U.S. Food and Drug Administration's OpenFDA API (<a href="https://open.fda.gov" target="_blank" rel="noopener">open.fda.gov</a>). The FDA does not endorse this application.</p>
             </div>
             <div>
-                <strong>Disclaimer:</strong> For educational purposes only. Data may be incomplete or delayed. Always consult a qualified healthcare professional before making medical decisions.
+                <strong>Disclaimer</strong>
+                <p>For educational purposes only. Data may be incomplete or subject to reporting delays. This tool does not constitute medical advice.</p>
             </div>
         </div>
     </div>
 </footer>
 
-<!-- ─── DRUG CLASS MODAL (Stretch Goal 3) ─────────────────────────────────── -->
-<div class="modal-backdrop" id="classModal">
+<!-- DRUG CLASS MODAL -->
+<div class="modal-overlay" id="classModal" role="dialog" aria-modal="true">
     <div class="modal">
-        <div class="modal-header">
+        <div class="modal-head">
             <div>
-                <h2 class="modal-title" id="modalTitle">NSAIDs</h2>
-                <p class="modal-subtitle" id="modalSubtitle">Select two drugs to compare</p>
+                <h2 class="modal-title" id="modalTitle"></h2>
+                <p class="modal-sub" id="modalSubtitle"></p>
             </div>
-            <button class="modal-close" id="modalClose">✕</button>
+            <button class="modal-close-btn" id="modalClose" aria-label="Close">&times;</button>
         </div>
-        <div class="class-drug-grid" id="classDrugGrid"></div>
-        <div class="modal-actions">
-            <button class="btn-secondary" id="modalCancel">Cancel</button>
-            <button class="btn-primary" id="modalCompare" disabled>Compare Selected</button>
+        <div class="drug-grid" id="classDrugGrid"></div>
+        <div class="modal-foot">
+            <button class="btn-outline" id="modalCancel">Cancel</button>
+            <button class="btn-solid" id="modalCompare" disabled>Compare Selected</button>
         </div>
     </div>
 </div>
 
-<!-- ─── TOOLTIP ────────────────────────────────────────────────────────────── -->
-<div class="tooltip" id="tooltip"></div>
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip" role="tooltip"></div>
 
 <script src="js/main.js"></script>
 </body>

@@ -113,30 +113,30 @@ function renderOverview(panelId, drugName, d) {
     const maxCount = top5[0]?.count || 1;
 
     panel.innerHTML = `
-        <h3 class="panel-name">${drugName}</h3>
-        <div class="ov-stat-row">
-            <span class="ov-stat-label">Total Event Reports</span>
-            <span class="ov-stat-val" style="color:var(--blue)">${fmt(eventCount)}</span>
+        <h3 class="col-title">${drugName}</h3>
+        <div class="ov-row">
+            <span class="ov-key">Total Event Reports</span>
+            <span class="ov-val" style="color:var(--blue)">${fmt(eventCount)}</span>
         </div>
-        <div class="ov-stat-row">
-            <span class="ov-stat-label">Recalls Found</span>
-            <span class="ov-stat-val" style="color:${recalls.length > 0 ? 'var(--orange)' : 'var(--green)'}">${recalls.length}</span>
+        <div class="ov-row">
+            <span class="ov-key">Recalls Found</span>
+            <span class="ov-val" style="color:${recalls.length > 0 ? 'var(--amber)' : 'var(--green)'}">${recalls.length}</span>
         </div>
         ${classI > 0 ? `
-        <div class="ov-stat-row">
-            <span class="ov-stat-label">Class I (Serious) Recalls</span>
-            <span class="ov-stat-val" style="color:var(--red)">${classI}</span>
+        <div class="ov-row">
+            <span class="ov-key">Class I (Serious) Recalls</span>
+            <span class="ov-val" style="color:var(--red)">${classI}</span>
         </div>` : ''}
         ${top5.length ? `
-        <div class="mini-bar-section">
-            <div class="mini-bar-title">Top Reported Reactions</div>
+        <div class="ov-mini-section">
+            <div class="ov-mini-title">Top Reported Reactions</div>
             ${top5.map(r => `
-                <div class="mini-bar-row">
-                    <span class="mini-bar-name" title="${r.term}">${r.term.toLowerCase()}</span>
-                    <div class="mini-bar-track">
-                        <div class="mini-bar-fill" style="width:${Math.max(3,(r.count/maxCount)*100)}%"></div>
+                <div class="mini-row">
+                    <span class="mini-name" title="${r.term}">${r.term.toLowerCase()}</span>
+                    <div class="mini-track">
+                        <div class="mini-fill" style="width:${Math.max(3,(r.count/maxCount)*100)}%"></div>
                     </div>
-                    <span class="mini-bar-count">${fmt(r.count)}</span>
+                    <span class="mini-count">${fmt(r.count)}</span>
                 </div>
             `).join('')}
         </div>` : ''}
@@ -151,7 +151,7 @@ function renderChart(canvasId, reactions) {
     if (charts[canvasId]) { charts[canvasId].destroy(); delete charts[canvasId]; }
 
     if (!reactions?.length) {
-        canvas.parentElement.innerHTML = '<div class="no-data"><span class="no-data-icon">📊</span>No reaction data found for this drug.</div>';
+        canvas.parentElement.innerHTML = '<div class="no-data">No adverse reaction data found for this drug.</div>';
         return;
     }
 
@@ -195,45 +195,47 @@ function renderRecalls(listId, nameId, drugName, recalls) {
     $(nameId).textContent = drugName;
     const el = $(listId);
     if (!recalls?.length) {
-        el.innerHTML = '<div class="no-data"><span class="no-data-icon">✅</span>No recalls found for this drug.</div>';
+        el.innerHTML = '<div class="no-data">No enforcement actions found for this drug.</div>';
         return;
     }
     el.innerHTML = recalls.map(r => {
-        const badgeCls = recallBadgeClass(r.classification);
+        const sevKey = recallBadgeClass(r.classification).replace('badge-', 'sev-');
         const isOngoing = /ongoing/i.test(r.status || '');
         return `
-        <div class="recall-card">
-            <div class="recall-card-top">
-                <span class="recall-badge ${badgeCls}">${r.classification || 'Unknown'}</span>
+        <div class="recall-item ${sevKey}">
+            <div class="recall-top">
+                <span class="sev-badge ${sevKey}">${r.classification || 'Unclassified'}</span>
                 <span class="recall-date">${formatRecallDate(r.recall_initiation_date)}</span>
             </div>
             <div class="recall-product">${truncate(r.product_description || r.brand_name || 'Unknown product', 100)}</div>
             <div class="recall-reason">${truncate(r.reason_for_recall || 'Reason not specified', 220)}</div>
-            <span class="recall-status-pill ${isOngoing ? 'pill-ongoing' : 'pill-completed'}">${r.status || 'Unknown status'}</span>
+            <span class="status-pill ${isOngoing ? 'pill-ongoing' : 'pill-done'}">${r.status || 'Unknown status'}</span>
         </div>`;
     }).join('');
 }
 
 /* ─── Render: Label (Stretch Goal 1 — contextual help on every section) ─── */
+const INFO_SVG = `<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" stroke="currentColor" stroke-width="1"/><path d="M5 4.5v3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/><circle cx="5" cy="3" r=".5" fill="currentColor"/></svg>`;
+
 function renderLabel(contentId, nameId, drugName, label) {
     $(nameId).textContent = drugName;
     const el = $(contentId);
     if (!label) {
-        el.innerHTML = '<div class="no-data"><span class="no-data-icon">📋</span>No label data found.</div>';
+        el.innerHTML = '<div class="no-data">No label data found for this drug.</div>';
         return;
     }
 
     const sections = [
-        { key: 'boxed_warning',        title: 'Boxed Warning',          icon: '⛔', boxed: true,
-          tip: 'Boxed warnings (also called "black box warnings") are the FDA\'s strongest warning. They indicate serious or life-threatening risks.' },
-        { key: 'warnings',             title: 'Warnings',               icon: '⚠️',
-          tip: 'Serious adverse reactions or potential safety hazards that do not meet the threshold for a boxed warning.' },
-        { key: 'indications_and_usage',title: 'Indications & Usage',    icon: '💊',
-          tip: 'The diseases or conditions for which the drug has been officially approved by the FDA.' },
-        { key: 'contraindications',    title: 'Contraindications',      icon: '🚫',
-          tip: 'Situations in which the drug should NOT be used because the risk clearly outweighs any benefit.' },
-        { key: 'adverse_reactions',    title: 'Adverse Reactions',      icon: '📋',
-          tip: 'Known adverse reactions from clinical trials and post-marketing surveillance included in the official label.' },
+        { key: 'boxed_warning',         title: 'Boxed Warning',        boxed: true,
+          tip: 'Boxed warnings ("black box warnings") are the FDA\'s strongest safety warning. They highlight serious or life-threatening risks established through clinical evidence.' },
+        { key: 'warnings',              title: 'Warnings',
+          tip: 'Serious adverse reactions or potential safety hazards that do not meet the threshold for a boxed warning but require heightened attention.' },
+        { key: 'indications_and_usage', title: 'Indications & Usage',
+          tip: 'The diseases or conditions for which the FDA has officially approved this drug.' },
+        { key: 'contraindications',     title: 'Contraindications',
+          tip: 'Situations in which the drug must not be used because the risk clearly and substantially outweighs any benefit.' },
+        { key: 'adverse_reactions',     title: 'Adverse Reactions',
+          tip: 'Adverse reactions identified in clinical trials and post-marketing surveillance that are included in the official FDA-approved label.' },
     ];
 
     const html = sections.map(s => {
@@ -241,22 +243,22 @@ function renderLabel(contentId, nameId, drugName, label) {
         if (!content) return '';
         const text = truncate(content, 500);
         if (s.boxed) return `
-            <div class="boxed-warning-block">
-                <div class="boxed-warning-title">⛔ Boxed Warning
-                    <button class="info-btn" data-tip="${s.tip}" style="margin-left:6px">ℹ</button>
+            <div class="boxed-warn">
+                <div class="boxed-warn-title">Boxed Warning
+                    <button class="info-btn" data-tip="${s.tip}">${INFO_SVG}</button>
                 </div>
                 ${text}
             </div>`;
         return `
             <div class="label-block">
-                <div class="label-block-title">${s.icon} ${s.title}
-                    <button class="info-btn" data-tip="${s.tip}" style="margin-left:4px">ℹ</button>
+                <div class="label-block-title">${s.title}
+                    <button class="info-btn" data-tip="${s.tip}">${INFO_SVG}</button>
                 </div>
                 <div class="label-block-body">${text}</div>
             </div>`;
     }).filter(Boolean).join('');
 
-    el.innerHTML = html || '<div class="no-data"><span class="no-data-icon">📋</span>Limited label data available.</div>';
+    el.innerHTML = html || '<div class="no-data">Limited label data available for this drug.</div>';
 }
 
 /* ─── Main Compare Flow ──────────────────────────────────────────────────── */
@@ -374,11 +376,11 @@ document.querySelectorAll('.class-btn').forEach(btn => {
         $('modalTitle').textContent    = cls;
         $('modalSubtitle').textContent = `Select any two ${cls} to compare`;
         $('classDrugGrid').innerHTML   = drugs.map(d =>
-            `<div class="class-drug-item" data-drug="${d}">${d}</div>`
+            `<button class="drug-grid-item" data-drug="${d}">${d}</button>`
         ).join('');
         $('modalCompare').disabled = true;
 
-        $('classDrugGrid').querySelectorAll('.class-drug-item').forEach(item => {
+        $('classDrugGrid').querySelectorAll('.drug-grid-item').forEach(item => {
             item.addEventListener('click', () => {
                 const drug = item.dataset.drug;
                 if (item.classList.contains('selected')) {
