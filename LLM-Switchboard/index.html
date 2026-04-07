@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LLM Switchboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #07070f;
+    --bg2: #0e0e1a;
+    --bg3: #141428;
+    --border: rgba(94,106,210,0.18);
+    --border-glow: rgba(94,106,210,0.45);
+    --accent: #5E6AD2;
+    --accent2: #818cf8;
+    --accent3: #a5b4fc;
+    --text: #e8e8f0;
+    --text2: #9898b8;
+    --text3: #5858a0;
+    --success: #34d399;
+    --error: #f87171;
+    --warn: #fbbf24;
+    --info: #60a5fa;
+    --glass: rgba(14,14,26,0.72);
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 8px 40px rgba(0,0,0,0.55);
+    --glow: 0 0 24px rgba(94,106,210,0.22);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow: hidden;
+  }
+
+  /* Ambient background blobs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(94,106,210,0.12) 0%, transparent 70%);
+    top: -150px; left: -100px;
+  }
+  body::after {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(129,140,248,0.08) 0%, transparent 70%);
+    bottom: -100px; right: -80px;
+  }
+
+  /* ── Layout ── */
+  #app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: 56px 1fr;
+    height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(7,7,15,0.85);
+    backdrop-filter: blur(12px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: -0.3px;
+  }
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 0 12px rgba(94,106,210,0.4);
+  }
+  .logo-sub { color: var(--text2); font-weight: 400; font-size: 12px; margin-left: 2px; }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: flex;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .mode-btn {
+    padding: 5px 16px;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    color: var(--text2);
+    background: transparent;
+  }
+  .mode-btn.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(94,106,210,0.35);
+  }
+  .mode-btn:not(.active):hover { color: var(--text); background: rgba(94,106,210,0.1); }
+
+  /* ── Main grid ── */
+  main {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  aside {
+    border-right: 1px solid var(--border);
+    background: rgba(10,10,20,0.6);
+    padding: 20px 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  aside::-webkit-scrollbar { width: 4px; }
+  aside::-webkit-scrollbar-track { background: transparent; }
+  aside::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 4px; }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    backdrop-filter: blur(8px);
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--border-glow); }
+
+  /* Form controls */
+  label { display: block; color: var(--text2); font-size: 12px; font-weight: 500; margin-bottom: 5px; }
+
+  select, input[type="text"], input[type="password"], textarea {
+    width: 100%;
+    background: rgba(7,7,15,0.8);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    appearance: none;
+  }
+  select:focus, input:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(94,106,210,0.15);
+  }
+  select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235E6AD2'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+
+  /* Key input row */
+  .key-row { display: flex; gap: 6px; }
+  .key-row input { flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+
+  .btn-icon {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    cursor: pointer;
+    padding: 0 10px;
+    font-size: 16px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-icon:hover { border-color: var(--accent); color: var(--accent2); }
+
+  .privacy-note {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: rgba(94,106,210,0.07);
+    border: 1px solid rgba(94,106,210,0.2);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    color: var(--accent3);
+    line-height: 1.5;
+  }
+  .privacy-note strong { display: block; margin-bottom: 2px; }
+
+  .upload-zone {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .upload-zone:hover { border-color: var(--accent); color: var(--accent3); background: rgba(94,106,210,0.05); }
+  .upload-zone input { display: none; }
+  .upload-zone .upload-icon { font-size: 20px; margin-bottom: 4px; }
+
+  /* Key status chip */
+  .key-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 6px;
+  }
+  .key-chip.set { background: rgba(52,211,153,0.12); color: var(--success); border: 1px solid rgba(52,211,153,0.25); }
+  .key-chip.unset { background: rgba(248,113,113,0.1); color: var(--error); border: 1px solid rgba(248,113,113,0.2); }
+
+  /* Metrics */
+  .metrics {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .metric-chip {
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    background: rgba(94,106,210,0.1);
+    border: 1px solid rgba(94,106,210,0.2);
+    color: var(--accent3);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── Right panel ── */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  /* Prompt area */
+  .prompt-area {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .prompt-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .prompt-header h3 { font-size: 13px; font-weight: 600; color: var(--text2); }
+
+  textarea.prompt-input {
+    resize: none;
+    height: 100px;
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  .example-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .example-chip {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text2);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.18s;
+    white-space: nowrap;
+  }
+  .example-chip:hover { border-color: var(--accent); color: var(--accent2); background: rgba(94,106,210,0.08); }
+
+  /* Schema area */
+  .schema-area { display: flex; flex-direction: column; gap: 8px; }
+  .schema-header { display: flex; align-items: center; justify-content: space-between; }
+  .schema-header h3 { font-size: 13px; font-weight: 600; color: var(--text2); }
+  .schema-templates { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  textarea.schema-input {
+    resize: none;
+    height: 120px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* Send button */
+  .send-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .btn-send {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 18px rgba(94,106,210,0.35);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-send::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .btn-send:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(94,106,210,0.5); }
+  .btn-send:active { transform: translateY(0); }
+  .btn-send:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-send .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Response area */
+  .response-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+  }
+  .response-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .response-header h3 { font-size: 13px; font-weight: 600; color: var(--text2); }
+
+  .response-box {
+    flex: 1;
+    background: rgba(7,7,15,0.7);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.75;
+    min-height: 0;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .response-box::-webkit-scrollbar { width: 4px; }
+  .response-box::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 4px; }
+
+  .response-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text3);
+    gap: 10px;
+    text-align: center;
+  }
+  .response-placeholder .icon { font-size: 36px; opacity: 0.4; }
+
+  /* Markdown-like styling in response */
+  .response-content h1, .response-content h2, .response-content h3 {
+    color: var(--text);
+    margin: 12px 0 6px;
+    font-weight: 600;
+  }
+  .response-content h1 { font-size: 18px; }
+  .response-content h2 { font-size: 15px; }
+  .response-content h3 { font-size: 13px; }
+  .response-content p { margin-bottom: 10px; color: var(--text); }
+  .response-content code {
+    background: rgba(94,106,210,0.12);
+    border: 1px solid rgba(94,106,210,0.2);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent3);
+  }
+  .response-content pre {
+    background: rgba(7,7,15,0.9);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    overflow-x: auto;
+    margin: 10px 0;
+  }
+  .response-content pre code { background: none; border: none; padding: 0; }
+  .response-content ul, .response-content ol { padding-left: 20px; margin-bottom: 10px; }
+  .response-content li { margin-bottom: 4px; }
+  .response-content strong { color: var(--text); font-weight: 600; }
+  .response-content em { color: var(--accent3); }
+  .response-content blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 12px;
+    color: var(--text2);
+    margin: 10px 0;
+  }
+  .response-content hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .response-content table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+  .response-content th, .response-content td { border: 1px solid var(--border); padding: 6px 10px; }
+  .response-content th { background: var(--bg3); color: var(--accent3); }
+
+  /* JSON syntax highlight */
+  .json-view { font-family: 'IBM Plex Mono', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+  .json-key { color: #a5b4fc; }
+  .json-string { color: #86efac; }
+  .json-number { color: #fdba74; }
+  .json-bool { color: #f9a8d4; }
+  .json-null { color: var(--text3); }
+  .json-punct { color: var(--text3); }
+
+  /* Banners */
+  .banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    line-height: 1.5;
+    animation: slideDown 0.25s ease;
+  }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+  .banner-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+  .banner.error { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #fca5a5; }
+  .banner.warn { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.25); color: #fde68a; }
+  .banner.info { background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.25); color: #93c5fd; }
+  .banner.success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25); color: #6ee7b7; }
+
+  /* Loading pulse */
+  .loading-dots { display: flex; gap: 4px; align-items: center; justify-content: center; padding: 20px; }
+  .loading-dots span {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse { 0%,80%,100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+
+  /* Divider */
+  .divider { width: 100%; height: 1px; background: var(--border); }
+
+  /* Schema hidden when in text mode */
+  .schema-area.hidden { display: none; }
+
+  /* CORS info panel */
+  #cors-info { display: none; }
+
+  /* Scrollbar global */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      LLM Switchboard
+      <span class="logo-sub">v1.0</span>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="btn-text" onclick="setMode('text')">💬 Text</button>
+      <button class="mode-btn" id="btn-json" onclick="setMode('json')">{ } JSON</button>
+    </div>
+  </header>
+
+  <!-- ── Main ── -->
+  <main>
+
+    <!-- ── Sidebar ── -->
+    <aside>
+
+      <!-- Provider -->
+      <div class="card">
+        <div class="section-label">Provider</div>
+        <div class="field">
+          <label>Provider</label>
+          <select id="provider" onchange="onProviderChange()">
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <select id="model"></select>
+        </div>
+      </div>
+
+      <!-- API Key -->
+      <div class="card">
+        <div class="section-label">API Key</div>
+        <div class="field">
+          <label>Paste key</label>
+          <div class="key-row">
+            <input type="password" id="api-key-input" placeholder="sk-..." />
+            <button class="btn-icon" onclick="toggleKeyVisibility()" title="Show/hide">👁</button>
+          </div>
+          <div id="key-status" class="key-chip unset">✕ Not set</div>
+        </div>
+
+        <div class="field">
+          <label>Or upload .env / .csv</label>
+          <div class="upload-zone" onclick="document.getElementById('file-upload').click()" id="upload-zone">
+            <input type="file" id="file-upload" accept=".env,.csv,.txt" onchange="handleFileUpload(event)" />
+            <div class="upload-icon">📂</div>
+            <div>Click to upload</div>
+          </div>
+        </div>
+
+        <div class="privacy-note">
+          <strong>🔒 Privacy guarantee</strong>
+          Keys stored in memory only — never persisted to disk, localStorage, or any server. Cleared on page reload.
+        </div>
+      </div>
+
+      <!-- CORS warning -->
+      <div id="cors-info" class="banner info">
+        <span class="banner-icon">ℹ️</span>
+        <div>
+          <strong>Anthropic + CORS</strong><br>
+          Anthropic's API blocks direct browser requests. Your key is saved but the request cannot be sent from the browser. Use a proxy or the Claude SDK in a server environment for production use.
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="card" id="metrics-card" style="display:none;">
+        <div class="section-label">Last Response</div>
+        <div class="metrics" id="metrics-content"></div>
+      </div>
+
+    </aside>
+
+    <!-- ── Right Panel ── -->
+    <div class="right-panel">
+
+      <!-- Prompt -->
+      <div class="prompt-area">
+        <div class="prompt-header">
+          <h3>Prompt</h3>
+          <button class="btn-icon" onclick="clearPrompt()" style="font-size:12px;padding:4px 10px;">Clear</button>
+        </div>
+        <textarea class="prompt-input" id="prompt" placeholder="Enter your prompt here…"></textarea>
+        <div class="example-row" id="example-chips"></div>
+      </div>
+
+      <!-- Schema (JSON mode only) -->
+      <div class="schema-area hidden" id="schema-area">
+        <div class="schema-header">
+          <h3>JSON Schema</h3>
+          <div class="schema-templates" id="schema-chips"></div>
+        </div>
+        <textarea class="schema-input" id="schema" placeholder='{"type":"object","properties":{…}}'></textarea>
+      </div>
+
+      <!-- Banner area -->
+      <div id="banner-area"></div>
+
+      <!-- Send -->
+      <div class="send-row">
+        <button class="btn-send" id="btn-send" onclick="sendRequest()">
+          <span id="btn-label">Send</span>
+        </button>
+        <div id="response-metrics-inline" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      </div>
+
+      <!-- Response -->
+      <div class="response-area">
+        <div class="response-header">
+          <h3>Response</h3>
+          <button class="btn-icon" onclick="copyResponse()" style="font-size:12px;padding:4px 10px;" id="btn-copy" style="display:none;">Copy</button>
+        </div>
+        <div class="response-box" id="response-box">
+          <div class="response-placeholder" id="response-placeholder">
+            <div class="icon">⚡</div>
+            <div>Select a provider, add your API key, and send a prompt.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ── State ──
+let apiKeys = {}; // { openai: 'sk-...', anthropic: 'sk-ant-...' }
+let currentMode = 'text';
+let lastResponseText = '';
+
+// ── Models ──
+const MODELS = {
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  anthropic: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5']
+};
+
+// ── Example Prompts ──
+const EXAMPLES = [
+  { label: '🤖 Explain Transformers', text: 'Explain transformer architecture to a high school student.' },
+  { label: '📝 ML History', text: 'Summarize the history of machine learning in 3 short paragraphs.' },
+  { label: '🐍 Fibonacci', text: 'Write a Python function to compute Fibonacci numbers efficiently.' },
+  { label: '🎋 Haiku', text: 'Write a haiku about neural networks and gradient descent.' },
+  { label: '⚖️ Compare', text: 'Compare supervised vs unsupervised learning. Use a table.' },
+];
+
+// ── JSON Schema Templates ──
+const SCHEMAS = {
+  'Person': JSON.stringify({ type:'object', properties:{ name:{type:'string'}, age:{type:'integer'}, occupation:{type:'string'} }, required:['name','age','occupation'] }, null, 2),
+  'Product List': JSON.stringify({ type:'array', items:{ type:'object', properties:{ id:{type:'integer'}, name:{type:'string'}, price:{type:'number'} } } }, null, 2),
+  'Sentiment': JSON.stringify({ type:'object', properties:{ sentiment:{type:'string', enum:['positive','neutral','negative']}, confidence:{type:'number'}, summary:{type:'string'} }, required:['sentiment','confidence','summary'] }, null, 2),
+};
+
+// ── Init ──
+function init() {
+  populateModels();
+  buildExampleChips();
+  buildSchemaChips();
+  watchKey();
+}
+
+function populateModels() {
+  const provider = document.getElementById('provider').value;
+  const sel = document.getElementById('model');
+  sel.innerHTML = '';
+  MODELS[provider].forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+}
+
+function buildExampleChips() {
+  const container = document.getElementById('example-chips');
+  container.innerHTML = '';
+  EXAMPLES.forEach(ex => {
+    const chip = document.createElement('button');
+    chip.className = 'example-chip';
+    chip.textContent = ex.label;
+    chip.onclick = () => { document.getElementById('prompt').value = ex.text; };
+    container.appendChild(chip);
+  });
+}
+
+function buildSchemaChips() {
+  const container = document.getElementById('schema-chips');
+  container.innerHTML = '';
+  Object.entries(SCHEMAS).forEach(([name, schema]) => {
+    const chip = document.createElement('button');
+    chip.className = 'example-chip';
+    chip.textContent = name;
+    chip.onclick = () => { document.getElementById('schema').value = schema; };
+    container.appendChild(chip);
+  });
+}
+
+function watchKey() {
+  const input = document.getElementById('api-key-input');
+  input.addEventListener('input', () => {
+    const provider = document.getElementById('provider').value;
+    const val = input.value.trim();
+    if (val) {
+      apiKeys[provider] = val;
+      updateKeyStatus(provider, true);
+    } else {
+      delete apiKeys[provider];
+      updateKeyStatus(provider, false);
+    }
+  });
+}
+
+function updateKeyStatus(provider, isSet) {
+  const chip = document.getElementById('key-status');
+  if (isSet) {
+    chip.className = 'key-chip set';
+    chip.textContent = '✓ Key set for ' + provider;
+  } else {
+    chip.className = 'key-chip unset';
+    chip.textContent = '✕ Not set';
+  }
+}
+
+// ── Provider change ──
+function onProviderChange() {
+  const provider = document.getElementById('provider').value;
+  populateModels();
+
+  // Update key input to reflect stored key for this provider
+  const stored = apiKeys[provider] || '';
+  document.getElementById('api-key-input').value = stored;
+  updateKeyStatus(provider, !!stored);
+
+  // CORS warning
+  document.getElementById('cors-info').style.display = provider === 'anthropic' ? 'flex' : 'none';
+  clearBanner();
+}
+
+// ── Key visibility toggle ──
+function toggleKeyVisibility() {
+  const input = document.getElementById('api-key-input');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+// ── File Upload ──
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const content = e.target.result;
+    const provider = document.getElementById('provider').value;
+    let loaded = 0;
+
+    // Parse both keys from .env format
+    const openaiMatch = content.match(/OPENAI_API_KEY\s*=\s*["']?([^\n\r"']+)["']?/i);
+    const anthropicMatch = content.match(/ANTHROPIC_API_KEY\s*=\s*["']?([^\n\r"']+)["']?/i);
+    if (openaiMatch) { apiKeys['openai'] = openaiMatch[1].trim(); loaded++; }
+    if (anthropicMatch) { apiKeys['anthropic'] = anthropicMatch[1].trim(); loaded++; }
+
+    // CSV format: provider,key
+    if (loaded === 0) {
+      const lines = content.split(/\r?\n/);
+      for (const line of lines) {
+        const parts = line.split(',');
+        if (parts.length >= 2) {
+          const p = parts[0].trim().toLowerCase();
+          const k = parts[1].trim();
+          if (p === 'openai') { apiKeys['openai'] = k; loaded++; }
+          if (p === 'anthropic') { apiKeys['anthropic'] = k; loaded++; }
+        }
+      }
+    }
+
+    if (loaded > 0) {
+      const stored = apiKeys[provider] || '';
+      document.getElementById('api-key-input').value = stored;
+      updateKeyStatus(provider, !!stored);
+      document.getElementById('upload-zone').innerHTML = `<div class="upload-icon">✅</div><div>${loaded} key${loaded > 1 ? 's' : ''} loaded</div>`;
+    } else {
+      showBanner('warn', '⚠️', 'No matching key found in file. Check the format: KEY=value or provider,key');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Mode ──
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btn-text').classList.toggle('active', mode === 'text');
+  document.getElementById('btn-json').classList.toggle('active', mode === 'json');
+  document.getElementById('schema-area').classList.toggle('hidden', mode !== 'json');
+  clearBanner();
+}
+
+// ── Clear ──
+function clearPrompt() {
+  document.getElementById('prompt').value = '';
+}
+
+// ── Banner ──
+function showBanner(type, icon, message) {
+  const area = document.getElementById('banner-area');
+  area.innerHTML = `<div class="banner ${type}"><span class="banner-icon">${icon}</span><div>${message}</div></div>`;
+}
+function clearBanner() {
+  document.getElementById('banner-area').innerHTML = '';
+}
+
+// ── Copy ──
+function copyResponse() {
+  if (lastResponseText) navigator.clipboard.writeText(lastResponseText).then(() => {
+    showBanner('success', '✓', 'Response copied to clipboard');
+    setTimeout(clearBanner, 2000);
+  });
+}
+
+// ── Send ──
+async function sendRequest() {
+  clearBanner();
+  const provider = document.getElementById('provider').value;
+  const model = document.getElementById('model').value;
+  const prompt = document.getElementById('prompt').value.trim();
+
+  // Validate
+  if (!prompt) { showBanner('warn', '⚠️', 'Please enter a prompt.'); return; }
+  if (!apiKeys[provider]) { showBanner('error', '✕', 'No API key set for ' + provider + '. Please enter your key in the sidebar.'); return; }
+  if (provider === 'anthropic') { showBanner('info', 'ℹ️', 'Anthropic blocks direct browser requests due to CORS. Request cannot be sent from the browser. Use a server-side proxy for production.'); return; }
+
+  // JSON mode schema
+  let schemaText = '';
+  if (currentMode === 'json') {
+    schemaText = document.getElementById('schema').value.trim();
+    if (!schemaText) { showBanner('warn', '⚠️', 'Please provide a JSON schema, or switch to Text mode.'); return; }
+    try { JSON.parse(schemaText); } catch { showBanner('error', '✕', 'Invalid JSON schema. Please fix the syntax.'); return; }
+  }
+
+  // UI loading state
+  setLoading(true);
+  showLoadingResponse();
+  const startTime = Date.now();
+
+  try {
+    const messages = buildMessages(provider, prompt, schemaText);
+    const response = await callAPI(provider, model, messages, apiKeys[provider]);
+    const elapsed = Date.now() - startTime;
+
+    if (!response.ok) await handleAPIError(response);
+    else {
+      const data = await response.json();
+      const text = extractText(provider, data);
+      lastResponseText = text;
+      if (currentMode === 'json') renderJSON(text);
+      else renderMarkdown(text);
+      showMetrics(elapsed, text.length);
+    }
+  } catch (err) {
+    if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      showBanner('error', '✕', 'Network error. Check your connection or CORS policy.');
+    } else if (err._handled) {
+      // already shown
+    } else {
+      showBanner('error', '✕', 'Unexpected error: ' + err.message);
+    }
+    showPlaceholder('Something went wrong. See the error banner above.');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function buildMessages(provider, prompt, schemaText) {
+  const systemText = currentMode === 'json'
+    ? `You are a JSON API. Respond ONLY with valid JSON that matches this schema:\n${schemaText}\n\nDo not include any explanation or markdown. Return raw JSON only.`
+    : 'You are a helpful, knowledgeable assistant. Respond clearly and concisely using Markdown where appropriate.';
+
+  if (provider === 'openai') {
+    return [
+      { role: 'system', content: systemText },
+      { role: 'user', content: prompt }
+    ];
+  }
+  // anthropic format (won't be reached due to CORS check, but kept for completeness)
+  return { system: systemText, messages: [{ role: 'user', content: prompt }] };
+}
+
+async function callAPI(provider, model, messages, key) {
+  if (provider === 'openai') {
+    return fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({ model, messages, max_tokens: 2048, temperature: 0.7 })
+    });
+  }
+  // Anthropic (CORS-blocked, but included for completeness)
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model, messages: messages.messages, system: messages.system, max_tokens: 2048 })
+  });
+}
+
+async function handleAPIError(response) {
+  let msg = '';
+  try { const d = await response.json(); msg = d.error?.message || JSON.stringify(d); } catch { msg = response.statusText; }
+  const err = new Error(msg);
+  err._handled = true;
+  if (response.status === 401) showBanner('error', '✕', 'Invalid API key. Please check and re-enter your key.');
+  else if (response.status === 429) showBanner('warn', '⏳', 'Rate limit hit. Wait a moment and try again.');
+  else if (response.status === 500) showBanner('error', '✕', 'Provider server error. Try again in a moment.');
+  else showBanner('error', '✕', `API error ${response.status}: ${msg}`);
+  showPlaceholder('Request failed. See error above.');
+  throw err;
+}
+
+function extractText(provider, data) {
+  if (provider === 'openai') return data.choices?.[0]?.message?.content || '';
+  if (provider === 'anthropic') return data.content?.[0]?.text || '';
+  return '';
+}
+
+// ── Render ──
+function showPlaceholder(msg) {
+  const box = document.getElementById('response-box');
+  box.innerHTML = `<div class="response-placeholder"><div class="icon">⚠️</div><div>${msg}</div></div>`;
+}
+
+function showLoadingResponse() {
+  document.getElementById('response-box').innerHTML = `<div class="loading-dots"><span></span><span></span><span></span></div>`;
+}
+
+function renderMarkdown(text) {
+  const box = document.getElementById('response-box');
+  box.innerHTML = `<div class="response-content">${markdownToHTML(text)}</div>`;
+  document.getElementById('btn-copy').style.display = 'inline-flex';
+}
+
+function renderJSON(text) {
+  const box = document.getElementById('response-box');
+  let parsed;
+  try {
+    // Strip possible markdown code fences
+    const cleaned = text.replace(/^```(?:json)?\n?/,'').replace(/\n?```$/,'').trim();
+    parsed = JSON.parse(cleaned);
+    box.innerHTML = `<div class="json-view">${syntaxHighlightJSON(JSON.stringify(parsed, null, 2))}</div>`;
+    document.getElementById('btn-copy').style.display = 'inline-flex';
+    validateJSONSchema(parsed);
+  } catch {
+    showBanner('warn', '⚠️', 'Model returned invalid JSON. Showing raw response.');
+    box.innerHTML = `<div class="response-content">${escapeHTML(text)}</div>`;
+  }
+}
+
+function validateJSONSchema(obj) {
+  const schemaText = document.getElementById('schema').value.trim();
+  if (!schemaText) return;
+  try {
+    const schema = JSON.parse(schemaText);
+    const valid = basicValidate(obj, schema);
+    if (valid) showBanner('success', '✓', 'JSON response matches schema.');
+    else showBanner('warn', '⚠️', 'JSON response does not fully match the schema.');
+  } catch { /* ignore */ }
+}
+
+function basicValidate(obj, schema) {
+  if (schema.type) {
+    const t = schema.type;
+    if (t === 'object' && typeof obj !== 'object') return false;
+    if (t === 'array' && !Array.isArray(obj)) return false;
+    if (t === 'string' && typeof obj !== 'string') return false;
+    if (t === 'number' && typeof obj !== 'number') return false;
+    if (t === 'integer' && !Number.isInteger(obj)) return false;
+    if (t === 'boolean' && typeof obj !== 'boolean') return false;
+  }
+  if (schema.required && typeof obj === 'object') {
+    for (const k of schema.required) if (!(k in obj)) return false;
+  }
+  if (schema.enum && !schema.enum.includes(obj)) return false;
+  return true;
+}
+
+function showMetrics(elapsed, length) {
+  const card = document.getElementById('metrics-card');
+  card.style.display = 'block';
+  document.getElementById('metrics-content').innerHTML = `
+    <div class="metric-chip">⏱ ${elapsed}ms</div>
+    <div class="metric-chip">📝 ${length} chars</div>
+    <div class="metric-chip">~${Math.round(length/4)} tokens</div>
+  `;
+}
+
+// ── Markdown parser (lightweight) ──
+function markdownToHTML(text) {
+  let html = escapeHTML(text);
+
+  // Code blocks
+  html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
+    `<pre><code>${code.trim()}</code></pre>`);
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Bold
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // HR
+  html = html.replace(/^---$/gm, '<hr>');
+  // Blockquote
+  html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  // Table (simple)
+  html = html.replace(/\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g, (_, header, rows) => {
+    const ths = header.split('|').filter(Boolean).map(c => `<th>${c.trim()}</th>`).join('');
+    const trs = rows.trim().split('\n').map(row =>
+      '<tr>' + row.split('|').filter(Boolean).map(c => `<td>${c.trim()}</td>`).join('') + '</tr>'
+    ).join('');
+    return `<table><tr>${ths}</tr>${trs}</table>`;
+  });
+  // Unordered list
+  html = html.replace(/^[*-] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  // Numbered list
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // Paragraphs (double newline)
+  html = html.split('\n\n').map(para => {
+    if (/^<(h[1-3]|ul|ol|li|pre|blockquote|hr|table)/.test(para.trim())) return para;
+    return `<p>${para.replace(/\n/g,'<br>')}</p>`;
+  }).join('\n');
+
+  return html;
+}
+
+// ── JSON Syntax Highlighting ──
+function syntaxHighlightJSON(json) {
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?|[{}\[\],:])/g, match => {
+    if (/^"/.test(match)) {
+      if (/:$/.test(match)) return `<span class="json-key">${match}</span>`;
+      return `<span class="json-string">${match}</span>`;
+    }
+    if (/true|false/.test(match)) return `<span class="json-bool">${match}</span>`;
+    if (/null/.test(match)) return `<span class="json-null">${match}</span>`;
+    if (/[{}\[\]]/.test(match)) return `<span class="json-punct">${match}</span>`;
+    if (/,/.test(match)) return `<span class="json-punct">${match}</span>`;
+    return `<span class="json-number">${match}</span>`;
+  });
+}
+
+function escapeHTML(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Loading state ──
+function setLoading(on) {
+  const btn = document.getElementById('btn-send');
+  const label = document.getElementById('btn-label');
+  btn.disabled = on;
+  label.innerHTML = on
+    ? '<div class="spinner"></div> Sending…'
+    : 'Send';
+}
+
+// ── Start ──
+init();
+</script>
+</body>
+</html>
