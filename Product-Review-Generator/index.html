@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Product Review Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg-base:    #09090b;
+  --bg-surface: #111113;
+  --bg-raised:  #18181b;
+  --bg-hover:   #222226;
+  --border:     #27272a;
+  --border-mid: #3f3f46;
+  --accent:     #2563eb;
+  --accent-mid: #3b82f6;
+  --accent-hi:  #60a5fa;
+  --accent-glow:rgba(37,99,235,0.18);
+  --text-hi:    #fafafa;
+  --text-mid:   #a1a1aa;
+  --text-lo:    #52525b;
+  --success:    #22c55e;
+  --error:      #ef4444;
+  --warn:       #f59e0b;
+  --radius-sm:  6px;
+  --radius:     10px;
+  --font-mono:  'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg-base);
+  color: var(--text-hi);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+}
+
+/* ── Header ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-mark {
+  width: 26px; height: 26px;
+  background: var(--accent);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-text { font-size: 14px; font-weight: 600; letter-spacing: -0.3px; }
+.logo-badge {
+  font-size: 10px; font-weight: 500; color: var(--text-lo);
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 6px;
+}
+
+.header-right { display: flex; align-items: center; gap: 8px; }
+
+/* ── Layout ── */
+main {
+  display: grid;
+  grid-template-columns: 272px 1fr;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+aside {
+  border-right: 1px solid var(--border);
+  background: var(--bg-surface);
+  padding: 16px 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+aside::-webkit-scrollbar { width: 3px; }
+aside::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+
+.section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  overflow: hidden;
+}
+.section-head {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text-lo);
+}
+.section-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+label { display: block; font-size: 11px; font-weight: 500; color: var(--text-mid); margin-bottom: 4px; }
+
+select, input[type="text"], input[type="password"], textarea {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-hi);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  appearance: none;
+}
+select:focus, input:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+
+/* Star rating */
+.star-row { display: flex; gap: 4px; }
+.star {
+  font-size: 20px; cursor: pointer; color: var(--border-mid);
+  transition: color 0.1s; line-height: 1; user-select: none;
+}
+.star.active { color: #f59e0b; }
+.star:hover { color: #fbbf24; }
+
+/* Slider */
+.slider-wrap { display: flex; flex-direction: column; gap: 5px; }
+.slider-row { display: flex; align-items: center; gap: 8px; }
+input[type="range"] {
+  flex: 1; height: 4px; padding: 0;
+  background: var(--border); border-radius: 2px;
+  border: none; box-shadow: none; cursor: pointer;
+  accent-color: var(--accent);
+}
+input[type="range"]:focus { box-shadow: none; border: none; }
+.slider-val {
+  font-size: 11px; font-family: var(--font-mono);
+  color: var(--accent-hi); min-width: 28px; text-align: right;
+}
+.slider-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-lo); }
+
+/* Key row */
+.key-row { display: flex; gap: 6px; }
+.key-row input { flex: 1; font-family: var(--font-mono); font-size: 11px; }
+.icon-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px;
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-mid);
+  cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+}
+.icon-btn svg { width: 14px; height: 14px; }
+.icon-btn:hover { border-color: var(--border-mid); color: var(--text-hi); background: var(--bg-hover); }
+
+.status-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; border-radius: 20px;
+  font-size: 11px; font-weight: 500; margin-top: 5px;
+}
+.status-chip svg { width: 10px; height: 10px; }
+.status-chip.set { background: rgba(34,197,94,0.1); color: var(--success); border: 1px solid rgba(34,197,94,0.2); }
+.status-chip.unset { background: rgba(239,68,68,0.08); color: #f87171; border: 1px solid rgba(239,68,68,0.15); }
+
+.upload-zone {
+  border: 1px dashed var(--border-mid); border-radius: var(--radius-sm);
+  padding: 12px 10px; text-align: center; cursor: pointer;
+  transition: all 0.15s; color: var(--text-lo); font-size: 12px;
+}
+.upload-zone:hover { border-color: var(--accent); color: var(--accent-hi); background: var(--accent-glow); }
+.upload-zone input { display: none; }
+.upload-icon { display: flex; justify-content: center; margin-bottom: 4px; }
+
+.privacy-note {
+  display: flex; gap: 8px; padding: 9px 10px;
+  background: rgba(37,99,235,0.06); border: 1px solid rgba(37,99,235,0.15);
+  border-radius: var(--radius-sm); font-size: 11px; color: var(--text-mid); line-height: 1.55;
+}
+.privacy-note svg { flex-shrink: 0; margin-top: 1px; color: var(--accent-hi); width: 13px; height: 13px; }
+
+.ftc-note {
+  display: flex; gap: 8px; padding: 9px 10px;
+  background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.18);
+  border-radius: var(--radius-sm); font-size: 11px; color: #fcd34d; line-height: 1.55;
+}
+.ftc-note svg { flex-shrink: 0; margin-top: 1px; color: var(--warn); width: 13px; height: 13px; }
+
+/* Metrics */
+.metrics { display: flex; gap: 6px; flex-wrap: wrap; }
+.metric-chip {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 20px;
+  font-size: 11px; font-family: var(--font-mono);
+  background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-mid);
+}
+.metric-chip svg { width: 10px; height: 10px; color: var(--accent-mid); }
+
+/* ── Right Panel ── */
+.right-panel {
+  display: flex; flex-direction: column;
+  padding: 20px; gap: 14px; overflow: hidden; background: var(--bg-base);
+}
+
+.field-label {
+  font-size: 11px; font-weight: 500; color: var(--text-lo);
+  letter-spacing: 0.5px; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* Product form */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-full { grid-column: 1 / -1; }
+
+textarea.product-input {
+  resize: none; height: 70px; font-size: 13px; line-height: 1.6;
+  background: var(--bg-surface); border-radius: var(--radius); padding: 10px 12px;
+}
+
+/* Aspect controls */
+.aspects-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.aspect-item label { text-align: center; margin-bottom: 6px; display: block; }
+.aspect-slider { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.aspect-slider input[type="range"] { width: 100%; }
+.aspect-val { font-size: 10px; font-family: var(--font-mono); color: var(--accent-hi); }
+
+/* Send row */
+.send-row { display: flex; align-items: center; gap: 10px; }
+.btn-primary {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 20px; background: var(--accent);
+  border: none; border-radius: var(--radius-sm);
+  color: #fff; font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.btn-primary svg { width: 14px; height: 14px; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-primary:active { background: #1e40af; }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-ghost {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px; background: transparent;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-mid); font-family: inherit; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-ghost svg { width: 13px; height: 13px; }
+.btn-ghost:hover { border-color: var(--border-mid); color: var(--text-hi); background: var(--bg-raised); }
+
+.spinner {
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin 0.65s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Response */
+.response-area { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.response-box {
+  flex: 1; background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; overflow-y: auto;
+  font-size: 13px; line-height: 1.7; min-height: 0; transition: border-color 0.2s;
+}
+.response-box:hover { border-color: var(--border-mid); }
+.response-box::-webkit-scrollbar { width: 3px; }
+.response-box::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 3px; }
+
+.placeholder {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 100%; gap: 12px;
+  color: var(--text-lo); text-align: center;
+}
+.placeholder-icon {
+  width: 40px; height: 40px; background: var(--bg-raised);
+  border: 1px solid var(--border); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.placeholder-icon svg { width: 20px; height: 20px; }
+.placeholder p { font-size: 12px; max-width: 260px; line-height: 1.6; }
+
+/* Markdown */
+.md h1,.md h2,.md h3 { color: var(--text-hi); font-weight: 600; margin: 14px 0 6px; }
+.md h1 { font-size: 18px; } .md h2 { font-size: 15px; } .md h3 { font-size: 13px; }
+.md p { margin-bottom: 10px; color: var(--text-hi); }
+.md code {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: 4px; padding: 1px 5px;
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--accent-hi);
+}
+.md pre {
+  background: var(--bg-raised); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px; overflow-x: auto; margin: 10px 0;
+}
+.md pre code { background: none; border: none; padding: 0; color: var(--text-hi); }
+.md ul,.md ol { padding-left: 18px; margin-bottom: 10px; }
+.md li { margin-bottom: 3px; }
+.md strong { font-weight: 600; color: var(--text-hi); }
+.md em { color: var(--accent-hi); font-style: italic; }
+.md blockquote { border-left: 2px solid var(--accent); padding-left: 12px; color: var(--text-mid); margin: 10px 0; }
+.md hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.md table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12px; }
+.md th,.md td { border: 1px solid var(--border); padding: 6px 10px; }
+.md th { background: var(--bg-raised); color: var(--text-mid); font-weight: 600; text-align: left; }
+
+/* Stars display in response */
+.review-stars { font-size: 18px; margin-bottom: 10px; letter-spacing: 2px; }
+
+/* Banners */
+.banner {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  font-size: 12px; line-height: 1.55;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+.banner svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; }
+.banner.error { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: #fca5a5; }
+.banner.warn  { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); color: #fcd34d; }
+.banner.info  { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); color: #93c5fd; }
+.banner.success { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); color: #86efac; }
+
+.dots { display: flex; gap: 5px; padding: 20px; align-items: center; justify-content: center; }
+.dots span {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  animation: dot 1.2s ease-in-out infinite;
+}
+.dots span:nth-child(2) { animation-delay: 0.2s; }
+.dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot { 0%,80%,100% { opacity:0.2; transform:scale(0.7); } 40% { opacity:1; transform:scale(1); } }
+
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+      </svg>
+    </div>
+    <span class="logo-text">Product Review Generator</span>
+    <span class="logo-badge">Educational</span>
+  </div>
+  <div class="header-right">
+    <button class="btn-ghost" id="btn-copy" onclick="copyResponse()" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+      Copy
+    </button>
+  </div>
+</header>
+
+<main>
+
+<!-- Sidebar -->
+<aside>
+
+  <!-- Model -->
+  <div class="section">
+    <div class="section-head">Model</div>
+    <div class="section-body">
+      <div>
+        <label>Model Family</label>
+        <select id="model-family" onchange="onFamilyChange()">
+          <option value="gpt4">GPT-4 Family</option>
+          <option value="gpt35">GPT-3.5 Family</option>
+        </select>
+      </div>
+      <div>
+        <label>Specific Model</label>
+        <select id="model"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key -->
+  <div class="section">
+    <div class="section-head">API Key</div>
+    <div class="section-body">
+      <div>
+        <label>OpenAI Secret Key</label>
+        <div class="key-row">
+          <input type="password" id="api-key-input" placeholder="sk-…" />
+          <button class="icon-btn" onclick="toggleKey()" aria-label="Toggle visibility">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div id="key-status" class="status-chip unset">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          Not set
+        </div>
+      </div>
+      <div>
+        <label>Upload .env file</label>
+        <div class="upload-zone" onclick="document.getElementById('file-upload').click()" id="upload-zone">
+          <input type="file" id="file-upload" accept="*" onchange="handleUpload(event)" />
+          <div class="upload-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          Click to upload .env or .csv
+        </div>
+      </div>
+      <div class="privacy-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Keys stored in memory only — never persisted.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FTC Note -->
+  <div class="ftc-note">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span><strong>Educational use only.</strong> FTC banned AI-generated reviews effective Oct 2024. Violations carry penalties up to $51,744 per violation.</span>
+  </div>
+
+  <!-- Metrics -->
+  <div class="section" id="metrics-card" style="display:none;">
+    <div class="section-head">Last Response</div>
+    <div class="section-body">
+      <div class="metrics" id="metrics-content"></div>
+    </div>
+  </div>
+
+</aside>
+
+<!-- Right Panel -->
+<div class="right-panel">
+
+  <!-- Product Details -->
+  <div>
+    <div class="field-label">Product Details</div>
+    <div class="form-grid">
+      <div>
+        <label>Product Name</label>
+        <input type="text" id="product-name" placeholder="e.g. Sony WH-1000XM5" />
+      </div>
+      <div>
+        <label>Category</label>
+        <select id="category">
+          <option value="Electronics">Electronics</option>
+          <option value="Fashion & Apparel">Fashion & Apparel</option>
+          <option value="Home & Kitchen">Home & Kitchen</option>
+          <option value="Beauty & Personal Care">Beauty & Personal Care</option>
+          <option value="Sports & Outdoors">Sports & Outdoors</option>
+          <option value="Books & Media">Books & Media</option>
+          <option value="Food & Grocery">Food & Grocery</option>
+          <option value="Toys & Games">Toys & Games</option>
+          <option value="Software & Apps">Software & Apps</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-full">
+        <label>Product Description <span style="color:var(--text-lo);font-weight:400;">(optional)</span></label>
+        <textarea class="product-input" id="product-desc" placeholder="Key features, use case, target audience…"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review Controls -->
+  <div>
+    <div class="field-label">Review Parameters</div>
+    <div class="form-grid">
+      <div>
+        <label>Overall Rating</label>
+        <div class="star-row" id="stars">
+          <span class="star" data-v="1" onclick="setRating(1)">★</span>
+          <span class="star" data-v="2" onclick="setRating(2)">★</span>
+          <span class="star" data-v="3" onclick="setRating(3)">★</span>
+          <span class="star" data-v="4" onclick="setRating(4)">★</span>
+          <span class="star active" data-v="5" onclick="setRating(5)">★</span>
+        </div>
+      </div>
+      <div>
+        <label>Reviewer Persona</label>
+        <select id="persona">
+          <option value="everyday consumer">Everyday Consumer</option>
+          <option value="tech enthusiast">Tech Enthusiast</option>
+          <option value="professional critic">Professional Critic</option>
+          <option value="skeptical buyer">Skeptical Buyer</option>
+          <option value="first-time user">First-Time User</option>
+          <option value="long-time customer">Long-Time Customer</option>
+        </select>
+      </div>
+      <div>
+        <label>Tone — <span id="tone-label" style="color:var(--accent-hi)">Balanced</span></label>
+        <div class="slider-wrap">
+          <div class="slider-row">
+            <input type="range" id="tone" min="0" max="100" value="50" oninput="updateTone(this.value)" />
+          </div>
+          <div class="slider-labels"><span>Formal</span><span>Casual</span></div>
+        </div>
+      </div>
+      <div>
+        <label>Length — <span id="length-label" style="color:var(--accent-hi)">Medium</span></label>
+        <div class="slider-wrap">
+          <div class="slider-row">
+            <input type="range" id="length" min="0" max="100" value="50" oninput="updateLength(this.value)" />
+          </div>
+          <div class="slider-labels"><span>Brief</span><span>Detailed</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aspect Sentiment (Stretch) -->
+  <div>
+    <div class="field-label">Aspect Sentiment</div>
+    <div class="aspects-grid">
+      <div class="aspect-item">
+        <label>Price / Value</label>
+        <div class="aspect-slider">
+          <input type="range" id="asp-price" min="1" max="5" value="4" oninput="document.getElementById('asp-price-v').textContent=aspectLabel(this.value)" />
+          <span class="aspect-val" id="asp-price-v">Positive</span>
+        </div>
+      </div>
+      <div class="aspect-item">
+        <label>Features</label>
+        <div class="aspect-slider">
+          <input type="range" id="asp-features" min="1" max="5" value="4" oninput="document.getElementById('asp-features-v').textContent=aspectLabel(this.value)" />
+          <span class="aspect-val" id="asp-features-v">Positive</span>
+        </div>
+      </div>
+      <div class="aspect-item">
+        <label>Usability</label>
+        <div class="aspect-slider">
+          <input type="range" id="asp-usability" min="1" max="5" value="3" oninput="document.getElementById('asp-usability-v').textContent=aspectLabel(this.value)" />
+          <span class="aspect-val" id="asp-usability-v">Neutral</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Banner -->
+  <div id="banner-area"></div>
+
+  <!-- Send -->
+  <div class="send-row">
+    <button class="btn-primary" id="btn-send" onclick="generate()">
+      <svg id="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      <span id="btn-label">Generate Review</span>
+    </button>
+    <div id="inline-metrics" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- Response -->
+  <div class="response-area">
+    <div class="field-label">Generated Review</div>
+    <div class="response-box" id="response-box">
+      <div class="placeholder">
+        <div class="placeholder-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <p>Fill in the product details, configure your parameters, and click Generate Review.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</main>
+</div>
+
+<script>
+// ── State ──
+let apiKey = '';
+let rating = 5;
+
+// ── Models ──
+const MODEL_FAMILIES = {
+  gpt4:  { label: 'GPT-4 Family',   models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4'] },
+  gpt35: { label: 'GPT-3.5 Family', models: ['gpt-3.5-turbo', 'gpt-3.5-turbo-16k'] },
+};
+
+function onFamilyChange() {
+  const family = document.getElementById('model-family').value;
+  const sel = document.getElementById('model');
+  sel.innerHTML = MODEL_FAMILIES[family].models.map(m => `<option value="${m}">${m}</option>`).join('');
+}
+
+// ── Rating ──
+function setRating(v) {
+  rating = v;
+  document.querySelectorAll('.star').forEach(s => s.classList.toggle('active', +s.dataset.v <= v));
+}
+
+// ── Sliders ──
+const TONE_LABELS   = ['Formal', 'Mostly Formal', 'Balanced', 'Mostly Casual', 'Casual'];
+const LENGTH_LABELS = ['Brief', 'Short', 'Medium', 'Long', 'Detailed'];
+
+function updateTone(v)   { document.getElementById('tone-label').textContent   = TONE_LABELS[Math.round(v/25)];   }
+function updateLength(v) { document.getElementById('length-label').textContent = LENGTH_LABELS[Math.round(v/25)]; }
+
+const ASPECT_LABELS = ['', 'Very Negative', 'Negative', 'Neutral', 'Positive', 'Very Positive'];
+function aspectLabel(v) { return ASPECT_LABELS[+v]; }
+
+// ── Key ──
+function toggleKey() {
+  const input = document.getElementById('api-key-input');
+  input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  onFamilyChange();
+  document.getElementById('api-key-input').addEventListener('input', e => {
+    apiKey = e.target.value.trim();
+    setKeyStatus(!!apiKey);
+  });
+});
+
+function setKeyStatus(isSet) {
+  const chip = document.getElementById('key-status');
+  if (isSet) {
+    chip.className = 'status-chip set';
+    chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Key set`;
+  } else {
+    chip.className = 'status-chip unset';
+    chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not set`;
+  }
+}
+
+// ── File Upload (pattern from LLM Switchboard) ──
+function handleUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const content = e.target.result;
+    const match = content.match(/OPENAI_API_KEY\s*=\s*["']?([^\n\r"']+)["']?/i);
+    if (match) {
+      apiKey = match[1].trim();
+      document.getElementById('api-key-input').value = apiKey;
+      setKeyStatus(true);
+      document.getElementById('upload-zone').innerHTML = `
+        <div class="upload-icon" style="color:var(--success)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        Key loaded from file`;
+    } else {
+      showBanner('warn', 'No OPENAI_API_KEY found in file.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Generate (fetch pattern from LLM Switchboard) ──
+async function generate() {
+  clearBanner();
+  const productName = document.getElementById('product-name').value.trim();
+  const category    = document.getElementById('category').value;
+  const desc        = document.getElementById('product-desc').value.trim();
+  const persona     = document.getElementById('persona').value;
+  const model       = document.getElementById('model').value;
+  const toneVal     = +document.getElementById('tone').value;
+  const lengthVal   = +document.getElementById('length').value;
+  const tone        = TONE_LABELS[Math.round(toneVal/25)];
+  const length      = LENGTH_LABELS[Math.round(lengthVal/25)];
+
+  const priceAsp    = ASPECT_LABELS[+document.getElementById('asp-price').value];
+  const featAsp     = ASPECT_LABELS[+document.getElementById('asp-features').value];
+  const usabAsp     = ASPECT_LABELS[+document.getElementById('asp-usability').value];
+  const starStr     = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+
+  if (!productName) { showBanner('warn', 'Please enter a product name.'); return; }
+  if (!apiKey)      { showBanner('error', 'No API key set. Add it in the sidebar.'); return; }
+
+  const system = `You are a ${persona} writing an authentic product review. Write in a ${tone.toLowerCase()} tone. Length: ${length.toLowerCase()}. Use Markdown formatting with headings, bullet points, and a summary section. Do not mention that the review was AI-generated.`;
+
+  const userMsg = `Write a ${rating}-star review for the following product:
+
+**Product:** ${productName}
+**Category:** ${category}
+${desc ? `**Description:** ${desc}` : ''}
+**Star Rating:** ${starStr} (${rating}/5)
+**Aspect Sentiments:**
+- Price/Value: ${priceAsp}
+- Features: ${featAsp}
+- Usability: ${usabAsp}
+
+Structure the review with: a headline, introduction, pros and cons, aspect-specific feedback, and a final verdict.`;
+
+  setLoading(true);
+  document.getElementById('response-box').innerHTML = `<div class="dots"><span></span><span></span><span></span></div>`;
+  document.getElementById('btn-copy').style.display = 'none';
+  const t0 = Date.now();
+
+  try {
+    // fetch() pattern copied from LLM Switchboard
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user',   content: userMsg },
+        ],
+        max_tokens: lengthVal < 25 ? 300 : lengthVal < 50 ? 500 : lengthVal < 75 ? 800 : 1200,
+        temperature: 0.4 + (toneVal / 100) * 0.5,
+      }),
+    });
+
+    if (!res.ok) {
+      let msg = res.statusText;
+      try { const d = await res.json(); msg = d.error?.message || msg; } catch {}
+      if (res.status === 401) showBanner('error', 'Invalid API key.');
+      else if (res.status === 429) showBanner('warn', 'Rate limit hit. Wait and retry.');
+      else showBanner('error', `API error ${res.status}: ${msg}`);
+      showPlaceholder('Request failed.');
+      return;
+    }
+
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    const elapsed = Date.now() - t0;
+
+    renderMarkdown(starStr, text);
+    showMetrics(elapsed, text.length);
+    document.getElementById('btn-copy').style.display = 'flex';
+    window._lastResponse = text;
+
+  } catch (err) {
+    showBanner('error', 'Network error. Check your connection.');
+    showPlaceholder('Something went wrong.');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function renderMarkdown(stars, text) {
+  const box = document.getElementById('response-box');
+  box.innerHTML = `<div class="review-stars">${stars}</div><div class="md">${mdToHTML(text)}</div>`;
+}
+
+function showPlaceholder(msg) {
+  document.getElementById('response-box').innerHTML = `
+    <div class="placeholder">
+      <div class="placeholder-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <p>${msg}</p>
+    </div>`;
+}
+
+function copyResponse() {
+  if (window._lastResponse) navigator.clipboard.writeText(window._lastResponse).then(() => {
+    showBanner('success', 'Copied to clipboard.');
+    setTimeout(clearBanner, 2000);
+  });
+}
+
+// ── Metrics ──
+function showMetrics(ms, chars) {
+  document.getElementById('metrics-card').style.display = 'block';
+  const html = `
+    <div class="metric-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${ms}ms</div>
+    <div class="metric-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>${chars} chars</div>
+    <div class="metric-chip">~${Math.round(chars/4)} tokens</div>`;
+  document.getElementById('metrics-content').innerHTML = html;
+  document.getElementById('inline-metrics').innerHTML = html;
+}
+
+// ── Banners ──
+const ICONS = {
+  error:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+  warn:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  info:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  success: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+};
+function showBanner(type, msg) {
+  document.getElementById('banner-area').innerHTML = `<div class="banner ${type}">${ICONS[type]}<div>${msg}</div></div>`;
+}
+function clearBanner() { document.getElementById('banner-area').innerHTML = ''; }
+
+// ── Loading ──
+function setLoading(on) {
+  const btn = document.getElementById('btn-send');
+  const label = document.getElementById('btn-label');
+  const icon = document.getElementById('send-icon');
+  btn.disabled = on;
+  if (on) { icon.style.display = 'none'; label.innerHTML = '<div class="spinner"></div> Generating…'; }
+  else    { icon.style.display = ''; label.textContent = 'Generate Review'; }
+}
+
+// ── Markdown parser (copied from LLM Switchboard) ──
+function mdToHTML(t) {
+  let h = escHTML(t);
+  h = h.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, __, c) => `<pre><code>${c.trim()}</code></pre>`);
+  h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+  h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  h = h.replace(/^---$/gm, '<hr>');
+  h = h.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+  h = h.replace(/\|(.+)\|\n\|[-| ]+\|\n((?:\|.+\|\n?)+)/g, (_, hd, rows) => {
+    const ths = hd.split('|').filter(Boolean).map(c => `<th>${c.trim()}</th>`).join('');
+    const trs = rows.trim().split('\n').map(r => '<tr>' + r.split('|').filter(Boolean).map(c => `<td>${c.trim()}</td>`).join('') + '</tr>').join('');
+    return `<table><tr>${ths}</tr>${trs}</table>`;
+  });
+  h = h.replace(/^[*-] (.+)$/gm, '<li>$1</li>').replace(/(<li>.*<\/li>(\n|$))+/g, m => `<ul>${m}</ul>`);
+  h = h.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  h = h.split('\n\n').map(p => /^<(h[1-3]|ul|ol|li|pre|blockquote|hr|table)/.test(p.trim()) ? p : `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+  return h;
+}
+function escHTML(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
