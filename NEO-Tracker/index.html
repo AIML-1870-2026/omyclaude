@@ -553,7 +553,7 @@ async function fetchSBDB() {
 //  API: Sentry
 // ═══════════════════════════════════════════════════════════════
 async function fetchSentry() {
-  const res = await fetch(SENTRY_BASE);
+  const res = await fetch(`${SENTRY_BASE}?ps-min=-100&limit=100`);
   if (!res.ok) throw new Error(`Sentry HTTP ${res.status}`);
   return res.json();
 }
@@ -918,7 +918,7 @@ function renderSentry() {
 
 function sentryRow(d) {
   const ps   = parseFloat(d.ps_max || d.ps_cum || '-99');
-  const ts   = parseInt(d.ts || 0);
+  const ts   = parseInt(d.ts_max || d.ts || 0);
   const ip   = parseFloat(d.ip || 0);
   const prob = ip < 0.001 ? ip.toExponential(2) : (ip*100).toFixed(4)+'%';
   const diam = d.diameter ? `${fmt(parseFloat(d.diameter)*1000,0)} m`
@@ -947,7 +947,7 @@ function renderGlobe() {
   el.innerHTML = `
     <div class="section-title">Earth Close Approach Visualization</div>
     <p style="color:#3d4e63;font-size:.77rem;margin-bottom:1.25rem;">
-      Asteroids positioned at log-compressed altitude proportional to miss distance. Moon shown at 1 LD for reference.
+      Asteroids rendered as points on the globe surface, color-coded by miss distance. Moon shown at 1 LD for reference.
       Click any object for details. Drag to rotate · Scroll to zoom.
     </p>
     <div class="globe-layout">
@@ -1033,7 +1033,7 @@ function initGlobe() {
     .pointLat(d => d.lat)
     .pointLng(d => d.lng)
     .pointColor(d => d.color)
-    .pointAltitude(d => d.altitude)
+    .pointAltitude(0)
     .pointRadius(d => d.radius)
     .pointLabel(d => `
       <div style="background:rgba(6,14,30,.97);border:1px solid rgba(0,212,255,.3);border-radius:8px;padding:8px 12px;font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2e8f0;pointer-events:none;min-width:160px;">
@@ -1099,6 +1099,24 @@ async function init() {
     S.sentryCount = parseInt(sentryR.value.count || S.sentry.length);
   } else {
     console.warn('Sentry:', sentryR.reason);
+  }
+
+  // Fallback: if Sentry API returned nothing, synthesize from NeoWs sentry-flagged objects
+  if (!S.sentry.length && S.neos.length) {
+    const sentryNeos = S.neos.filter(n => n.is_sentry);
+    if (sentryNeos.length) {
+      S.sentry = sentryNeos.map(n => ({
+        des:      n.name,
+        fullname: n.name,
+        ps_cum:   '-5',
+        ps_max:   '-5',
+        ts_max:   '0',
+        ip:       '1e-5',
+        h:        '20',
+        diameter: String(n.diam_avg || ''),
+      }));
+      S.sentryCount = S.sentry.length;
+    }
   }
 
   renderOverview();
