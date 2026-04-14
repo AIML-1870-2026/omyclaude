@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Science Experiment Generator</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  /* ── Reset & Variables ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080c14;
+    --surface: rgba(15, 22, 40, 0.85);
+    --surface2: rgba(20, 30, 55, 0.7);
+    --border: rgba(100, 160, 255, 0.15);
+    --border-glow: rgba(100, 200, 255, 0.4);
+    --accent: #4fc3f7;
+    --accent2: #7c4dff;
+    --accent3: #00e676;
+    --text: #e8f4fd;
+    --text-muted: #7a9bbf;
+    --danger: #ff5252;
+    --warn: #ffab40;
+    --success: #00e676;
+    --glow-blue: 0 0 20px rgba(79, 195, 247, 0.3);
+    --glow-purple: 0 0 20px rgba(124, 77, 255, 0.3);
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  /* ── Animated Background ── */
+  .bg-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── Layout ── */
+  .app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+    gap: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    grid-column: 1 / -1;
+    padding: 20px 32px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(8, 12, 20, 0.9);
+    backdrop-filter: blur(20px);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    box-shadow: var(--glow-blue);
+    flex-shrink: 0;
+  }
+
+  .header-text h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .header-text p {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .header-badge {
+    margin-left: auto;
+    padding: 5px 12px;
+    background: rgba(79, 195, 247, 0.1);
+    border: 1px solid rgba(79, 195, 247, 0.25);
+    border-radius: 20px;
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    grid-row: 2;
+    padding: 24px 20px;
+    border-right: 1px solid var(--border);
+    background: rgba(10, 15, 28, 0.6);
+    backdrop-filter: blur(16px);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  .section-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Form Controls ── */
+  label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  select, textarea, input[type="text"], input[type="password"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 0.88rem;
+    font-family: inherit;
+    padding: 10px 12px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+
+  select:focus, textarea:focus, input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.1);
+  }
+
+  select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a9bbf' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 90px;
+    line-height: 1.5;
+  }
+
+  option { background: #101828; }
+
+  /* ── Grade Cards ── */
+  .grade-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .grade-btn {
+    padding: 10px 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .grade-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .grade-btn.active {
+    background: rgba(79, 195, 247, 0.12);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: var(--glow-blue);
+  }
+
+  /* ── Preset Chips ── */
+  .preset-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .preset-chip {
+    padding: 5px 10px;
+    background: rgba(124, 77, 255, 0.1);
+    border: 1px solid rgba(124, 77, 255, 0.25);
+    border-radius: 20px;
+    color: #a78bfa;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+
+  .preset-chip:hover {
+    background: rgba(124, 77, 255, 0.2);
+    border-color: rgba(124, 77, 255, 0.5);
+    box-shadow: var(--glow-purple);
+  }
+
+  /* ── Upload Zone ── */
+  .upload-zone {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .upload-zone:hover {
+    border-color: var(--accent);
+    background: rgba(79, 195, 247, 0.04);
+    color: var(--accent);
+  }
+
+  .upload-zone input { display: none; }
+
+  .key-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    margin-top: 8px;
+    padding: 7px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--danger);
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+
+  .status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+
+  /* ── Generate Button ── */
+  .btn-generate {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #1565c0, var(--accent2));
+    border: none;
+    border-radius: var(--radius-sm);
+    color: white;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-generate::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent), #ab47bc);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .btn-generate:hover:not(:disabled)::before { opacity: 1; }
+  .btn-generate:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(79, 195, 247, 0.3); }
+  .btn-generate:active:not(:disabled) { transform: translateY(0); }
+
+  .btn-generate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-generate span { position: relative; z-index: 1; }
+
+  /* ── Main Content ── */
+  .main {
+    grid-row: 2;
+    padding: 28px 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  /* ── Banner ── */
+  .banner {
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .banner.show { display: flex; }
+  .banner.info  { background: rgba(79, 195, 247, 0.1);  border: 1px solid rgba(79, 195, 247, 0.3);  color: var(--accent); }
+  .banner.error { background: rgba(255, 82, 82, 0.1);   border: 1px solid rgba(255, 82, 82, 0.3);   color: var(--danger); }
+  .banner.warn  { background: rgba(255, 171, 64, 0.1);  border: 1px solid rgba(255, 171, 64, 0.3);  color: var(--warn); }
+
+  /* ── Result Card ── */
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 40px rgba(0,0,0,0.4);
+    display: none;
+    animation: slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .result-card.show { display: block; }
+
+  .result-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .result-icon {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, rgba(79, 195, 247, 0.2), rgba(124, 77, 255, 0.2));
+    border: 1px solid var(--border-glow);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .result-meta { flex: 1; }
+  .result-meta h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+  .result-meta .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .tag {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .tag-grade { background: rgba(79, 195, 247, 0.15); color: var(--accent); border: 1px solid rgba(79, 195, 247, 0.3); }
+  .tag-diff-easy   { background: rgba(0, 230, 118, 0.12); color: var(--success); border: 1px solid rgba(0, 230, 118, 0.3); }
+  .tag-diff-medium { background: rgba(255, 171, 64, 0.12); color: var(--warn); border: 1px solid rgba(255, 171, 64, 0.3); }
+  .tag-diff-hard   { background: rgba(255, 82, 82, 0.12); color: var(--danger); border: 1px solid rgba(255, 82, 82, 0.3); }
+
+  .result-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  .btn-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 15px;
+  }
+
+  .btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Markdown Output ── */
+  .result-body { font-size: 0.9rem; line-height: 1.75; }
+  .result-body h1, .result-body h2, .result-body h3 {
+    margin: 20px 0 10px;
+    font-weight: 700;
+  }
+  .result-body h1 { font-size: 1.3rem; color: var(--accent); }
+  .result-body h2 { font-size: 1.1rem; color: #a78bfa; }
+  .result-body h3 { font-size: 0.95rem; color: var(--accent3); }
+  .result-body p { margin-bottom: 12px; }
+  .result-body ul, .result-body ol { padding-left: 20px; margin-bottom: 12px; }
+  .result-body li { margin-bottom: 6px; }
+  .result-body strong { color: var(--text); font-weight: 700; }
+  .result-body em { color: var(--text-muted); }
+  .result-body code {
+    background: rgba(79, 195, 247, 0.1);
+    border: 1px solid rgba(79, 195, 247, 0.2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.85em;
+    color: var(--accent);
+    font-family: 'Courier New', monospace;
+  }
+  .result-body pre {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin-bottom: 12px;
+  }
+  .result-body pre code { background: none; border: none; padding: 0; }
+  .result-body blockquote {
+    border-left: 3px solid var(--accent2);
+    padding: 8px 16px;
+    margin: 12px 0;
+    background: rgba(124, 77, 255, 0.06);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--text-muted);
+  }
+  .result-body hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+  .result-body table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  .result-body th { background: rgba(79, 195, 247, 0.1); padding: 8px 12px; text-align: left; font-size: 0.82rem; color: var(--accent); border: 1px solid var(--border); }
+  .result-body td { padding: 8px 12px; border: 1px solid var(--border); font-size: 0.85rem; }
+  .result-body tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  /* ── Loading Pulse ── */
+  .loading-wrap {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 48px 0;
+  }
+
+  .loading-wrap.show { display: flex; }
+
+  .lab-anim {
+    position: relative;
+    width: 80px;
+    height: 80px;
+  }
+
+  .lab-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    animation: spin 1.4s linear infinite;
+  }
+
+  .lab-ring:nth-child(1) {
+    inset: 0;
+    border-top-color: var(--accent);
+    animation-duration: 1.2s;
+  }
+
+  .lab-ring:nth-child(2) {
+    inset: 10px;
+    border-top-color: var(--accent2);
+    animation-duration: 1.8s;
+    animation-direction: reverse;
+  }
+
+  .lab-ring:nth-child(3) {
+    inset: 20px;
+    border-top-color: var(--accent3);
+    animation-duration: 2.4s;
+  }
+
+  .lab-core {
+    position: absolute;
+    inset: 28px;
+    background: radial-gradient(circle, var(--accent), var(--accent2));
+    border-radius: 50%;
+    opacity: 0.8;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .loading-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    animation: fadeInOut 1.5s ease-in-out infinite;
+  }
+
+  /* ── History ── */
+  .history-section {
+    display: none;
+  }
+
+  .history-section.show { display: block; }
+
+  .history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .history-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .history-item:hover { border-color: var(--accent); background: rgba(79, 195, 247, 0.05); }
+
+  .history-icon { font-size: 18px; flex-shrink: 0; }
+
+  .history-info { flex: 1; min-width: 0; }
+  .history-info .h-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .history-info .h-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+  .btn-clear-history {
+    padding: 5px 12px;
+    background: rgba(255, 82, 82, 0.1);
+    border: 1px solid rgba(255, 82, 82, 0.25);
+    border-radius: 20px;
+    color: var(--danger);
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-clear-history:hover { background: rgba(255, 82, 82, 0.2); }
+
+  /* ── Worksheet Modal ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.show { display: flex; animation: fadeIn 0.2s ease; }
+
+  .modal {
+    background: #0d1526;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 700px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.6);
+    animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-header h3 { font-size: 1rem; font-weight: 700; }
+
+  .modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .worksheet { font-family: 'Segoe UI', sans-serif; }
+  .worksheet h2 { font-size: 1.3rem; text-align: center; margin-bottom: 20px; color: var(--accent); }
+  .ws-field {
+    margin-bottom: 20px;
+  }
+  .ws-label { font-size: 0.82rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .ws-line {
+    border-bottom: 1px solid var(--border);
+    min-height: 32px;
+    margin-bottom: 6px;
+  }
+  .ws-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .ws-box {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    min-height: 80px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+  }
+
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .btn-secondary {
+    padding: 9px 18px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-print {
+    padding: 9px 18px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border: none;
+    border-radius: var(--radius-sm);
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-print:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* ── Empty State ── */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .empty-icon {
+    font-size: 56px;
+    opacity: 0.4;
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .empty-state h2 { font-size: 1.1rem; font-weight: 600; opacity: 0.6; }
+  .empty-state p { font-size: 0.85rem; max-width: 320px; opacity: 0.5; line-height: 1.6; }
+
+  /* ── Animations ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 0.6; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.1); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes fadeInOut { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(79, 195, 247, 0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(79, 195, 247, 0.4); }
+
+  /* ── Print Styles ── */
+  @media print {
+    body { background: white; color: black; }
+    .modal-overlay { position: static; background: transparent; display: block !important; }
+    .modal { border: none; box-shadow: none; max-height: none; }
+    .modal-header, .modal-footer { display: none; }
+    .worksheet { color: black; }
+    .ws-label { color: #333; }
+    .ws-line { border-color: #333; }
+    .ws-box { border-color: #333; color: #555; }
+    .app, header, .sidebar { display: none; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+    .main { padding: 20px 16px; }
+    header { padding: 16px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas class="bg-canvas" id="bgCanvas"></canvas>
+
+<div class="app">
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">🧪</div>
+    <div class="header-text">
+      <h1>Science Experiment Generator</h1>
+      <p>AI-powered experiments for every grade level</p>
+    </div>
+    <div class="header-badge">GPT-4o Powered</div>
+  </header>
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+
+    <!-- API Key -->
+    <div>
+      <div class="section-label">API Key</div>
+      <div class="upload-zone" onclick="document.getElementById('env-upload').click()" id="upload-zone">
+        <input type="file" id="env-upload" accept="*" onchange="handleEnvUpload(event)"/>
+        📁 Upload .env file
+      </div>
+      <div style="margin-top:10px;">
+        <input type="password" id="key-input" placeholder="Or paste OpenAI key..." oninput="onKeyInput()"/>
+      </div>
+      <div class="key-status">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">No API key loaded</span>
+      </div>
+    </div>
+
+    <!-- Grade Level -->
+    <div>
+      <div class="section-label">Grade Level</div>
+      <div class="grade-grid">
+        <button class="grade-btn" data-grade="K-2" onclick="selectGrade(this)">K–2</button>
+        <button class="grade-btn" data-grade="3-5" onclick="selectGrade(this)">3–5</button>
+        <button class="grade-btn" data-grade="6-8" onclick="selectGrade(this)">6–8</button>
+        <button class="grade-btn" data-grade="9-12" onclick="selectGrade(this)">9–12</button>
+      </div>
+    </div>
+
+    <!-- Subject Focus -->
+    <div>
+      <div class="section-label">Subject Focus</div>
+      <select id="subject">
+        <option value="">Any Subject</option>
+        <option value="Biology">Biology</option>
+        <option value="Chemistry">Chemistry</option>
+        <option value="Physics">Physics</option>
+        <option value="Earth Science">Earth Science</option>
+        <option value="Environmental Science">Environmental Science</option>
+        <option value="Astronomy">Astronomy</option>
+      </select>
+    </div>
+
+    <!-- Supplies -->
+    <div>
+      <div class="section-label">Available Supplies</div>
+      <textarea id="supplies" placeholder="e.g. baking soda, vinegar, food coloring, cups, string..."></textarea>
+      <div class="preset-wrap" style="margin-top:8px;">
+        <button class="preset-chip" onclick="addPreset('kitchen')">🍳 Kitchen</button>
+        <button class="preset-chip" onclick="addPreset('craft')">✂️ Craft</button>
+        <button class="preset-chip" onclick="addPreset('outdoor')">🌿 Outdoor</button>
+        <button class="preset-chip" onclick="addPreset('electronics')">💡 Electronics</button>
+        <button class="preset-chip" onclick="addPreset('clear')">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- Model -->
+    <div>
+      <div class="section-label">Model</div>
+      <select id="model">
+        <option value="gpt-4o">GPT-4o (Recommended)</option>
+        <option value="gpt-4o-mini">GPT-4o Mini (Faster)</option>
+        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+      </select>
+    </div>
+
+    <!-- Generate -->
+    <button class="btn-generate" id="gen-btn" onclick="generate()" disabled>
+      <span id="gen-label">⚗️ Generate Experiment</span>
+    </button>
+
+  </aside>
+
+  <!-- ── Main Content ── -->
+  <main class="main">
+
+    <div class="banner" id="banner">
+      <span id="banner-icon"></span>
+      <span id="banner-msg"></span>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-wrap" id="loading">
+      <div class="lab-anim">
+        <div class="lab-ring"></div>
+        <div class="lab-ring"></div>
+        <div class="lab-ring"></div>
+        <div class="lab-core"></div>
+      </div>
+      <div class="loading-text" id="loading-text">Designing your experiment...</div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-card" id="result-card">
+      <div class="result-header">
+        <div class="result-icon" id="result-icon">🔬</div>
+        <div class="result-meta">
+          <h2 id="result-title">Experiment Ready</h2>
+          <div class="tags" id="result-tags"></div>
+        </div>
+        <div class="result-actions">
+          <button class="btn-icon" title="Print worksheet" onclick="openWorksheet()">📋</button>
+          <button class="btn-icon" title="Copy text" onclick="copyResult()">📋</button>
+          <button class="btn-icon" title="New experiment" onclick="clearResult()">✕</button>
+        </div>
+      </div>
+      <div class="result-body" id="result-body"></div>
+    </div>
+
+    <!-- History -->
+    <div class="history-section" id="history-section">
+      <div class="history-header">
+        <div class="section-label" style="margin-bottom:0; flex:1">Recent Experiments</div>
+        <button class="btn-clear-history" onclick="clearHistory()">Clear All</button>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">🔭</div>
+      <h2>Ready to Experiment</h2>
+      <p>Load your API key, select a grade level, list your supplies, and hit Generate to get a custom science experiment.</p>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Worksheet Modal ── -->
+<div class="modal-overlay" id="worksheet-modal" onclick="closeWorksheet(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>📋 Observation Worksheet</h3>
+      <button class="btn-icon" onclick="closeWorksheetBtn()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="worksheet" id="worksheet-content"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeWorksheetBtn()">Close</button>
+      <button class="btn-print" onclick="window.print()">🖨️ Print Worksheet</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let apiKey = '';
+let selectedGrade = '';
+let history = JSON.parse(localStorage.getItem('seg-history') || '[]');
+let currentResult = null;
+
+const PRESETS = {
+  kitchen: 'baking soda, vinegar, food coloring, salt, sugar, water, ice, cups, spoons, measuring cups, dish soap, vegetable oil',
+  craft: 'scissors, glue, tape, paper, cardboard, rubber bands, straws, popsicle sticks, string, balloons, markers, yarn',
+  outdoor: 'dirt, rocks, leaves, water, sunlight, ruler, magnifying glass, seeds, sand, containers',
+  electronics: 'AA batteries, LED lights, copper wire, aluminum foil, small motor, magnets, paper clips, tape'
+};
+
+const LOADING_MSGS = [
+  'Designing your experiment...',
+  'Consulting the science archives...',
+  'Calculating hypothesis parameters...',
+  'Preparing laboratory protocol...',
+  'Formulating materials list...',
+  'Engineering the perfect procedure...'
+];
+
+// ── Background Particles ──
+(function() {
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function createParticles() {
+    particles = [];
+    const n = Math.floor((W * H) / 18000);
+    for (let i = 0; i < n; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.5 + 0.3,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        a: Math.random() * 0.5 + 0.1,
+        color: Math.random() > 0.5 ? '79,195,247' : '124,77,255'
+      });
+    }
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // gradient background
+    const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.7);
+    grad.addColorStop(0, 'rgba(10,20,40,0)');
+    grad.addColorStop(1, 'rgba(4,6,12,0.6)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.color},${p.a})`;
+      ctx.fill();
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  resize();
+  createParticles();
+  draw();
+  window.addEventListener('resize', () => { resize(); createParticles(); });
+})();
+
+// ── Key Management ──
+function handleEnvUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const content = ev.target.result;
+    const match = content.match(/OPENAI_API_KEY\s*=\s*["']?([^\n\r"'\s]+)["']?/i);
+    if (match) {
+      apiKey = match[1].trim();
+      document.getElementById('key-input').value = apiKey;
+      setKeyStatus(true, `Key loaded from ${file.name}`);
+    } else {
+      showBanner('warn', 'No OPENAI_API_KEY found in file. Paste your key manually.');
+    }
+  };
+  reader.readAsText(file);
+  document.getElementById('upload-zone').textContent = `✅ ${file.name}`;
+}
+
+function onKeyInput() {
+  apiKey = document.getElementById('key-input').value.trim();
+  setKeyStatus(!!apiKey, apiKey ? 'API key ready' : 'No API key loaded');
+}
+
+function setKeyStatus(ok, msg) {
+  document.getElementById('status-dot').classList.toggle('active', ok);
+  document.getElementById('status-text').textContent = msg;
+  document.getElementById('gen-btn').disabled = !ok;
+}
+
+// ── Grade Selection ──
+function selectGrade(btn) {
+  document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedGrade = btn.dataset.grade;
+}
+
+// ── Supply Presets ──
+function addPreset(key) {
+  if (key === 'clear') { document.getElementById('supplies').value = ''; return; }
+  const el = document.getElementById('supplies');
+  const current = el.value.trim();
+  const preset = PRESETS[key];
+  el.value = current ? `${current}, ${preset}` : preset;
+}
+
+// ── Generate ──
+async function generate() {
+  if (!apiKey) { showBanner('error', 'Please load an API key first.'); return; }
+  if (!selectedGrade) { showBanner('warn', 'Please select a grade level.'); return; }
+
+  const supplies = document.getElementById('supplies').value.trim();
+  const subject = document.getElementById('subject').value;
+  const model = document.getElementById('model').value;
+
+  if (!supplies) { showBanner('warn', 'Please list some available supplies.'); return; }
+
+  hideBanner();
+  showLoading(true);
+  hideEmpty();
+  document.getElementById('result-card').classList.remove('show');
+
+  const subjectLine = subject ? `Subject area: ${subject}.` : '';
+  const systemPrompt = `You are an expert science educator who designs engaging, safe, and grade-appropriate science experiments.
+Your experiments are creative, clearly structured, and follow good scientific method.
+Always format your response with clear sections using markdown: ## headers, bullet lists, bold labels, etc.
+Include a difficulty rating (Easy/Medium/Hard) in your response as: **Difficulty:** Easy|Medium|Hard`;
+
+  const userPrompt = `Design a hands-on science experiment for grade level ${selectedGrade} students.
+${subjectLine}
+Available materials: ${supplies}
+
+Please provide:
+1. A catchy experiment title
+2. Difficulty rating (Easy/Medium/Hard)
+3. Learning objectives (2-3 bullets)
+4. Required materials (only from what's available)
+5. Step-by-step procedure (numbered, clear)
+6. What to observe and record
+7. The science behind it (grade-appropriate explanation)
+8. Discussion questions (2-3)
+9. Extension ideas
+
+Make it engaging, safe, and fun!`;
+
+  let msgIdx = 0;
+  const msgInterval = setInterval(() => {
+    document.getElementById('loading-text').textContent = LOADING_MSGS[msgIdx % LOADING_MSGS.length];
+    msgIdx++;
+  }, 1800);
+
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 1800,
+        temperature: 0.8
+      })
+    });
+
+    clearInterval(msgInterval);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content || '';
+
+    if (!text) throw new Error('Empty response from API');
+
+    currentResult = { text, grade: selectedGrade, subject: subject || 'General', supplies, model, ts: Date.now() };
+    saveHistory(currentResult);
+    renderResult(currentResult);
+
+  } catch (err) {
+    clearInterval(msgInterval);
+    showBanner('error', `Error: ${err.message}`);
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ── Render Result ──
+function renderResult(r) {
+  const text = r.text;
+
+  // Extract title from first H1 or H2 or first line
+  const titleMatch = text.match(/^#{1,2}\s+(.+)/m);
+  const title = titleMatch ? titleMatch[1].replace(/\*\*/g, '') : 'Science Experiment';
+
+  // Difficulty
+  const diffMatch = text.match(/\*\*Difficulty[:\*]*\*?\*?\s*(Easy|Medium|Hard)/i);
+  const diff = diffMatch ? diffMatch[1] : null;
+
+  const icons = { 'K-2': '🌱', '3-5': '⚗️', '6-8': '🔬', '9-12': '🧬' };
+
+  document.getElementById('result-icon').textContent = icons[r.grade] || '🔬';
+  document.getElementById('result-title').textContent = title;
+
+  const tags = document.getElementById('result-tags');
+  tags.innerHTML = `<span class="tag tag-grade">Grade ${r.grade}</span>`;
+  if (r.subject && r.subject !== 'General') tags.innerHTML += `<span class="tag tag-grade">${r.subject}</span>`;
+  if (diff) tags.innerHTML += `<span class="tag tag-diff-${diff.toLowerCase()}">${diff}</span>`;
+
+  document.getElementById('result-body').innerHTML = marked.parse(text);
+  document.getElementById('result-card').classList.add('show');
+  document.getElementById('result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function clearResult() {
+  document.getElementById('result-card').classList.remove('show');
+  currentResult = null;
+  document.getElementById('empty-state').style.display = '';
+}
+
+async function copyResult() {
+  if (!currentResult) return;
+  await navigator.clipboard.writeText(currentResult.text);
+  showBanner('info', 'Copied to clipboard!');
+  setTimeout(hideBanner, 2000);
+}
+
+// ── History ──
+function saveHistory(r) {
+  history.unshift(r);
+  if (history.length > 5) history = history.slice(0, 5);
+  localStorage.setItem('seg-history', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const section = document.getElementById('history-section');
+  const list = document.getElementById('history-list');
+  if (history.length === 0) { section.classList.remove('show'); return; }
+
+  section.classList.add('show');
+  const icons = { 'K-2': '🌱', '3-5': '⚗️', '6-8': '🔬', '9-12': '🧬' };
+  list.innerHTML = history.map((h, i) => {
+    const titleMatch = h.text.match(/^#{1,2}\s+(.+)/m);
+    const title = titleMatch ? titleMatch[1].replace(/\*\*/g, '') : 'Experiment';
+    const date = new Date(h.ts).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return `<div class="history-item" onclick="loadHistory(${i})">
+      <div class="history-icon">${icons[h.grade] || '🔬'}</div>
+      <div class="history-info">
+        <div class="h-title">${title}</div>
+        <div class="h-meta">Grade ${h.grade} · ${h.subject} · ${date}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadHistory(i) {
+  currentResult = history[i];
+  renderResult(currentResult);
+}
+
+function clearHistory() {
+  history = [];
+  localStorage.removeItem('seg-history');
+  renderHistory();
+}
+
+// ── Worksheet ──
+function openWorksheet() {
+  if (!currentResult) return;
+  const titleMatch = currentResult.text.match(/^#{1,2}\s+(.+)/m);
+  const title = titleMatch ? titleMatch[1].replace(/\*\*/g, '') : 'Science Experiment';
+
+  document.getElementById('worksheet-content').innerHTML = `
+    <div class="worksheet">
+      <h2>🔬 ${title}</h2>
+      <div class="ws-field">
+        <div class="ws-label">Name</div>
+        <div class="ws-line"></div>
+      </div>
+      <div class="ws-field">
+        <div class="ws-label">Date</div>
+        <div class="ws-line"></div>
+      </div>
+      <div class="ws-field">
+        <div class="ws-label">Grade / Class</div>
+        <div class="ws-line"></div>
+      </div>
+      <div class="ws-field">
+        <div class="ws-label">My Hypothesis</div>
+        <div class="ws-line"></div>
+        <div class="ws-line"></div>
+        <div class="ws-line"></div>
+      </div>
+      <div class="ws-grid">
+        <div class="ws-field">
+          <div class="ws-label">Materials I Used</div>
+          <div class="ws-box"></div>
+        </div>
+        <div class="ws-field">
+          <div class="ws-label">What I Observed</div>
+          <div class="ws-box"></div>
+        </div>
+      </div>
+      <div class="ws-field">
+        <div class="ws-label">Data / Measurements</div>
+        <div class="ws-box" style="min-height:100px;"></div>
+      </div>
+      <div class="ws-field">
+        <div class="ws-label">My Conclusion</div>
+        <div class="ws-line"></div>
+        <div class="ws-line"></div>
+        <div class="ws-line"></div>
+        <div class="ws-line"></div>
+      </div>
+      <div class="ws-field">
+        <div class="ws-label">Questions I Still Have</div>
+        <div class="ws-line"></div>
+        <div class="ws-line"></div>
+      </div>
+    </div>`;
+  document.getElementById('worksheet-modal').classList.add('show');
+}
+
+function closeWorksheet(e) {
+  if (e.target === document.getElementById('worksheet-modal')) closeWorksheetBtn();
+}
+
+function closeWorksheetBtn() {
+  document.getElementById('worksheet-modal').classList.remove('show');
+}
+
+// ── UI Helpers ──
+function showLoading(on) {
+  document.getElementById('loading').classList.toggle('show', on);
+  document.getElementById('gen-btn').disabled = on;
+  document.getElementById('gen-label').textContent = on ? '⏳ Generating...' : '⚗️ Generate Experiment';
+}
+
+function hideEmpty() {
+  document.getElementById('empty-state').style.display = 'none';
+}
+
+function showBanner(type, msg) {
+  const icons = { info: 'ℹ️', error: '❌', warn: '⚠️' };
+  const b = document.getElementById('banner');
+  b.className = `banner show ${type}`;
+  document.getElementById('banner-icon').textContent = icons[type] || '';
+  document.getElementById('banner-msg').textContent = msg;
+}
+
+function hideBanner() {
+  document.getElementById('banner').className = 'banner';
+}
+
+// ── Init ──
+renderHistory();
+</script>
+</body>
+</html>
