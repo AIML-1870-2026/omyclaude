@@ -961,12 +961,14 @@ function renderGlobe() {
           <div class="legend-row"><div class="legend-pip" style="background:#ff6600"></div>High — 1–5 LD</div>
           <div class="legend-row"><div class="legend-pip" style="background:#ffaa00"></div>Moderate — 5–20 LD</div>
           <div class="legend-row"><div class="legend-pip" style="background:#00cc66"></div>Low — &gt;20 LD</div>
-          <div class="legend-row"><div class="legend-pip" style="background:#c0c0c0"></div>🌙 Moon (1 LD ref.)</div>
+          <hr style="border-color:rgba(0,212,255,.08);margin:.9rem 0">
+          <div class="legend-row"><div class="legend-pip" style="background:#ff2244;box-shadow:0 0 6px #ff2244"></div>Pulsing ring = PHA</div>
+          <div class="legend-row"><div class="legend-pip" style="background:#ffffff"></div>Label = top 5 closest</div>
           <hr style="border-color:rgba(0,212,255,.08);margin:.9rem 0">
           <div style="font-size:.68rem;color:#3d4e63;line-height:1.7">
             1 LD ≈ 384,400 km<br>
-            Altitude is logarithmically scaled<br>
-            for visibility. Size ≈ diameter.
+            Point size ∝ diameter<br>
+            Click any point for details.
           </div>
         </div>
         <div class="glass-card" id="asteroid-detail">
@@ -996,31 +998,46 @@ function initGlobe() {
   document.getElementById('globe-loading')?.remove();
 
   const data = S.neos;
-  const points = [];
 
-  // Moon reference
-  points.push({ name:'Moon', lat:23, lng:0, dist_ld:1, altitude:ldToAlt(1), color:'#c8c8c8', radius:.35, isMoon:true });
-
-  // Asteroids — spread using golden-angle distribution
-  data.forEach((d,i) => {
+  // ── Build point data (golden-angle spread) ──
+  const points = data.map((d, i) => {
     const t   = threatOf(d.dist_ld);
-    const lat = Math.asin(-1 + 2*i/data.length) * 180/Math.PI;
+    const lat = Math.asin(-1 + 2 * i / data.length) * 180 / Math.PI;
     const lng = ((i * 137.508) % 360) - 180;
-    points.push({
-      name:         d.name,
-      lat, lng,
-      date:         d.date,
-      dist_ld:      d.dist_ld,
-      dist_km:      d.dist_km,
-      vel_kph:      d.vel_kph,
-      diam_avg:     d.diam_avg,
-      is_hazardous: d.is_hazardous,
-      altitude:     ldToAlt(d.dist_ld),
-      color:        t.color,
-      radius:       Math.max(.12, Math.min(.45, d.diam_avg*.25+.12)),
-      isMoon:       false,
-    });
+    // radius scaled by log of diameter for better spread
+    const r = Math.max(0.18, Math.min(0.65, Math.log(d.diam_avg * 1000 + 1) * 0.12));
+    return { name: d.name, lat, lng, date: d.date, dist_ld: d.dist_ld,
+             dist_km: d.dist_km, vel_kph: d.vel_kph, diam_avg: d.diam_avg,
+             is_hazardous: d.is_hazardous, color: t.color, radius: r };
   });
+
+  // ── Rings for PHAs (pulsing red alert rings) ──
+  const rings = data
+    .filter(d => d.is_hazardous)
+    .map((d, i) => {
+      const lat = Math.asin(-1 + 2 * i / data.length) * 180 / Math.PI;
+      const lng = ((i * 137.508) % 360) - 180;
+      return { lat, lng, color: d.dist_ld < 5 ? '#ff2244' : '#ff6600', maxR: 2.5, speed: 1.8 };
+    });
+
+  // ── Labels for the 5 closest approaches ──
+  const closest = [...data]
+    .sort((a, b) => a.dist_ld - b.dist_ld)
+    .slice(0, 5)
+    .map((d, i) => {
+      const lat = Math.asin(-1 + 2 * i / data.length) * 180 / Math.PI;
+      const lng = ((i * 137.508) % 360) - 180;
+      return { lat, lng, text: d.name, color: '#ffffff', size: 0.4 };
+    });
+
+  const tooltip = d => `
+    <div style="background:rgba(6,14,30,.97);border:1px solid rgba(0,212,255,.3);border-radius:8px;padding:8px 12px;font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2e8f0;pointer-events:none;min-width:160px;">
+      <div style="font-weight:600;color:#00d4ff;margin-bottom:5px">${d.name}</div>
+      <div style="color:#8899aa">Miss: <b style="color:#ffaa00">${fmt(d.dist_ld,3)} LD</b></div>
+      <div style="color:#8899aa">Speed: ${fmtCompact(d.vel_kph)} km/h</div>
+      <div style="color:#8899aa">Date: ${d.date}</div>
+      ${d.is_hazardous ? '<div style="color:#ff4466;margin-top:4px;font-weight:600">⚠ POTENTIALLY HAZARDOUS</div>' : ''}
+    </div>`;
 
   const globe = Globe()(container)
     .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-dark.jpg')
@@ -1028,42 +1045,49 @@ function initGlobe() {
     .backgroundColor('rgba(0,0,0,0)')
     .showAtmosphere(true)
     .atmosphereColor('#00d4ff')
-    .atmosphereAltitude(0.13)
+    .atmosphereAltitude(0.15)
+    // ── Points ──
     .pointsData(points)
     .pointLat(d => d.lat)
     .pointLng(d => d.lng)
     .pointColor(d => d.color)
     .pointAltitude(0)
     .pointRadius(d => d.radius)
-    .pointLabel(d => `
-      <div style="background:rgba(6,14,30,.97);border:1px solid rgba(0,212,255,.3);border-radius:8px;padding:8px 12px;font-family:IBM Plex Mono,monospace;font-size:11px;color:#e2e8f0;pointer-events:none;min-width:160px;">
-        <div style="font-weight:600;color:#00d4ff;margin-bottom:5px">${d.name}</div>
-        ${d.isMoon
-          ? '<div style="color:#8899aa">Moon — 1.0 LD reference</div>'
-          : `<div style="color:#8899aa">Miss: <b style="color:#ffaa00">${fmt(d.dist_ld,3)} LD</b></div>
-             <div style="color:#8899aa">Speed: ${fmtCompact(d.vel_kph)} km/h</div>
-             <div style="color:#8899aa">${d.date}</div>`}
-      </div>`)
+    .pointResolution(8)
+    .pointLabel(tooltip)
     .onPointClick(d => {
       const det  = document.getElementById('asteroid-detail');
-      const name = document.getElementById('detail-name');
-      const rows = document.getElementById('detail-rows');
+      document.getElementById('detail-name').textContent = d.name;
       det.classList.add('show');
-      name.textContent = d.name;
-      rows.innerHTML = d.isMoon
-        ? `<div class="detail-row"><span class="detail-key">Type</span><span class="detail-val">Reference body</span></div>
-           <div class="detail-row"><span class="detail-key">Distance</span><span class="detail-val">1.000 LD</span></div>
-           <div class="detail-row"><span class="detail-key">In km</span><span class="detail-val">384,400 km</span></div>`
-        : `<div class="detail-row"><span class="detail-key">Date</span><span class="detail-val">${d.date}</span></div>
-           <div class="detail-row"><span class="detail-key">Miss Dist</span><span class="detail-val">${fmt(d.dist_ld,4)} LD</span></div>
-           <div class="detail-row"><span class="detail-key">Distance</span><span class="detail-val">${fmtCompact(d.dist_km)} km</span></div>
-           <div class="detail-row"><span class="detail-key">Velocity</span><span class="detail-val">${fmtCompact(d.vel_kph)} km/h</span></div>
-           <div class="detail-row"><span class="detail-key">Diameter</span><span class="detail-val">~${fmt(d.diam_avg*1000,0)} m</span></div>
-           <div class="detail-row"><span class="detail-key">PHA</span><span class="detail-val" style="color:${d.is_hazardous?'#ff4466':'#00cc66'}">${d.is_hazardous?'YES':'NO'}</span></div>`;
-    });
+      document.getElementById('detail-rows').innerHTML =
+        `<div class="detail-row"><span class="detail-key">Date</span><span class="detail-val">${d.date}</span></div>
+         <div class="detail-row"><span class="detail-key">Miss Dist</span><span class="detail-val">${fmt(d.dist_ld,4)} LD</span></div>
+         <div class="detail-row"><span class="detail-key">Distance</span><span class="detail-val">${fmtCompact(d.dist_km)} km</span></div>
+         <div class="detail-row"><span class="detail-key">Velocity</span><span class="detail-val">${fmtCompact(d.vel_kph)} km/h</span></div>
+         <div class="detail-row"><span class="detail-key">Diameter</span><span class="detail-val">~${fmt(d.diam_avg*1000,0)} m</span></div>
+         <div class="detail-row"><span class="detail-key">PHA</span><span class="detail-val" style="color:${d.is_hazardous?'#ff4466':'#00cc66'}">${d.is_hazardous?'YES':'NO'}</span></div>`;
+    })
+    // ── Pulsing rings for PHAs ──
+    .ringsData(rings)
+    .ringLat(d => d.lat)
+    .ringLng(d => d.lng)
+    .ringColor(d => t => `${d.color}${Math.round((1 - t) * 220).toString(16).padStart(2,'0')}`)
+    .ringMaxRadius(d => d.maxR)
+    .ringPropagationSpeed(d => d.speed)
+    .ringRepeatPeriod(1200)
+    // ── Labels for closest 5 ──
+    .labelsData(closest)
+    .labelLat(d => d.lat)
+    .labelLng(d => d.lng)
+    .labelText(d => d.text)
+    .labelColor(() => '#ffffff')
+    .labelSize(0.38)
+    .labelDotRadius(0.25)
+    .labelAltitude(0.01)
+    .labelResolution(2);
 
   globe.controls().autoRotate      = true;
-  globe.controls().autoRotateSpeed = 0.28;
+  globe.controls().autoRotateSpeed = 0.3;
   globe.controls().enableZoom      = true;
 }
 
