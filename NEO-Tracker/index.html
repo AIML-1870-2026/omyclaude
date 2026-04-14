@@ -553,7 +553,7 @@ async function fetchSBDB() {
 //  API: Sentry
 // ═══════════════════════════════════════════════════════════════
 async function fetchSentry() {
-  const res = await fetch(`${SENTRY_BASE}?ps-min=-100&limit=100`);
+  const res = await fetch(`${SENTRY_BASE}?ps-min=-20`);
   if (!res.ok) throw new Error(`Sentry HTTP ${res.status}`);
   return res.json();
 }
