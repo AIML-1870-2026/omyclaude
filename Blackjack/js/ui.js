@@ -183,7 +183,7 @@ class UI {
       // If just enabled from idle, kick off the first hand immediately
       if (this.autoPlay && this.agent.isReady() && this.game.state === STATE.BETTING) {
         await this._pause(300);
-        const bet = Math.min(25, this.game.bankroll);
+        const bet = this._autoPlayBet();
         if (this.game.placeBet(bet)) {
           this._updateBet();
           this._updateButtons();
@@ -604,7 +604,7 @@ class UI {
       setTimeout(async () => {
         this._onNewGame();
         await this._pause(300);
-        const bet = Math.min(25, this.game.bankroll);
+        const bet = this._autoPlayBet();
         if (this.game.placeBet(bet)) {
           this._updateBet();
           this._updateButtons();
@@ -898,6 +898,30 @@ class UI {
   // ====================================================
   // AI AGENT METHODS
   // ====================================================
+
+  // ── Bet sizing: count-based Kelly spread tied to risk profile ──
+  _autoPlayBet() {
+    const bankroll = this.game.bankroll;
+    const count    = Strategy.getCount();
+    const profile  = this.agent.profile;
+
+    // Base fraction of bankroll per profile
+    const baseRate = { conservative: 0.02, balanced: 0.03, aggressive: 0.05 }[profile] || 0.03;
+
+    // Positive count boosts the bet (Hi-Lo edge); conservative ignores count
+    const countBoost = profile === 'conservative'
+      ? 0
+      : Math.max(0, count) * (profile === 'aggressive' ? 0.8 : 0.5);
+
+    const rate = Math.min(baseRate * (1 + countBoost), 0.20); // cap at 20%
+
+    // Round to nearest chip ($5)
+    let bet = Math.round(bankroll * rate / 5) * 5;
+    bet = Math.max(5, Math.min(bet, bankroll));     // at least $5, never more than bankroll
+
+    this._log('calc', `AUTO_BET: $${bet} (count:${count >= 0 ? '+' : ''}${count}, profile:${profile})`);
+    return bet;
+  }
 
   _setKeyStatus(ready, label) {
     this.el.aiKeyDot?.classList.toggle('active', ready);
