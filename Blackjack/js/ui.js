@@ -161,23 +161,7 @@ class UI {
       if (this.showHint) this._updateHintHud();
     });
 
-    // ── AI Agent bindings ──
-    this.el.aiEnvInput?.addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        const ok = this.agent.loadEnvContent(ev.target.result);
-        if (ok) {
-          this._setKeyStatus(true, file.name);
-          this._log('sys', `AI_KEY_LOADED: ${file.name}`);
-        } else {
-          this._setKeyStatus(false, 'KEY NOT FOUND');
-          this._log('warn', 'AI_ENV: OPENAI_API_KEY not found in file');
-        }
-      };
-      reader.readAsText(file);
-    });
+    // ── AI Agent bindings ── (env upload handled globally in main.js)
 
     this.el.aiProfile?.addEventListener('change', () => {
       this.agent.profile = this.el.aiProfile.value;
@@ -949,7 +933,7 @@ class UI {
 
     try {
       const result = await this.agent.query(gameState, availableActions);
-      this._displayAIResult(result, availableActions);
+      this._displayAIResult(result);
       this._log('sys', `AI_ACTION: ${result.action.toUpperCase()} (conf:${Math.round(result.confidence*100)}%)`);
       this._log('log', `AI_ANALYSIS: ${result.analysis}`);
 
@@ -969,7 +953,7 @@ class UI {
     }
   }
 
-  _displayAIResult(result, availableActions) {
+  _displayAIResult(result) {
     if (!this.el.aiRecPanel) return;
     this.el.aiRecPanel.classList.remove('hidden');
 
