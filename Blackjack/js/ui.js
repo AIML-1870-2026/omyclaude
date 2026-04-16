@@ -175,11 +175,21 @@ class UI {
 
     this.el.askAiBtn?.addEventListener('click', () => this._onAskAI());
 
-    this.el.autoPlayBtn?.addEventListener('click', () => {
+    this.el.autoPlayBtn?.addEventListener('click', async () => {
       this.autoPlay = !this.autoPlay;
       this.el.autoPlayBtn.classList.toggle('active', this.autoPlay);
       this.el.autoPlayBtn.textContent = this.autoPlay ? 'Auto: ON' : 'Auto-Play';
       this._log('sys', `AUTO_PLAY: ${this.autoPlay ? 'ENABLED' : 'DISABLED'}`);
+      // If just enabled from idle, kick off the first hand immediately
+      if (this.autoPlay && this.agent.isReady() && this.game.state === STATE.BETTING) {
+        await this._pause(300);
+        const bet = Math.min(25, this.game.bankroll);
+        if (this.game.placeBet(bet)) {
+          this._updateBet();
+          this._updateButtons();
+          await this._onDeal();
+        }
+      }
     });
   }
 
@@ -207,6 +217,10 @@ class UI {
       this._showMessage('Insurance?', 'Dealer shows Ace', 'insurance');
       this._log('warn', 'DEALER_ACE — INSURANCE OFFERED');
       this._updateButtons();
+      if (this.autoPlay && this.agent.isReady()) {
+        await this._pause(800);
+        await this._onInsurance(false); // basic strategy: always decline
+      }
       return;
     }
 
@@ -224,6 +238,11 @@ class UI {
     this._updateHeartRate(g.playerHands[0].visibleTotal);
     this._updateBustBar(g.playerHands[0].visibleTotal);
     this._updateButtons();
+
+    if (this.autoPlay && this.agent.isReady()) {
+      await this._pause(500);
+      await this._onAskAI();
+    }
   }
 
   async _onHit() {
@@ -580,21 +599,16 @@ class UI {
 
     this._updateButtons();
 
-    // Auto-play: advance to next hand after short delay
+    // Auto-play: start next hand after a short pause
     if (this.autoPlay && this.agent.isReady()) {
-      setTimeout(() => {
-        if (this.game.state === STATE.RESOLUTION) {
-          this._onNewGame();
-          setTimeout(() => {
-            const defaultBet = Math.min(25, this.game.bankroll);
-            if (this.game.placeBet(defaultBet)) {
-              this._updateBet();
-              this._updateButtons();
-              this._onDeal().then(() => {
-                if (this.game.state === STATE.PLAYER_TURN) this._onAskAI();
-              });
-            }
-          }, 400);
+      setTimeout(async () => {
+        this._onNewGame();
+        await this._pause(300);
+        const bet = Math.min(25, this.game.bankroll);
+        if (this.game.placeBet(bet)) {
+          this._updateBet();
+          this._updateButtons();
+          await this._onDeal(); // _onDeal triggers _onAskAI automatically
         }
       }, 1800);
     }
@@ -944,6 +958,12 @@ class UI {
         case 'stand':  await this._onStand();  break;
         case 'double': await this._onDouble(); break;
         case 'split':  await this._onSplit();  break;
+      }
+
+      // Auto-play: if still player turn, keep querying AI
+      if (this.autoPlay && this.game.state === STATE.PLAYER_TURN) {
+        await this._pause(300);
+        await this._onAskAI();
       }
     } catch (err) {
       this._log('warn', `AI_ERROR: ${err.message}`);
