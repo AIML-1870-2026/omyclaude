@@ -168,6 +168,11 @@
             <button id="insurance-btn"  class="action-btn btn-insurance hidden">INSURANCE</button>
             <button id="no-insure-btn"  class="action-btn btn-noinsure hidden" >DECLINE</button>
             <button id="new-game-btn"   class="action-btn btn-deal    hidden"  >NEW GAME</button>
+            <button id="ask-ai-btn"     class="action-btn btn-ai      hidden"  >⚡ ASK AI</button>
+          </div>
+          <div id="auto-row">
+            <button id="auto-play-btn" class="toggle-btn" id="auto-play-btn">Auto-Play</button>
+            <span id="ai-thinking" class="ai-thinking hidden">⏳ Querying AI...</span>
           </div>
           <div id="analytics-row">
             <button id="toggle-count" class="toggle-btn">Show Count</button>
@@ -178,8 +183,63 @@
 
       </main>
 
-      <!-- ── RIGHT PANEL: TERMINAL LOG ── -->
+      <!-- ── RIGHT PANEL: AI AGENT + TERMINAL LOG ── -->
       <aside id="right-panel">
+
+        <!-- AI AGENT SECTION -->
+        <div class="panel-section" id="ai-section">
+          <div class="panel-label">// AI_AGENT.v2</div>
+
+          <!-- Key Load -->
+          <div class="ai-key-row">
+            <div class="ai-upload-btn" id="ai-upload-zone" onclick="document.getElementById('ai-env-input').click()">
+              <input type="file" id="ai-env-input" accept="*" style="display:none"/>
+              📁 .env
+            </div>
+            <div class="ai-key-status" id="ai-key-status">
+              <span class="ai-key-dot" id="ai-key-dot"></span>
+              <span id="ai-key-label">NO KEY</span>
+            </div>
+          </div>
+
+          <!-- Profile + Explain Controls (Stretch: Risk Tolerance + Explainability) -->
+          <div class="ai-select-row">
+            <select id="ai-profile" class="ai-select" title="Risk Profile">
+              <option value="conservative">Conservative</option>
+              <option value="balanced" selected>Balanced</option>
+              <option value="aggressive">Aggressive</option>
+            </select>
+            <select id="ai-explain" class="ai-select" title="Explanation Detail">
+              <option value="basic">Basic</option>
+              <option value="statistical" selected>Statistical</option>
+              <option value="in-depth">In-Depth</option>
+            </select>
+          </div>
+
+          <!-- Recommendation Panel -->
+          <div id="ai-rec-panel" class="hidden">
+            <div class="ai-action-row">
+              <div id="ai-action-badge">--</div>
+              <div class="ai-conf-wrap">
+                <div class="ai-conf-track"><div id="ai-conf-bar"></div></div>
+                <span id="ai-conf-pct">0%</span>
+              </div>
+            </div>
+            <div id="ai-analysis"></div>
+            <div id="ai-prob-row" class="hidden">
+              <span class="ai-prob"><span class="dim">WIN</span> <span id="ai-p-win">--</span></span>
+              <span class="ai-prob"><span class="dim">LOSE</span> <span id="ai-p-lose">--</span></span>
+              <span class="ai-prob"><span class="dim">PUSH</span> <span id="ai-p-push">--</span></span>
+            </div>
+          </div>
+
+          <!-- Stats Row (Stretch: Performance Analytics) -->
+          <div class="ai-stats-row">
+            <div class="ai-stat-item"><span class="dim">HANDS</span><span id="ai-s-hands">0</span></div>
+            <div class="ai-stat-item"><span class="dim">WIN%</span><span id="ai-s-winrate">—</span></div>
+            <div class="ai-stat-item"><span class="dim">W/L/P</span><span id="ai-s-wlp">0/0/0</span></div>
+          </div>
+        </div>
 
         <div class="panel-section" style="flex:1; display:flex; flex-direction:column; min-height:0;">
           <div class="panel-label">// TERMINAL.LOG</div>
@@ -244,6 +304,7 @@
 
   </div><!-- /terminal-shell -->
 
+  <script src="js/agent.js"></script>
   <script src="js/deck.js"></script>
   <script src="js/hand.js"></script>
   <script src="js/strategy.js"></script>

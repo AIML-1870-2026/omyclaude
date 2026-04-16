@@ -684,3 +684,108 @@ aside {
   #table        { border-radius: 24px; }
   #table::before { border-radius: 22px; }
 }
+
+/* ===== AI AGENT ===== */
+#ai-section { gap: 8px; }
+
+.ai-key-row {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.ai-upload-btn {
+  padding: 5px 10px;
+  background: rgba(0,229,200,0.06);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  font-size: 11px; cursor: pointer;
+  transition: border-color .2s;
+  white-space: nowrap;
+}
+.ai-upload-btn:hover { border-color: var(--border-glow); color: var(--teal); }
+
+.ai-key-status {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; color: #4b6055; letter-spacing: .06em;
+}
+.ai-key-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #ef4444; transition: background .3s;
+  flex-shrink: 0;
+}
+.ai-key-dot.active { background: #00ff78; box-shadow: 0 0 6px #00ff78; }
+
+.ai-select-row { display: flex; gap: 6px; }
+.ai-select {
+  flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--border-dim);
+  border-radius: 4px; color: #7a9b8a; font-family: inherit;
+  font-size: 10px; padding: 4px 6px; cursor: pointer; outline: none;
+}
+.ai-select:focus { border-color: var(--teal); }
+
+/* Recommendation panel */
+#ai-rec-panel {
+  background: rgba(0,229,200,0.04);
+  border: 1px solid rgba(0,229,200,0.12);
+  border-radius: 6px; padding: 8px 10px; display: flex;
+  flex-direction: column; gap: 6px;
+}
+
+.ai-action-row { display: flex; align-items: center; gap: 8px; }
+
+#ai-action-badge {
+  font-size: 14px; font-weight: 700; letter-spacing: .1em;
+  border: 1px solid; border-radius: 4px; padding: 2px 8px;
+  color: var(--teal); border-color: var(--teal);
+  transition: color .3s, border-color .3s;
+}
+
+.ai-conf-wrap { flex: 1; display: flex; align-items: center; gap: 5px; }
+.ai-conf-track {
+  flex: 1; height: 4px; background: rgba(255,255,255,0.07);
+  border-radius: 2px; overflow: hidden;
+}
+#ai-conf-bar { height: 100%; width: 0; border-radius: 2px; transition: width .4s ease; }
+#ai-conf-pct { font-size: 10px; color: #4b6055; min-width: 28px; text-align: right; }
+
+#ai-analysis {
+  font-size: 10px; color: #7a9b8a; line-height: 1.55;
+}
+
+#ai-prob-row {
+  display: flex; gap: 10px;
+}
+.ai-prob { font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.ai-prob .dim { font-size: 9px; }
+
+/* Stats */
+.ai-stats-row {
+  display: flex; justify-content: space-between;
+  padding: 6px 0 2px;
+  border-top: 1px solid rgba(0,229,200,0.07);
+}
+.ai-stat-item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  font-size: 10px;
+}
+.ai-stat-item .dim { font-size: 9px; letter-spacing: .06em; }
+
+/* ASK AI button */
+.btn-ai {
+  background: linear-gradient(135deg, rgba(0,229,200,0.15), rgba(0,229,200,0.05));
+  border: 1px solid rgba(0,229,200,0.5);
+  color: var(--teal);
+}
+.btn-ai:hover:not(:disabled) {
+  background: rgba(0,229,200,0.2);
+  box-shadow: 0 0 16px rgba(0,229,200,0.3);
+}
+
+/* Auto row */
+#auto-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 0 2px;
+}
+.ai-thinking {
+  font-size: 11px; color: var(--teal);
+  animation: blink 1s ease-in-out infinite;
+}

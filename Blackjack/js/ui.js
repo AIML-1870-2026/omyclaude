@@ -10,6 +10,8 @@ class UI {
     this._roundsPlayed = 0;
     this._heatPct     = 0;
     this._startBankroll = game.bankroll;
+    this.agent        = new AIAgent();
+    this.autoPlay     = false;
   }
 
   init() {
@@ -77,6 +79,28 @@ class UI {
       sysTime:       $('sys-time'),
       rcTimestamp:   $('rc-timestamp'),
       particleCanvas:$('particle-canvas'),
+      // AI Agent
+      aiEnvInput:    $('ai-env-input'),
+      aiKeyDot:      $('ai-key-dot'),
+      aiKeyLabel:    $('ai-key-label'),
+      aiUploadZone:  $('ai-upload-zone'),
+      aiProfile:     $('ai-profile'),
+      aiExplain:     $('ai-explain'),
+      aiRecPanel:    $('ai-rec-panel'),
+      aiActionBadge: $('ai-action-badge'),
+      aiConfBar:     $('ai-conf-bar'),
+      aiConfPct:     $('ai-conf-pct'),
+      aiAnalysis:    $('ai-analysis'),
+      aiProbRow:     $('ai-prob-row'),
+      aiPWin:        $('ai-p-win'),
+      aiPLose:       $('ai-p-lose'),
+      aiPPush:       $('ai-p-push'),
+      aiSHands:      $('ai-s-hands'),
+      aiSWinRate:    $('ai-s-winrate'),
+      aiSWLP:        $('ai-s-wlp'),
+      askAiBtn:      $('ask-ai-btn'),
+      autoPlayBtn:   $('auto-play-btn'),
+      aiThinking:    $('ai-thinking'),
     };
   }
 
@@ -135,6 +159,43 @@ class UI {
       this.el.toggleHint.classList.toggle('active', this.showHint);
       this.el.toggleHint.textContent = this.showHint ? 'Hide Hint' : 'Show Hint';
       if (this.showHint) this._updateHintHud();
+    });
+
+    // ── AI Agent bindings ──
+    this.el.aiEnvInput?.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const ok = this.agent.loadEnvContent(ev.target.result);
+        if (ok) {
+          this._setKeyStatus(true, file.name);
+          this._log('sys', `AI_KEY_LOADED: ${file.name}`);
+        } else {
+          this._setKeyStatus(false, 'KEY NOT FOUND');
+          this._log('warn', 'AI_ENV: OPENAI_API_KEY not found in file');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    this.el.aiProfile?.addEventListener('change', () => {
+      this.agent.profile = this.el.aiProfile.value;
+      this._log('sys', `AI_PROFILE: ${this.agent.profile.toUpperCase()}`);
+    });
+
+    this.el.aiExplain?.addEventListener('change', () => {
+      this.agent.explainLevel = this.el.aiExplain.value;
+      this._log('sys', `AI_EXPLAIN: ${this.agent.explainLevel.toUpperCase()}`);
+    });
+
+    this.el.askAiBtn?.addEventListener('click', () => this._onAskAI());
+
+    this.el.autoPlayBtn?.addEventListener('click', () => {
+      this.autoPlay = !this.autoPlay;
+      this.el.autoPlayBtn.classList.toggle('active', this.autoPlay);
+      this.el.autoPlayBtn.textContent = this.autoPlay ? 'Auto: ON' : 'Auto-Play';
+      this._log('sys', `AUTO_PLAY: ${this.autoPlay ? 'ENABLED' : 'DISABLED'}`);
     });
   }
 
@@ -527,7 +588,32 @@ class UI {
       this._log('res', `SPLIT_RESULT: ${lines} NET:${sign}$${Math.abs(netDelta)}`);
     }
 
+    // Track outcome in AI agent
+    if (outcome) {
+      this.agent.recordOutcome(outcome);
+      this._updateAIStats();
+    }
+
     this._updateButtons();
+
+    // Auto-play: advance to next hand after short delay
+    if (this.autoPlay && this.agent.isReady()) {
+      setTimeout(() => {
+        if (this.game.state === STATE.RESOLUTION) {
+          this._onNewGame();
+          setTimeout(() => {
+            const defaultBet = Math.min(25, this.game.bankroll);
+            if (this.game.placeBet(defaultBet)) {
+              this._updateBet();
+              this._updateButtons();
+              this._onDeal().then(() => {
+                if (this.game.state === STATE.PLAYER_TURN) this._onAskAI();
+              });
+            }
+          }, 400);
+        }
+      }, 1800);
+    }
   }
 
   _showMessage(text, sub = '', type = '') {
@@ -717,6 +803,7 @@ class UI {
     this._toggle(this.el.insureBtn,   isInsure);
     this._toggle(this.el.noInsureBtn, isInsure);
     this._toggle(this.el.newGameBtn,  isDone);
+    this._toggle(this.el.askAiBtn,    isPlayer && this.agent.isReady());
   }
 
   _toggle(el, visible) {
@@ -808,5 +895,115 @@ class UI {
 
   _pause(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // ====================================================
+  // AI AGENT METHODS
+  // ====================================================
+
+  _setKeyStatus(ready, label) {
+    this.el.aiKeyDot?.classList.toggle('active', ready);
+    if (this.el.aiKeyLabel) this.el.aiKeyLabel.textContent = ready ? `✓ ${label}` : label;
+    if (this.el.aiUploadZone) this.el.aiUploadZone.textContent = ready ? '✅ Loaded' : '📁 .env';
+    this._updateButtons();
+  }
+
+  _getAvailableActions() {
+    const g    = this.game;
+    const hand = g.currentHand;
+    const acts = ['hit', 'stand'];
+    if (hand?.canDouble && g.bankroll >= (hand?.bet || 0)) acts.push('double');
+    if (hand?.canSplit  && g.bankroll >= (hand?.bet || 0)) acts.push('split');
+    return acts;
+  }
+
+  async _onAskAI() {
+    if (!this.agent.isReady()) {
+      this._log('warn', 'AI_AGENT: NO KEY — Upload .env first');
+      return;
+    }
+    if (this.game.state !== STATE.PLAYER_TURN) return;
+
+    const g    = this.game;
+    const hand = g.currentHand;
+    const up   = g.dealerUpcard;
+    if (!hand || !up) return;
+
+    const availableActions = this._getAvailableActions();
+
+    const gameState = {
+      playerCards:  hand.cards.filter(c => !c.faceDown).map(c => `${c.rank}${c.suit}`),
+      playerTotal:  hand.visibleTotal,
+      isSoft:       hand.isSoft,
+      dealerUpcard: `${up.rank}${up.suit}`,
+      count:        Strategy.getCount(),
+      countLabel:   Strategy.getCountLabel(),
+      deckUsedPct:  Math.round((1 - g.deck.remaining / (g.deck.numDecks * 52)) * 100),
+      bet:          hand.bet,
+      bankroll:     g.bankroll,
+    };
+
+    this._disableAll();
+    this.el.aiThinking?.classList.remove('hidden');
+    this._log('sys', `AI_QUERY: P=${gameState.playerTotal}${hand.isSoft?'s':''} D=${up.rank} ACTIONS=[${availableActions.join(',')}]`);
+
+    try {
+      const result = await this.agent.query(gameState, availableActions);
+      this._displayAIResult(result, availableActions);
+      this._log('sys', `AI_ACTION: ${result.action.toUpperCase()} (conf:${Math.round(result.confidence*100)}%)`);
+      this._log('log', `AI_ANALYSIS: ${result.analysis}`);
+
+      // Execute recommended action
+      await this._pause(600);
+      switch (result.action) {
+        case 'hit':    await this._onHit();    break;
+        case 'stand':  await this._onStand();  break;
+        case 'double': await this._onDouble(); break;
+        case 'split':  await this._onSplit();  break;
+      }
+    } catch (err) {
+      this._log('warn', `AI_ERROR: ${err.message}`);
+      this._updateButtons();
+    } finally {
+      this.el.aiThinking?.classList.add('hidden');
+    }
+  }
+
+  _displayAIResult(result, availableActions) {
+    if (!this.el.aiRecPanel) return;
+    this.el.aiRecPanel.classList.remove('hidden');
+
+    const actionColors = { hit:'#f59e0b', stand:'#00ff78', double:'#3b82f6', split:'#8b5cf6' };
+    const color = actionColors[result.action] || '#00e5c8';
+
+    if (this.el.aiActionBadge) {
+      this.el.aiActionBadge.textContent  = result.action.toUpperCase();
+      this.el.aiActionBadge.style.color  = color;
+      this.el.aiActionBadge.style.borderColor = color;
+    }
+
+    const confPct = Math.round(result.confidence * 100);
+    if (this.el.aiConfBar) {
+      this.el.aiConfBar.style.width      = confPct + '%';
+      this.el.aiConfBar.style.background = color;
+    }
+    if (this.el.aiConfPct) this.el.aiConfPct.textContent = confPct + '%';
+    if (this.el.aiAnalysis) this.el.aiAnalysis.textContent = result.analysis || '';
+
+    const p = result.probabilities;
+    if (p && this.el.aiProbRow) {
+      this.el.aiProbRow.classList.remove('hidden');
+      if (this.el.aiPWin)  this.el.aiPWin.textContent  = Math.round((p.win  || 0)*100) + '%';
+      if (this.el.aiPLose) this.el.aiPLose.textContent = Math.round((p.lose || 0)*100) + '%';
+      if (this.el.aiPPush) this.el.aiPPush.textContent = Math.round((p.push || 0)*100) + '%';
+    }
+  }
+
+  _updateAIStats() {
+    const s = this.agent.stats;
+    const wr = this.agent.getWinRate();
+    if (this.el.aiSHands)   this.el.aiSHands.textContent   = s.hands;
+    if (this.el.aiSWinRate) this.el.aiSWinRate.textContent = wr !== null ? wr + '%' : '—';
+    if (this.el.aiSWLP)     this.el.aiSWLP.textContent     = `${s.wins}/${s.losses}/${s.pushes}`;
   }
 }
