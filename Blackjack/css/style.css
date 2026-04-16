@@ -686,41 +686,55 @@ aside {
 }
 
 /* ===== AI AGENT ===== */
-#ai-section { gap: 8px; }
+#ai-section { display: flex; flex-direction: column; gap: 8px; }
 
-.ai-key-row {
-  display: flex; align-items: center; gap: 8px;
-}
+.ai-key-row { display: flex; align-items: center; gap: 6px; }
 
 .ai-upload-btn {
+  flex-shrink: 0;
   padding: 5px 10px;
   background: rgba(0,229,200,0.06);
   border: 1px solid var(--border-dim);
   border-radius: 4px;
   font-size: 11px; cursor: pointer;
-  transition: border-color .2s;
-  white-space: nowrap;
+  transition: border-color .2s, color .2s;
+  white-space: nowrap; line-height: 1;
 }
 .ai-upload-btn:hover { border-color: var(--border-glow); color: var(--teal); }
 
 .ai-key-status {
   display: flex; align-items: center; gap: 5px;
-  font-size: 10px; color: #4b6055; letter-spacing: .06em;
+  font-size: 10px; color: #4b6055; letter-spacing: .04em;
+  min-width: 0; flex: 1; overflow: hidden;
 }
+#ai-key-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .ai-key-dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: #ef4444; transition: background .3s;
-  flex-shrink: 0;
+  background: #ef4444; transition: background .3s; flex-shrink: 0;
 }
 .ai-key-dot.active { background: #00ff78; box-shadow: 0 0 6px #00ff78; }
 
 .ai-select-row { display: flex; gap: 6px; }
-.ai-select {
-  flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--border-dim);
-  border-radius: 4px; color: #7a9b8a; font-family: inherit;
-  font-size: 10px; padding: 4px 6px; cursor: pointer; outline: none;
+
+.ai-select-group { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.ai-select-label {
+  font-size: 8px; letter-spacing: .12em; color: #3d5248;
+  text-transform: uppercase; padding-left: 2px;
 }
-.ai-select:focus { border-color: var(--teal); }
+
+.ai-select {
+  width: 100%;
+  background: rgba(0,0,0,0.5); border: 1px solid var(--border-dim);
+  border-radius: 4px; color: #7a9b8a; font-family: inherit;
+  font-size: 10px; padding: 5px 18px 5px 6px; cursor: pointer; outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%233d5248' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+}
+.ai-select:focus { border-color: var(--teal); color: #b0c4b8; }
 
 /* Recommendation panel */
 #ai-rec-panel {

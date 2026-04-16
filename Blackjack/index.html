@@ -204,16 +204,22 @@
 
           <!-- Profile + Explain Controls (Stretch: Risk Tolerance + Explainability) -->
           <div class="ai-select-row">
-            <select id="ai-profile" class="ai-select" title="Risk Profile">
-              <option value="conservative">Conservative</option>
-              <option value="balanced" selected>Balanced</option>
-              <option value="aggressive">Aggressive</option>
-            </select>
-            <select id="ai-explain" class="ai-select" title="Explanation Detail">
-              <option value="basic">Basic</option>
-              <option value="statistical" selected>Statistical</option>
-              <option value="in-depth">In-Depth</option>
-            </select>
+            <div class="ai-select-group">
+              <span class="ai-select-label">RISK</span>
+              <select id="ai-profile" class="ai-select">
+                <option value="conservative">Conservative</option>
+                <option value="balanced" selected>Balanced</option>
+                <option value="aggressive">Aggressive</option>
+              </select>
+            </div>
+            <div class="ai-select-group">
+              <span class="ai-select-label">DETAIL</span>
+              <select id="ai-explain" class="ai-select">
+                <option value="basic">Basic</option>
+                <option value="statistical" selected>Statistical</option>
+                <option value="in-depth">In-Depth</option>
+              </select>
+            </div>
           </div>
 
           <!-- Recommendation Panel -->
