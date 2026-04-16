@@ -192,10 +192,10 @@
 
           <!-- Key Load -->
           <div class="ai-key-row">
-            <div class="ai-upload-btn" id="ai-upload-zone" onclick="document.getElementById('ai-env-input').click()">
-              <input type="file" id="ai-env-input" accept="*" style="display:none"/>
+            <label class="ai-upload-btn" id="ai-upload-zone" for="ai-env-input">
               📁 .env
-            </div>
+            </label>
+            <input type="file" id="ai-env-input" accept="*" style="display:none"/>
             <div class="ai-key-status" id="ai-key-status">
               <span class="ai-key-dot" id="ai-key-dot"></span>
               <span id="ai-key-label">NO KEY</span>
